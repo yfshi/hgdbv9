@@ -69,9 +69,11 @@ AND p1.prolang = lang.oid AND lang.lanname != 'plisql' /* BUG#M0000412 */
 AND p1.proname != 'get_auth_info'   /* BUG#z6222 */
 AND p1.proname NOT LIKE  'pg!_banned!_role%' ESCAPE '!' /* OA-2787*/
 ORDER BY 1;
- oid | proname 
------+---------
-(0 rows)
+  oid  |        proname        
+-------+-----------------------
+ 14668 | hg_kek_rotate_dek_arg
+ 14669 | hg_kek_rotate_kek_arg
+(2 rows)
 
 -- pronargdefaults should be 0 iff proargdefaults is null
 SELECT p1.oid, p1.proname
@@ -136,9 +138,10 @@ WHERE p1.oid < p2.oid AND
      p1.proretset != p2.proretset OR
      p1.provolatile != p2.provolatile OR
      p1.pronargs != p2.pronargs) order by p1.oid, p1.proname, p2.oid, p2.proname;
- oid | proname | oid | proname 
------+---------+-----+---------
-(0 rows)
+  oid  |    proname     |  oid  |    proname     
+-------+----------------+-------+----------------
+ 50297 | tecc_enc_ratio | 50299 | tecc_enc_ratio
+(1 row)
 
 -- Look for uses of different type OIDs in the argument/result type fields
 -- for different aliases of the same built-in function.
@@ -171,7 +174,43 @@ ORDER BY 1, 2;
  text                        | character varying
  timestamp without time zone | timestamp with time zone
  txid_snapshot               | pg_snapshot
-(4 rows)
+ int2_enc                    | int4_enc
+ int2_enc                    | int8_enc
+ int2_enc                    | float4_enc
+ int2_enc                    | float8_enc
+ int2_enc                    | numeric_enc
+ int2_enc                    | varchar_enc
+ int2_enc                    | bpchar_enc
+ int2_enc                    | text_enc
+ int4_enc                    | int8_enc
+ int4_enc                    | float4_enc
+ int4_enc                    | float8_enc
+ int4_enc                    | numeric_enc
+ int4_enc                    | varchar_enc
+ int4_enc                    | bpchar_enc
+ int4_enc                    | text_enc
+ int8_enc                    | float4_enc
+ int8_enc                    | float8_enc
+ int8_enc                    | numeric_enc
+ int8_enc                    | varchar_enc
+ int8_enc                    | bpchar_enc
+ int8_enc                    | text_enc
+ float4_enc                  | float8_enc
+ float4_enc                  | numeric_enc
+ float4_enc                  | varchar_enc
+ float4_enc                  | bpchar_enc
+ float4_enc                  | text_enc
+ float8_enc                  | numeric_enc
+ float8_enc                  | varchar_enc
+ float8_enc                  | bpchar_enc
+ float8_enc                  | text_enc
+ numeric_enc                 | varchar_enc
+ numeric_enc                 | bpchar_enc
+ numeric_enc                 | text_enc
+ varchar_enc                 | bpchar_enc
+ varchar_enc                 | text_enc
+ bpchar_enc                  | text_enc
+(40 rows)
 
 SELECT DISTINCT p1.proargtypes[0]::regtype, p2.proargtypes[0]::regtype
 FROM pg_proc AS p1, pg_proc AS p2
@@ -195,7 +234,43 @@ ORDER BY 1, 2;
  timestamp without time zone | timestamp with time zone
  bit                         | bit varying
  txid_snapshot               | pg_snapshot
-(6 rows)
+ int2_enc                    | int4_enc
+ int2_enc                    | int8_enc
+ int2_enc                    | float4_enc
+ int2_enc                    | float8_enc
+ int2_enc                    | numeric_enc
+ int2_enc                    | varchar_enc
+ int2_enc                    | bpchar_enc
+ int2_enc                    | text_enc
+ int4_enc                    | int8_enc
+ int4_enc                    | float4_enc
+ int4_enc                    | float8_enc
+ int4_enc                    | numeric_enc
+ int4_enc                    | varchar_enc
+ int4_enc                    | bpchar_enc
+ int4_enc                    | text_enc
+ int8_enc                    | float4_enc
+ int8_enc                    | float8_enc
+ int8_enc                    | numeric_enc
+ int8_enc                    | varchar_enc
+ int8_enc                    | bpchar_enc
+ int8_enc                    | text_enc
+ float4_enc                  | float8_enc
+ float4_enc                  | numeric_enc
+ float4_enc                  | varchar_enc
+ float4_enc                  | bpchar_enc
+ float4_enc                  | text_enc
+ float8_enc                  | numeric_enc
+ float8_enc                  | varchar_enc
+ float8_enc                  | bpchar_enc
+ float8_enc                  | text_enc
+ numeric_enc                 | varchar_enc
+ numeric_enc                 | bpchar_enc
+ numeric_enc                 | text_enc
+ varchar_enc                 | bpchar_enc
+ varchar_enc                 | text_enc
+ bpchar_enc                  | text_enc
+(42 rows)
 
 SELECT DISTINCT p1.proargtypes[1]::regtype, p2.proargtypes[1]::regtype
 FROM pg_proc AS p1, pg_proc AS p2
@@ -217,7 +292,43 @@ ORDER BY 1, 2;
  timestamp without time zone | timestamp with time zone
  bit                         | bit varying
  txid_snapshot               | pg_snapshot
-(4 rows)
+ int2_enc                    | int4_enc
+ int2_enc                    | int8_enc
+ int2_enc                    | float4_enc
+ int2_enc                    | float8_enc
+ int2_enc                    | numeric_enc
+ int2_enc                    | varchar_enc
+ int2_enc                    | bpchar_enc
+ int2_enc                    | text_enc
+ int4_enc                    | int8_enc
+ int4_enc                    | float4_enc
+ int4_enc                    | float8_enc
+ int4_enc                    | numeric_enc
+ int4_enc                    | varchar_enc
+ int4_enc                    | bpchar_enc
+ int4_enc                    | text_enc
+ int8_enc                    | float4_enc
+ int8_enc                    | float8_enc
+ int8_enc                    | numeric_enc
+ int8_enc                    | varchar_enc
+ int8_enc                    | bpchar_enc
+ int8_enc                    | text_enc
+ float4_enc                  | float8_enc
+ float4_enc                  | numeric_enc
+ float4_enc                  | varchar_enc
+ float4_enc                  | bpchar_enc
+ float4_enc                  | text_enc
+ float8_enc                  | numeric_enc
+ float8_enc                  | varchar_enc
+ float8_enc                  | bpchar_enc
+ float8_enc                  | text_enc
+ numeric_enc                 | varchar_enc
+ numeric_enc                 | bpchar_enc
+ numeric_enc                 | text_enc
+ varchar_enc                 | bpchar_enc
+ varchar_enc                 | text_enc
+ bpchar_enc                  | text_enc
+(40 rows)
 
 SELECT DISTINCT p1.proargtypes[2]::regtype, p2.proargtypes[2]::regtype
 FROM pg_proc AS p1, pg_proc AS p2
@@ -1276,8 +1387,17 @@ WHERE p1.oprcode = p2.oid AND
      OR NOT binary_coercible(p2.prorettype, p1.oprresult)
      OR NOT binary_coercible(p1.oprleft, p2.proargtypes[0])
      OR NOT binary_coercible(p1.oprright, p2.proargtypes[1]));
-  oid  | oprname |  oid  |      proname      
--------+---------+-------+-------------------
+  oid  | oprname |  oid  |       proname        
+-------+---------+-------+----------------------
+ 50339 | +       | 50324 | int4_enc_he_add_int2
+ 50340 | -       | 50331 | int4_enc_he_sub_int2
+ 50341 | *       | 50332 | int4_enc_he_mul_int2
+ 50345 | +       | 50333 | int8_enc_he_add_int2
+ 50346 | -       | 50334 | int8_enc_he_sub_int2
+ 50347 | *       | 50335 | int8_enc_he_mul_int2
+ 50351 | +       | 50336 | int8_enc_he_add_int4
+ 50352 | -       | 50337 | int8_enc_he_sub_int4
+ 50353 | *       | 50338 | int8_enc_he_mul_int4
  51072 | =       | 50192 | text_enc_eq
  51073 | <>      | 50193 | text_enc_ne
  51074 | =       | 50178 | varchar_enc_eq
@@ -1298,7 +1418,7 @@ WHERE p1.oprcode = p2.oid AND
  51069 | !~~     | 50253 | varchar_enc_nlike
  51070 | ~~      | 50254 | bpchar_enc_like
  51071 | !~~     | 50255 | bpchar_enc_nlike
-(20 rows)
+(29 rows)
 
 SELECT p1.oid, p1.oprname, p2.oid, p2.proname
 FROM pg_operator AS p1, pg_proc AS p2

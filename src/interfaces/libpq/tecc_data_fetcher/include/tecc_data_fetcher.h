@@ -69,6 +69,13 @@ extern TeccFetcherErrorCode tecc_fetch_kek_metadata(const TeccState *state,
                                                     PGconn *ext_conn,
                                                     TeccKekMetadata **result);
 
+/* ReqID:TECC4.0 - Bug 9256: 按OID获取KEK元数据。
+ * DEK→KEK 的绑定在目录里是 kek_id(OID)，跨 schema 时按名字+search_path 解析必然会
+ * 找不到（KEK 可以创建在任何 schema），OID 才是无歧义的解析入口。 */
+extern TeccFetcherErrorCode tecc_fetch_kek_metadata_by_oid(const TeccState *state,
+                                                           Oid kek_oid,
+                                                           TeccKekMetadata **result);
+
 
 /* 获取DEK元数据 */
 extern TeccFetcherErrorCode tecc_fetch_dek_metadata(const TeccState *state,
@@ -106,6 +113,25 @@ extern TeccFetcherErrorCode tecc_fetch_columns_by_table_by_name(
     const char *schema_name,
     const char *table_name,
     List **result);
+
+/* ReqID:TECC4.0 - 按 search_path 解析未限定表名的真实 schema */
+extern TeccFetcherErrorCode tecc_fetch_resolve_table_schema(
+    const TeccState *state,
+    const char *database_name,
+    const char *table_name,
+    const char **schemas,
+    int nschemas,
+    char **resolved_schema);
+
+/* ReqID:TECC4.0 - 判断指定 schema 下是否存在该关系。缓存层用它区分
+ * "关系不存在"与"关系存在但无加密列"：只有后者可为会话固化"该表无加密列"
+ * 的负缓存哨兵，前者固化后会让该表后续 DML 明文外发。 */
+extern TeccFetcherErrorCode tecc_fetch_relation_exists(
+    const TeccState *state,
+    const char *database_name,
+    const char *schema_name,
+    const char *table_name,
+    bool *exists);
 
 
 /* 批量查询接口 */

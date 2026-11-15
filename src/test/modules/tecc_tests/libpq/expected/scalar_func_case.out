@@ -1,0 +1,45 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+========== 1. int 列 + int 常量（需求示例） ==========
+1|4000
+2|0
+========== 2. text 列 + 字符串常量 ==========
+1|apple
+2|zebra
+========== 3. float4 列 + 浮点 ELSE 分支常量 ==========
+1|0.5
+2|99.5
+========== 3b. float4 列 + 浮点常量（WHEN 条件与 ELSE 分支同时） ==========
+1|0.25
+2|99.5
+========== 3c. float8 列 + 浮点常量 ==========
+1|0.25
+2|12345.6789
+========== 3d. numeric 列 + 浮点常量 ==========
+1|1000.50
+2|1.5
+========== 4. WHEN 条件含浮点常量 ==========
+1|6.25
+2|99.5
+========== 5. 多 WHEN 分支 + 浮点常量 ==========
+1|0.5
+2|99.5
+========== 6. int 列 + 浮点分支常量（不兼容，应报错） ==========
+========== 7. switch 形式（应报不支持） ==========
+========== 8. 纯普通 CASE ==========
+1|0.5
+2|1.5
+========== 9. 清理 ==========
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../scalar_func_case.sql:21: NOTICE:  table "enc_pgfunc_case" does not exist, skipping
+psql:/.../scalar_func_case.sql:22: NOTICE:  data encryption key "enc_pgfunc_case_dek" does not exist, skipping
+psql:/.../scalar_func_case.sql:23: NOTICE:  key encryption key "enc_pgfunc_case_kek" does not exist, skipping
+psql:/.../scalar_func_case.sql:75: TECC query preprocessing failed: case does not support this argument combination: the branch constant type cannot be encrypted like encrypted column c_i4; unify branches to encrypted columns or plain constants matching the column's original type
+psql:/.../scalar_func_case.sql:79: TECC query preprocessing failed: case does not support this argument combination: the switch form (CASE expression WHEN constant) is not supported; use the CASE WHEN condition form instead

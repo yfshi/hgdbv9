@@ -1,0 +1,111 @@
+NOTICE: key encryption key "kek_cache" does not exist, skipping
+DROP KEK
+NOTICE: key encryption key "kek_cache2" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE KEK
+CREATE DEK
+=== 1 Cache Refresh ===
+NOTICE: table "test_cr" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+1a_cache_refresh|1
+DROP TABLE
+=== 2 Cross-DEK Rejection ===
+2a_text_t2_via_dek1_dek2_err
+ERROR: TECC: Cannot cast encrypted type text_enc to varchar_enc with different DEKs (dek_cache vs dek_cache2)
+2b_text_to_bpchar_diff_dek_err
+ERROR: TECC: Cannot cast encrypted type text_enc to bpchar_enc with different DEKs (dek_cache vs dek_cache2)
+2c_varchar_to_text_diff_dek_err
+ERROR: TECC: Cannot cast encrypted type varchar_enc to text_enc with different DEKs (dek_cache vs dek_cache2)
+2d_varchar_to_bpchar_diff_dek_err
+ERROR: TECC: Cannot cast encrypted type varchar_enc to bpchar_enc with different DEKs (dek_cache vs dek_cache2)
+2e_bpchar_to_text_diff_dek_err
+ERROR: TECC: Cannot cast encrypted type bpchar_enc to text_enc with different DEKs (dek_cache vs dek_cache2)
+2f_bpchar_to_varchar_diff_dek_err
+ERROR: TECC: Cannot cast encrypted type bpchar_enc to varchar_enc with different DEKs (dek_cache vs dek_cache2)
+=== 3 Cross-DEK Insert Rejection ===
+NOTICE: table "tb_int4" does not exist, skipping
+DROP TABLE
+NOTICE: table "tb_int8" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+3a_insert_int2_diff_dek_err
+ERROR: cannot assign encrypted value with DEK dek_cache2 to column id which uses DEK dek_cache
+3b_insert_int8_diff_dek_err
+ERROR: cannot assign encrypted value with DEK dek_cache2 to column id which uses DEK dek_cache
+NOTICE: table "tb_v" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+3c_same_dek_insert|2
+DROP TABLE
+DROP TABLE
+DROP TABLE
+=== 4 DEK Permission ===
+NOTICE: table "test_perm_table" does not exist, skipping
+DROP TABLE
+NOTICE: role "test_noperm_user" does not exist, skipping
+DROP USER
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+4a_superuser_select|1|Alice|50000|5000
+4a_superuser_select|2|Bob|60000|6000
+CREATE USER
+GRANT SELECT
+GRANT USAGE
+NOTICE: role "test_postgres" does not exist, skipping
+DROP ROLE
+CREATE ROLE
+4b_noperm_select|1|Alice
+4b_noperm_select|2|Bob
+\C POSTGRES
+ERROR: no key found for column 'salary' — current user may lack DEK USAGE privilege on DEK 'dek_cache'
+ERROR: Cannot encrypt WHERE clause value: DEK/KEK names not resolved for column test_perm_table.salary
+ERROR: Cannot encrypt WHERE clause value: DEK/KEK names not resolved for column test_perm_table.salary
+4e_superuser_still_works|1|Alice|50000|5000
+4e_superuser_still_works|2|Bob|60000|6000
+\C POSTGRES
+4f_superuser_where|1|Alice|50000|5000
+4f_superuser_where|2|Bob|60000|6000
+4g_noperm_create_table_before
+\C POSTGRES
+ERROR: ERROR: permission denied for DEK "dek_cache"
+  Detail: You do not have USAGE privilege on DEK "dek_cache".
+  Hint: Grant USAGE on the DEK to proceed.
+4g_noperm_create_table_after
+\C POSTGRES
+NOTICE: table "test_noperm_create_table" does not exist, skipping
+DROP TABLE
+REVOKE ALL
+DROP USER
+=== update_meta mark 置位测试 ===
+||
+5a_mark_before|false|false|false
+5c_mark_after|true|true|true
+||
+=== 6 Bug 9155 Stale Cache Sentinel ===
+CREATE SCHEMA
+6a_wrong_dek_err
+CREATE TABLE
+DROP TABLE
+6b_insert_no_table_err
+ERROR: ERROR: relation "sch_bug9155.t_base" does not exist
+  Position: 13
+6c_correct_dek_ok
+CREATE TABLE
+6d_insert_ok
+INSERT 0 2
+6e_select|1|test1
+6e_select|2|test2
+DROP TABLE
+DROP SCHEMA
+=== Cleanup ===
+NOTICE: drop cascades to data encryption key dek_cache
+DROP KEK
+NOTICE: drop cascades to data encryption key dek_cache2
+DROP KEK

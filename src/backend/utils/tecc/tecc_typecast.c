@@ -119,7 +119,7 @@ check_dek_consistency_for_conversion(CipherDataType *source)
 	}
 
 	/* Validate source DEK identity */
-	if (!OidIsValid(CIPHERDATA_DEK_DIST_OID(source)))
+	if (!OidIsValid(CIPHERDATA_DATUM_DEK_DIST_OID(source)))
 	{
 		ereport(ERROR,
 				(errcode(ERRCODE_TECC_DEK_MISMATCH),
@@ -180,20 +180,20 @@ tecc_type_convert(PG_FUNCTION_ARGS, Oid source_type, Oid target_type)
 	if (source_type == BPCHAR_ENCOID &&
 	    (target_type == VARCHAR_ENCOID || target_type == TEXT_ENCOID))
 	{
-		if (CIPHERDATA_DET_LENGTH(result) >= 5)
+		if (CIPHERDATA_DATUM_DET_LEN(result) >= 5)
 		{
-			unsigned char *det_ptr = CIPHERDATA_DET_PTR(result);
-			int32 det_len = CIPHERDATA_DET_LENGTH(result);
+			unsigned char *det_ptr = CIPHERDATA_DATUM_DET_PTR(result);
+			int32 det_len = CIPHERDATA_DATUM_DET_LEN(result);
 			det_ptr[0] = 0x00;
 			det_ptr[det_len - 4] = 0;
 			det_ptr[det_len - 3] = 0;
 			det_ptr[det_len - 2] = 0;
 			det_ptr[det_len - 1] = 0;
 		}
-		if (CIPHERDATA_OPE_LENGTH(result) >= 5)
+		if (CIPHERDATA_DATUM_OPE_LEN(result) >= 5)
 		{
-			unsigned char *ope_ptr = CIPHERDATA_OPE_PTR(result);
-			int32 ope_len = CIPHERDATA_OPE_LENGTH(result);
+			unsigned char *ope_ptr = CIPHERDATA_DATUM_OPE_PTR(result);
+			int32 ope_len = CIPHERDATA_DATUM_OPE_LEN(result);
 			ope_ptr[0] = 0x00;
 			ope_ptr[ope_len - 4] = 0;
 			ope_ptr[ope_len - 3] = 0;

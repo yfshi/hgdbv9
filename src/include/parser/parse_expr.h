@@ -58,4 +58,7 @@ extern Node *search_targetList_and_groupList(ParseState *orig_pstate,
 											 bool second_parsing,
 											 TargetEntry **target_tle);
 /* End - Bug#8878 */
+/* Begin - BUG#M7845 */
+extern void get_tablename_colname_from_var(ParseState *pstate, Var *var, char **colName, char **tabName);
+/* End - BUG#M7845 */
 #endif							/* PARSE_EXPR_H */

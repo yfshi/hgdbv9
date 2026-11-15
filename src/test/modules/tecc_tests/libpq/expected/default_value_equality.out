@@ -1,0 +1,59 @@
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+1a_only_default_hit|1
+1b_default_hit_id|1
+1c_other_value|0
+INSERT 0 1
+1d_both_hit|2|1,2
+1e_default_eq_explicit|t
+1f_readback|mx
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+2a_varchar_hit|2|1,2
+2b_bpchar_hit|2|1,2
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+3a_int4_hit|2|1,2
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+4a_collate_hit|2|1,2
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+5a_multi_a|2|1,2
+5b_multi_b|2|1,2
+5c_multi_c|2|1,2
+CREATE TABLE
+INSERT 0 1
+6a_empty_default_hit|1
+6b_padded_default_hit|1
+6c_padded_not_trimmed|0
+INSERT 0 1
+7a_override_hit|1|3
+7b_rows_total|3
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+z_cleanup_done
+psql:/.../default_value_equality.sql:36: NOTICE:  table "t_dve_txt" does not exist, skipping
+psql:/.../default_value_equality.sql:36: NOTICE:  table "t_dve_var" does not exist, skipping
+psql:/.../default_value_equality.sql:36: NOTICE:  table "t_dve_bpc" does not exist, skipping
+psql:/.../default_value_equality.sql:36: NOTICE:  table "t_dve_int" does not exist, skipping
+psql:/.../default_value_equality.sql:37: NOTICE:  table "t_dve_col" does not exist, skipping
+psql:/.../default_value_equality.sql:37: NOTICE:  table "t_dve_multi" does not exist, skipping
+psql:/.../default_value_equality.sql:37: NOTICE:  table "t_dve_edge" does not exist, skipping
+psql:/.../default_value_equality.sql:38: NOTICE:  data encryption key "dek_dve" does not exist, skipping
+psql:/.../default_value_equality.sql:39: NOTICE:  key encryption key "kek_dve" does not exist, skipping

@@ -362,6 +362,20 @@ _readCreateDekStmt(void)
 
 	READ_DONE();
 }
+
+/*
+ * _readAlterKekStmt
+ */
+static AlterKekStmt *
+_readAlterKekStmt(void)
+{
+	READ_LOCALS(AlterKekStmt);
+
+	READ_NODE_FIELD(names);
+	READ_NODE_FIELD(options);
+
+	READ_DONE();
+}
 /* End - ReqID:TECC4.0 */
 
 /*
@@ -3486,6 +3500,8 @@ parseNodeString(void)
 		return_value = _readCreateKekStmt();
 	else if (MATCH("CREATEDEKSTMT", 13))
 		return_value = _readCreateDekStmt();
+	else if (MATCH("ALTERKEKSTMT", 12))
+		return_value = _readAlterKekStmt();
 	/* End - ReqID:TECC4.0 */
 	else if (MATCH("DEFELEM", 7))
 		return_value = _readDefElem();

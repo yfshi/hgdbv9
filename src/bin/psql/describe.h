@@ -106,6 +106,13 @@ extern bool listForeignTables(const char *pattern, bool verbose);
 /* \dL */
 extern bool listLanguages(const char *pattern, bool verbose, bool showSystem);
 
+/* \dkek */
+extern bool listKeks(const char *pattern, bool verbose);
+
+/* \ddek */
+extern bool listDeks(const char *pattern, bool verbose);
+
+
 /* \dx */
 extern bool listExtensions(const char *pattern);
 

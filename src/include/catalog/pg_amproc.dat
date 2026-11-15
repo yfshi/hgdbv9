@@ -1986,36 +1986,42 @@
   amprocrighttype => 'int2_enc', amprocnum => '1', amproc => 'int2_enc_cmp' },
 { amprocfamily => 'btree/int2_enc_ops', amproclefttype => 'int2_enc',
   amprocrighttype => 'int2_enc', amprocnum => '4', amproc => 'btequalimage' },
+  amprocrighttype => 'int2_enc', amprocnum => '4', amproc => 'tecc_equalimage' },
 
 # int4_enc support functions
 { oid => '6501', amprocfamily => 'btree/int4_enc_ops', amproclefttype => 'int4_enc',
   amprocrighttype => 'int4_enc', amprocnum => '1', amproc => 'int4_enc_cmp' },
 { amprocfamily => 'btree/int4_enc_ops', amproclefttype => 'int4_enc',
   amprocrighttype => 'int4_enc', amprocnum => '4', amproc => 'btequalimage' },
+  amprocrighttype => 'int4_enc', amprocnum => '4', amproc => 'tecc_equalimage' },
 
 # int8_enc support functions
 { oid => '6502', amprocfamily => 'btree/int8_enc_ops', amproclefttype => 'int8_enc',
   amprocrighttype => 'int8_enc', amprocnum => '1', amproc => 'int8_enc_cmp' },
 { amprocfamily => 'btree/int8_enc_ops', amproclefttype => 'int8_enc',
   amprocrighttype => 'int8_enc', amprocnum => '4', amproc => 'btequalimage' },
+  amprocrighttype => 'int8_enc', amprocnum => '4', amproc => 'tecc_equalimage' },
 
 # float4_enc support functions
 { oid => '6503', amprocfamily => 'btree/float4_enc_ops', amproclefttype => 'float4_enc',
   amprocrighttype => 'float4_enc', amprocnum => '1', amproc => 'float4_enc_cmp' },
 { amprocfamily => 'btree/float4_enc_ops', amproclefttype => 'float4_enc',
   amprocrighttype => 'float4_enc', amprocnum => '4', amproc => 'btequalimage' },
+  amprocrighttype => 'float4_enc', amprocnum => '4', amproc => 'tecc_equalimage' },
 
 # float8_enc support functions
 { oid => '6504', amprocfamily => 'btree/float8_enc_ops', amproclefttype => 'float8_enc',
   amprocrighttype => 'float8_enc', amprocnum => '1', amproc => 'float8_enc_cmp' },
 { amprocfamily => 'btree/float8_enc_ops', amproclefttype => 'float8_enc',
   amprocrighttype => 'float8_enc', amprocnum => '4', amproc => 'btequalimage' },
+  amprocrighttype => 'float8_enc', amprocnum => '4', amproc => 'tecc_equalimage' },
 
 # numeric_enc support functions
 { oid => '6505', amprocfamily => 'btree/numeric_enc_ops', amproclefttype => 'numeric_enc',
   amprocrighttype => 'numeric_enc', amprocnum => '1', amproc => 'numeric_enc_cmp' },
 { amprocfamily => 'btree/numeric_enc_ops', amproclefttype => 'numeric_enc',
   amprocrighttype => 'numeric_enc', amprocnum => '4', amproc => 'btequalimage' },
+  amprocrighttype => 'numeric_enc', amprocnum => '4', amproc => 'tecc_equalimage' },
 
 # varchar_enc support functions
 { oid => '6506', amprocfamily => 'btree/varchar_enc_ops', amproclefttype => 'varchar_enc',

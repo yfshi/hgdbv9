@@ -1,0 +1,24 @@
+=== 9.1 建钥 + 分发带 DET/OPE 密态列的加密表 ===
+
+4|900000|900003
+=== 9.2 行为正确性（跨分片 DET 等值 / OPE 范围）===
+2
+3
+4
+4
+=== 9.3 字节级：单分片 DET 等值常量的反解析文本保留 ::int4_enc ===
+1
+=== 9.4 字节级：单分片 OPE 范围常量的反解析文本保留 ::text_enc ===
+1
+=== 9.5 字节级：快速路径（分布键等值）不改写密态列投影 ===
+11
+=== 9.6 清理 ===
+psql:/.../090_query_path_deparse.sql:74: NOTICE:  issuing BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED;
+psql:/.../090_query_path_deparse.sql:74: NOTICE:  issuing SET search_path = "$user", public; SELECT id FROM public.ddb_qp_t_900000 ddb_qp_t WHERE ((id OPERATOR(pg_catalog.=) 1) AND (a OPERATOR(pg_catalog.=) '\x被隐藏的HEX输出'::int4_enc))
+psql:/.../090_query_path_deparse.sql:74: NOTICE:  issuing COMMIT
+psql:/.../090_query_path_deparse.sql:79: NOTICE:  issuing BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED;
+psql:/.../090_query_path_deparse.sql:79: NOTICE:  issuing SET search_path = "$user", public; SELECT id FROM public.ddb_qp_t_900000 ddb_qp_t WHERE ((id OPERATOR(pg_catalog.=) 1) AND (t OPERATOR(pg_catalog.>=) '\x被隐藏的HEX输出'::text_enc))
+psql:/.../090_query_path_deparse.sql:79: NOTICE:  issuing COMMIT
+psql:/.../090_query_path_deparse.sql:84: NOTICE:  issuing BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED;
+psql:/.../090_query_path_deparse.sql:84: NOTICE:  issuing SET search_path = "$user", public; SELECT a FROM public.ddb_qp_t_900000 ddb_qp_t WHERE (id OPERATOR(pg_catalog.=) 1)
+psql:/.../090_query_path_deparse.sql:84: NOTICE:  issuing COMMIT

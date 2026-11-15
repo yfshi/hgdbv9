@@ -1,0 +1,205 @@
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 4
+0a_det_value|10|20
+(1 row)
+0b_ope_value|10
+(1 row)
+=== 1 enable_hashagg=off ===
+(1 row)
+SET
+HashAggregate
+Group Key: ds_t.a, ds_t.d
+->  Append
+->  Seq Scan on ds_t
+Filter: (a = '\x被隐藏的HEX输出'::int4_enc)
+->  Seq Scan on ds_t ds_t_1
+Filter: (d = '\x被隐藏的HEX输出'::int4_enc)
+(7 rows)
+1b_union_ad|1|10|20
+(1 row)
+1c_union_a|3
+(1 row)
+1d_union_cross|4
+(1 row)
+1e_union_3way|2
+(1 row)
+1f_intersect|1|10|20
+(1 row)
+1g_except|1|10
+1g_except|4|30
+(2 rows)
+1h_intersect_all|4
+(1 row)
+1i_except_all|0
+(1 row)
+1j_union_mixed|4
+(1 row)
+HashSetOp Intersect
+->  Append
+->  Subquery Scan on "*SELECT* 1"
+->  Seq Scan on ds_t
+->  Subquery Scan on "*SELECT* 2"
+->  Seq Scan on ds_t ds_t_1
+(6 rows)
+HashSetOp Except
+->  Append
+->  Subquery Scan on "*SELECT* 1"
+->  Seq Scan on ds_t
+->  Subquery Scan on "*SELECT* 2"
+->  Seq Scan on ds_t ds_t_1
+(6 rows)
+Unique
+->  Sort
+Sort Key: ds_t.b
+->  Append
+->  Seq Scan on ds_t
+->  Seq Scan on ds_t ds_t_1
+(6 rows)
+1l_union_ope|4
+(1 row)
+1m_union_join|4
+(1 row)
+RESET
+=== 1.5 hash_mem 不足（大数据量等价） ===
+(1 row)
+SET
+HashAggregate
+Group Key: t.a
+->  Append
+->  Nested Loop
+->  Function Scan on generate_series g
+->  Materialize
+->  Seq Scan on ds_t t
+->  Nested Loop
+->  Function Scan on generate_series g_1
+->  Materialize
+->  Seq Scan on ds_t t_1
+(11 rows)
+1n_union_big|3
+(1 row)
+1n_intersect_big|3
+(1 row)
+1n_except_big|0
+(1 row)
+Unique
+->  Sort
+Sort Key: t.b
+->  Append
+->  Nested Loop
+->  Function Scan on generate_series g
+->  Materialize
+->  Seq Scan on ds_t t
+->  Nested Loop
+->  Function Scan on generate_series g_1
+->  Materialize
+->  Seq Scan on ds_t t_1
+(12 rows)
+HashSetOp Intersect
+->  Append
+->  Subquery Scan on "*SELECT* 1"
+->  Nested Loop
+->  Function Scan on generate_series g
+->  Materialize
+->  Seq Scan on ds_t t
+->  Subquery Scan on "*SELECT* 2"
+->  Nested Loop
+->  Function Scan on generate_series g_1
+->  Materialize
+->  Seq Scan on ds_t t_1
+(12 rows)
+HashSetOp Except
+->  Append
+->  Subquery Scan on "*SELECT* 1"
+->  Nested Loop
+->  Function Scan on generate_series g
+->  Materialize
+->  Seq Scan on ds_t t
+->  Subquery Scan on "*SELECT* 2"
+->  Nested Loop
+->  Function Scan on generate_series g_1
+->  Materialize
+->  Seq Scan on ds_t t_1
+(12 rows)
+1p_intersect_big|15000
+(1 row)
+1p_except_big|0
+(1 row)
+SetOp Intersect
+->  Sort
+Sort Key: "*SELECT* 1".b, "*SELECT* 1".g
+->  Append
+->  Subquery Scan on "*SELECT* 1"
+->  Nested Loop
+->  Function Scan on generate_series g
+->  Materialize
+->  Seq Scan on ds_t t
+->  Subquery Scan on "*SELECT* 2"
+->  Nested Loop
+->  Function Scan on generate_series g_1
+->  Materialize
+->  Seq Scan on ds_t t_1
+(14 rows)
+RESET
+=== 2 default ===
+(1 row)
+2b_union_ad|1|10|20
+(1 row)
+2c_union_a|3
+(1 row)
+2d_union_cross|4
+(1 row)
+2e_union_3way|2
+(1 row)
+2f_intersect|1|10|20
+(1 row)
+2g_except|1|10
+2g_except|4|30
+(2 rows)
+2h_intersect_all|4
+(1 row)
+2i_except_all|0
+(1 row)
+2j_union_mixed|4
+(1 row)
+2l_union_ope|4
+(1 row)
+2m_union_join|4
+(1 row)
+2n_union_all|8
+(1 row)
+=== 3 design boundaries ===
+(1 row)
+3b_ope_orderby|1
+3b_ope_orderby|2
+3b_ope_orderby|3
+3b_ope_orderby|4
+(4 rows)
+=== 4 CLEANUP ===
+(1 row)
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+NOTICE: table "ds_t" does not exist, skipping
+NOTICE: data encryption key "ds_dek" does not exist, skipping
+NOTICE: data encryption key "ds_he_add_dek" does not exist, skipping
+NOTICE: data encryption key "ds_he_mul_dek" does not exist, skipping
+NOTICE: key encryption key "ds_kek" does not exist, skipping
+NOTICE: key encryption key "ds_he_kek" does not exist, skipping
+ERROR: cannot compare encrypted values for ordering: column has DET but not OPE encryption
+HINT:  DET only supports equality comparison. Add OPE encryption to the column to support ordering.
+ERROR: cannot hash encrypted value without DET or OPE ciphertext
+HINT:  Enable DET or OPE encryption for the column to support Hash indexes.

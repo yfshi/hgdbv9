@@ -37,5 +37,9 @@ extern void PgArchForceDirScan(void);
 typedef bool (*WalFileUpdateChecksum_type)(char * filename, char *archive_command);
 extern PGDLLIMPORT WalFileUpdateChecksum_type WalFileUpdateChecksum;
 /* END - ReqID: SRS-SECURITY-EAL4-WAL_MD5 */ /* SRS-SECURITY-AUTHENTICATION-METHOD */
+/* Begin - ReqID: SRS-SECURITY-EAL4-WAL_MD5 */
+typedef bool (*WalFileUpdatemd5_type)(char * filename, char *archive_command);
+extern PGDLLIMPORT WalFileUpdatemd5_type WalFileUpdatemd5;
+/* END - ReqID: SRS-SECURITY-EAL4-WAL_MD5 */
 
 #endif							/* _PGARCH_H */

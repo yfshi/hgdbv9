@@ -272,6 +272,8 @@ static void DatabaseCheckMoption(const char *options);
 static void CheckSecurityUser(Archive *fout, const char *username, bool dump_sysmac_label);
 /* End - ReqID: SRS-SECURITY-LMAC */
 
+static void dumpTeccUpgradeStrings(Archive *AH);
+
 int
 main(int argc, char **argv)
 {
@@ -1020,6 +1022,11 @@ main(int argc, char **argv)
 	dM->dumpStdStrings(fout);
 	dM->dumpSearchPath(fout);
 
+	/* ReqID:TECC4.0 - pg_upgrade binary upgrade 模式的 TECC 开关
+	 * （作为 PRE_DATA TOC 项输出，pg_restore 在新库执行）。 */
+	if (dopt.binary_upgrade)
+		dumpTeccUpgradeStrings(fout);
+
 	/* The database items are always next, unless we don't want them at all */
 	if (dopt.outputCreateDB)
 		dM->dumpDatabase(fout);
@@ -1420,6 +1427,22 @@ static void DatabaseCheckMoption(const char *options)
 		fatal("Except for Oracle and MySQL database modes, other database modes do not support -M");	/* BUGZ1346 */
 }
 /* END - ReqID:SRS-MYSQL-PGDUMP */
+/*
+ * ReqID:TECC4.0 - dumpTeccUpgradeStrings: pg_upgrade binary upgrade 模式下
+ * 输出 SET hg_tecc.binary_upgrade = on（PRE_DATA TOC 项）。该语句只在
+ * pg_restore 恢复新库时执行（旧库 dump 阶段不执行，V4.0.0 无此 GUC
+ * 也不会报错）。后端据此跳过 CREATE TABLE ... ENCRYPTED WITH 的
+ * DEK 存在性校验与元数据记录。
+ */
+static void
+dumpTeccUpgradeStrings(Archive *AH)
+{
+	ArchiveEntry(AH, nilCatalogId, createDumpId(),
+		 ARCHIVE_OPTS(.tag = "TECC_BINARY_UPGRADE",
+			  .description = "TECC_BINARY_UPGRADE",
+			  .section = SECTION_PRE_DATA,
+			  .createStmt = "SET hg_tecc.binary_upgrade = on;\n"));
+}
 
 /* Begin - ReqID: SRS-SECURITY-LMAC */
 /*

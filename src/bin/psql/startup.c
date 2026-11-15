@@ -330,6 +330,7 @@ main(int argc, char *argv[])
 	{
 
 #define PARAMS_ARRAY_SIZE	17 // ReqID:SRS-SECURITY-IDENTITYAUTH	/* ReqID: SRS-SESSION-VIEWS */ /* ReqID:SRS-SQL-SYSVIEW */
+#define PARAMS_ARRAY_SIZE	16 // ReqID:SRS-SECURITY-IDENTITYAUTH	/* ReqID: SRS-SESSION-VIEWS */
 
 		const char **keywords = pg_malloc(PARAMS_ARRAY_SIZE * sizeof(*keywords));
 		const char **values = pg_malloc(PARAMS_ARRAY_SIZE * sizeof(*values));
@@ -376,6 +377,10 @@ main(int argc, char *argv[])
 		keywords[16] = NULL;
 		values[16] = NULL;
 
+		keywords[14] = "enable_tecc";
+		values[14] = options.enable_tecc;
+		keywords[15] = NULL;
+		values[15] = NULL;
 
 		new_pass = false;
 		pset.db = PQconnectdbParams(keywords, values, true);

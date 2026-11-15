@@ -306,15 +306,14 @@ test_setup_hsm_kek(void)
 	struct {
 		const char *kek_name;
 		const char *key_path;
-		const char *kms_args;
 		int expected_result;
 	} test_cases[] = {
-		{"my_kek1", "hsm:id=1", NULL, 0}, /* Should succeed */
-		{"my_kek2", "hsm:id=3", "some_args", 0}, /* Should succeed */
-		{"my_kek3", "hsm:id=6", NULL, -1}, /* Should fail (key doesn't exist) */
-		{"my_kek4", "hsm:id=0", NULL, -1}, /* Invalid key path */
-		{"my_kek5", "localkms:/path", NULL, -1}, /* Wrong format */
-		{NULL, NULL, NULL, 0}
+		{"my_kek1", "hsm:id=1", 0}, /* Should succeed */
+		{"my_kek2", "hsm:id=3", 0}, /* Should succeed */
+		{"my_kek3", "hsm:id=6", -1}, /* Should fail (key doesn't exist) */
+		{"my_kek4", "hsm:id=0", -1}, /* Invalid key path */
+		{"my_kek5", "localkms:/path", -1}, /* Wrong format */
+		{NULL, NULL, 0}
 	};
 
 	int i, result;
@@ -324,8 +323,7 @@ test_setup_hsm_kek(void)
 		printf("  Testing: %s with path %s\n",
 
 		result = setup_hsm_kek(test_cases[i].kek_name,
-							  test_cases[i].key_path,
-							  test_cases[i].kms_args);
+							  test_cases[i].key_path);
 
 		if ((result == 0 && test_cases[i].expected_result == 0) ||
 			(result != 0 && test_cases[i].expected_result != 0))

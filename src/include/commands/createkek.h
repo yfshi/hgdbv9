@@ -22,6 +22,7 @@
 /* Begin - ReqID:TECC4.0 */
 
 extern ObjectAddress CreateKek(CreateKekStmt *stmt);
+extern ObjectAddress AlterKekCmd(AlterKekStmt *stmt);
 
 /* End - ReqID:TECC4.0 */
 

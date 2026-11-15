@@ -1,0 +1,32 @@
+DROP TABLE
+DROP KEK
+=== 1 第一代 DEK：建表写入并读一次（喂满 HE 元数据缓存） ===
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+gen1 same session|15
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+=== 2 DROP DEK + 同名重建，仍在同一个进程里写入 ===
+DROP TABLE
+DROP DEK
+CREATE DEK
+t
+CREATE TABLE
+INSERT 0 1
+gen2 same session|15
+=== 3 另起进程读取（判定点：修复前报 HE result out of range） ===
+gen2 fresh proc|15
+=== 99 CLEANUP ===
+DROP TABLE
+DROP TABLE
+DROP KEK
+psql:/.../he_dek_recreate_after_drop.sql:24: NOTICE:  table "bug9263b_t" does not exist, skipping
+psql:/.../he_dek_recreate_after_drop.sql:25: NOTICE:  key encryption key "bug9263b_k" does not exist, skipping
+psql:/.../he_dek_recreate_after_drop.sql:47: NOTICE:  table "bug9263b_pub" does not exist, skipping
+psql:/.../he_dek_recreate_after_drop.sql:85: NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to data encryption key bug9263b_sm4
+drop cascades to data encryption key bug9263b_add

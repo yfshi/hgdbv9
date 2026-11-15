@@ -1,0 +1,39 @@
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 3
+SELECT 1
+1_ctas_empty_tlist|1
+SELECT 1
+2_ctas_explicit|1
+SELECT 1
+3_ctas_star_ope|1
+SELECT 1
+4_ctas_plain_where|1
+SELECT 1
+5_ctas_encrypted_target|1|seedval
+6_ctas_meta_registered|c
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../ctas_select_where.sql:11: NOTICE:  table "test_ctas_src" does not exist, skipping
+psql:/.../ctas_select_where.sql:12: NOTICE:  table "test_ctas_a" does not exist, skipping
+psql:/.../ctas_select_where.sql:13: NOTICE:  table "test_ctas_b" does not exist, skipping
+psql:/.../ctas_select_where.sql:14: NOTICE:  table "test_ctas_c" does not exist, skipping
+psql:/.../ctas_select_where.sql:15: NOTICE:  table "test_ctas_d" does not exist, skipping
+psql:/.../ctas_select_where.sql:16: NOTICE:  table "test_ctas_enc" does not exist, skipping
+psql:/.../ctas_select_where.sql:17: NOTICE:  data encryption key "dek_ctas" does not exist, skipping
+psql:/.../ctas_select_where.sql:18: NOTICE:  key encryption key "kek_ctas" does not exist, skipping

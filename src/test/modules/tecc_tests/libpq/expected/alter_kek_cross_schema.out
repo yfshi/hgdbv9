@@ -1,0 +1,79 @@
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+DROP SCHEMA
+DROP SCHEMA
+CREATE SCHEMA
+CREATE SCHEMA
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 3
+1_before|1|alpha
+1_before|2|beta
+1_before|3|gamma
+SELECT 1
+2_alter_cross_schema
+
+2_dek_reencrypted|t
+2_after_rotate|1|alpha
+2_after_rotate|2|beta
+2_after_rotate|3|gamma
+DROP TABLE
+SELECT 1
+3_alter_back
+
+3_dek_reencrypted|t
+3_after_rotate_back|1|alpha
+3_after_rotate_back|2|beta
+3_after_rotate_back|3|gamma
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+SELECT 1
+SET
+4_alter_with_same_name_on_path
+
+RESET
+4_target_table|1|alpha
+4_target_table|2|beta
+4_target_table|3|gamma
+4_other_table_intact|9|zzz
+4_other_dek_untouched|t
+DROP TABLE
+DROP TABLE
+SELECT 1
+SELECT 1
+SET
+5_bare_name_on_other_schema
+
+RESET
+5_search_path_dek_rotated|t
+5_other_schema_dek_untouched|t
+5_target_table|1|alpha
+5_target_table|2|beta
+5_target_table|3|gamma
+5_other_table|9|zzz
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+DROP SCHEMA
+DROP SCHEMA
+cleanup_done
+psql:/.../alter_kek_cross_schema.sql:24: NOTICE:  table "rot_cs_test" does not exist, skipping
+psql:/.../alter_kek_cross_schema.sql:25: NOTICE:  table "rot_cs_other" does not exist, skipping
+psql:/.../alter_kek_cross_schema.sql:26: NOTICE:  data encryption key "dek_rot_cs" does not exist, skipping
+psql:/.../alter_kek_cross_schema.sql:27: NOTICE:  data encryption key "dek_rot_cs_other" does not exist, skipping
+psql:/.../alter_kek_cross_schema.sql:28: NOTICE:  key encryption key "kek_rot_cs" does not exist, skipping
+psql:/.../alter_kek_cross_schema.sql:29: NOTICE:  key encryption key "kek_rot_cs" does not exist, skipping
+psql:/.../alter_kek_cross_schema.sql:30: NOTICE:  schema "sch_rot" does not exist, skipping
+psql:/.../alter_kek_cross_schema.sql:31: NOTICE:  schema "sch_rot_other" does not exist, skipping

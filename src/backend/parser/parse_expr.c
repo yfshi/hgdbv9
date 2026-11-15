@@ -5607,6 +5607,21 @@ transformCollateClause(ParseState *pstate, CollateClause *c)
 								}
 								ReleaseSysCache(enc_tup);
 							}
+						else
+							{
+								/*
+								 * ReqID:TECC4.0 - 列声明成加密类型、却没有元数据行时，
+								 * 上面的 OPE 守卫整个被跳过：无 OPE 的密态列也能带上
+								 * COLLATE。按 hg_tecc.strict_metadata 处理。
+								 */
+								tecc_report_missing_column_metadata(rte->relid,
+																	(AttrNumber) attnum,
+																	tmp_typid,
+																	"The OPE guard that rejects "
+																	"COLLATE on an encrypted column "
+																	"without OPE was skipped.");
+							}
+
 						}
 
                         if (!OidIsValid(col_collid))

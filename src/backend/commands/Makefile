@@ -59,6 +59,12 @@ OBJS = \
 	subscriptioncmds.o \
 	resgroupcmds.o \
 	tablecmds.o \
+	tecc_dist_bootstrap.o \
+	tecc_dist_guard.o \
+	tecc_dist_replay.o \
+	tecc_key_propagation.o \
+	tecc_key_recipe.o \
+	tecc_shard_ddl.o \
 	tecc_tabledef.o \
 	tablespace.o \
 	trigger.o \
@@ -84,6 +90,12 @@ TECC_HEADERS = $(top_srcdir)/src/include/utils/cipherdatatype.h \
                $(top_srcdir)/src/include/commands/dropkek.h \
                $(top_srcdir)/src/include/commands/dropdek.h \
                $(top_srcdir)/src/include/commands/encrypted_column.h \
+               $(top_srcdir)/src/include/commands/tecc_dist_bootstrap.h \
+               $(top_srcdir)/src/include/commands/tecc_dist_guard.h \
+               $(top_srcdir)/src/include/commands/tecc_dist_replay.h \
+               $(top_srcdir)/src/include/commands/tecc_key_propagation.h \
+               $(top_srcdir)/src/include/commands/tecc_key_recipe.h \
+               $(top_srcdir)/src/include/commands/tecc_shard_ddl.h \
                $(top_srcdir)/src/include/commands/tecc_tabledef.h
 
 createkek.o createdek.o dropkek.o dropdek.o encrypted_column.o tecc_tabledef.o: $(TECC_HEADERS)

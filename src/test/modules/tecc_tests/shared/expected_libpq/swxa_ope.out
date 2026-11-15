@@ -1,0 +1,108 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 4
+           stage            
+----------------------------
+ === SWXA OPE: 全表解密 ===
+(1 row)
+
+ id | c_i2 | c_i4 | c_i8 | c_f4 | c_f8  | c_num  | tag 
+----+------+------+------+------+-------+--------+-----
+  1 | 10   | 100  | 1000 | 10.5 | 100.5 | 1000.5 | r1
+  2 | 20   | 200  | 2000 | 20.5 | 200.5 | 2000.5 | r2
+  3 | 30   | 300  | 3000 | 30.5 | 300.5 | 3000.5 | r3
+  4 | -5   | -50  | -500 | -5.5 | -50.5 | -500.5 | r4
+(4 rows)
+
+           stage            
+----------------------------
+ === SWXA OPE: 范围查询 ===
+(1 row)
+
+ tag 
+-----
+ r2
+ r3
+(2 rows)
+
+ tag 
+-----
+ r2
+ r3
+(2 rows)
+
+ tag 
+-----
+ r1
+ r4
+(2 rows)
+
+ tag 
+-----
+ r1
+ r4
+(2 rows)
+
+ tag 
+-----
+ r2
+(1 row)
+
+ tag 
+-----
+ r1
+ r2
+ r3
+(3 rows)
+
+ tag 
+-----
+ r4
+(1 row)
+
+           stage            
+----------------------------
+ === SWXA OPE: ORDER BY ===
+(1 row)
+
+ id | c_i4 
+----+------
+  4 | -50
+  1 | 100
+  2 | 200
+  3 | 300
+(4 rows)
+
+ id | c_i4 
+----+------
+  3 | 300
+  2 | 200
+  1 | 100
+  4 | -50
+(4 rows)
+
+         stage          
+------------------------
+ === SWXA OPE: 聚合 ===
+(1 row)
+
+ cnt 
+-----
+   4
+(1 row)
+
+         stage          
+------------------------
+ === SWXA OPE: 清理 ===
+(1 row)
+
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../swxa_ope.sql:8: NOTICE:  table "swxa_ope_t" does not exist, skipping
+psql:/.../swxa_ope.sql:9: NOTICE:  data encryption key "swxa_ope_dek" does not exist, skipping
+psql:/.../swxa_ope.sql:10: NOTICE:  key encryption key "swxa_ope_kek" does not exist, skipping

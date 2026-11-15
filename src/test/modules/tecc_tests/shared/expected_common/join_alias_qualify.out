@@ -1,0 +1,48 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 3
+INSERT 0 3
+=== 1 单表基线 ===
+(1 row)
+1a_int_range|2
+(1 row)
+1b_txt_like|1
+(1 row)
+1c_int_eq|1
+(1 row)
+1d_txt_range|2
+(1 row)
+=== 2 JOIN 左表别名限定 ===
+(1 row)
+2a_txt_range|2
+(1 row)
+2b_txt_like|1
+(1 row)
+=== 3 JOIN 右表别名限定（原缺陷场景） ===
+(1 row)
+3a_int_range|2
+(1 row)
+3b_int_eq|1
+(1 row)
+3c_mixed|1
+(1 row)
+=== 4 对调 JOIN 顺序（镜像） ===
+(1 row)
+4a_int_range|2
+(1 row)
+4b_txt_range|2
+(1 row)
+4c_txt_eq|1
+(1 row)
+DROP TABLE
+DROP DEK
+DROP KEK
+=== 清理完成 ===
+(1 row)
+NOTICE: key encryption key "aj_kek" does not exist, skipping
+NOTICE: table "aj_t_txt" does not exist, skipping
+NOTICE: table "aj_t_int" does not exist, skipping

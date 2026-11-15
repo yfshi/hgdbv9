@@ -1,2 +1,11 @@
 tmp_check/
 perf/results/
+
+# 用例相对路径产物（\copy TO / pg_dump -f / `> file`）。
+# 正常落在 tmp_check/tmp；若 psql/JVM 的 CWD 跑偏会落到本目录，
+# 由 t/tecc_test_utils.pm 的 cleanup_stray_test_artifacts 兜底清理。
+/conc_bg.out
+/pg_dump_*.sql
+/copy_*.bin
+/copy_*.txt
+/tecc_*.dump

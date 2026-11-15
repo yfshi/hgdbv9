@@ -1,0 +1,1620 @@
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP ROLE
+   typname   
+-------------
+ bpchar_enc
+ float4_enc
+ float8_enc
+ int2_enc
+ int4_enc
+ int8_enc
+ numeric_enc
+ text_enc
+ varchar_enc
+(9 rows)
+
+DROP TABLE
+CREATE TABLE
+DROP TABLE
+CREATE TABLE
+DROP TABLE
+CREATE TABLE
+DROP TABLE
+CREATE TABLE
+DROP TABLE
+CREATE TABLE
+DROP TABLE
+CREATE TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+INSERT 0 14
+    tbl    | row_count 
+-----------+-----------
+ tecc_test |        14
+(1 row)
+
+ id | col_text | col_int4 | col_numeric 
+----+----------+----------+-------------
+  1 | 张三     | 20000    | 99999.99
+  2 | Alice    | 1000     | 123.45
+  3 | 张三丰   | -50000   | -500.00
+  4 | hello    | 0        | 0.00
+  5 | alice    | 1        | 1.00
+(5 rows)
+
+ id | col_text 
+----+----------
+  1 | 张三
+(1 row)
+
+ id | col_bpchar 
+----+------------
+  2 | Charlie
+  3 | Eve
+  4 | test
+  5 | alice
+  6 | Eve2
+  7 | TEST
+  8 | foo_bar
+  9 | pct_sign
+ 10 | _start
+ 12 | 
+ 13 | 测试
+ 14 | mixCase
+(12 rows)
+
+ id | col_int4 
+----+----------
+  1 | 20000
+  6 | 20000
+(2 rows)
+
+ id | col_int2 
+----+----------
+  1 | 100
+  2 | 1
+  3 | -100
+  5 | 1
+  6 | 100
+  7 | 50
+  8 | -1
+  9 | 10
+ 10 | 20
+ 12 | -32768
+ 13 | 42
+ 14 | 255
+(12 rows)
+
+ id | col_float4 
+----+------------
+  2 | 1.5
+(1 row)
+
+ id | col_int2 
+----+----------
+  3 | -100
+(1 row)
+
+ id | col_int2 
+----+----------
+  4 | 0
+(1 row)
+
+ id | col_text 
+----+----------
+ 12 | 
+(1 row)
+
+ id | col_int8 
+----+----------
+  1 | 3000000
+  2 | 50000
+  5 | 1
+  6 | 3000000
+  7 | 7777777
+  9 | 1000
+ 10 | 2000
+ 13 | 424242
+ 14 | 16777215
+(9 rows)
+
+ id | col_int8 
+----+----------
+  1 | 3000000
+  2 | 50000
+  6 | 3000000
+  7 | 7777777
+ 13 | 424242
+ 14 | 16777215
+(6 rows)
+
+ id |       col_int8       
+----+----------------------
+  3 | -999999
+  8 | -1
+ 12 | -9223372036854775808
+(3 rows)
+
+ id |     col_float8     
+----+--------------------
+  3 | -0.001
+  4 | 0
+  8 | -1
+ 12 | -1.7976931348e+308
+(4 rows)
+
+ id | col_int8 
+----+----------
+  2 | 50000
+  5 | 1
+  9 | 1000
+ 10 | 2000
+ 13 | 424242
+(5 rows)
+
+ id | col_int8 
+----+----------
+  2 | 50000
+(1 row)
+
+ id | col_varchar 
+----+-------------
+  4 | world
+  6 | David2
+  7 | World
+  8 | xyz_123
+  9 | test_like
+ 10 | under_score
+(6 rows)
+
+ id | col_varchar 
+----+-------------
+  2 | Bob
+  3 | David
+  4 | world
+  6 | David2
+  7 | World
+  8 | xyz_123
+  9 | test_like
+ 10 | under_score
+(8 rows)
+
+ id | col_text 
+----+----------
+  1 | 张三
+  3 | 张三丰
+  6 | 张三丰
+(3 rows)
+
+ id | col_varchar 
+----+-------------
+  2 | Bob
+ 14 | abcXYZ
+(2 rows)
+
+ id | col_text  
+----+-----------
+  2 | Alice
+  4 | hello
+  5 | alice
+  7 | Hello
+  8 | abc_def
+  9 | test%like
+ 10 | %percent
+ 12 | 
+ 13 | 测试
+ 14 | test123
+(10 rows)
+
+ id | col_text  
+----+-----------
+  9 | test%like
+ 14 | test123
+(2 rows)
+
+ id | col_varchar 
+----+-------------
+  5 | ALICE
+(1 row)
+
+ id | col_varchar 
+----+-------------
+  2 | Bob
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+ col_int2 
+----------
+ 100
+(1 row)
+
+ col_int2 
+----------
+ 100
+(1 row)
+
+ col_int4 
+----------
+ 20000
+(1 row)
+
+ col_int2 
+----------
+ 100
+(1 row)
+
+ col_int2 
+----------
+ 100
+(1 row)
+
+ col_int2 
+----------
+ 100
+(1 row)
+
+ col_float4 
+------------
+ 3.14
+(1 row)
+
+ col_float4 
+------------
+ 3.14
+(1 row)
+
+ col_float8 
+------------
+ 2.718
+(1 row)
+
+ col_text 
+----------
+ 张三
+ Alice
+ 张三丰
+(3 rows)
+
+ col_varchar 
+-------------
+ 李四
+ Bob
+ David
+(3 rows)
+
+ col_varchar 
+-------------
+ 李四
+ Bob
+ David
+(3 rows)
+
+CREATE INDEX
+CREATE INDEX
+ indexrelid | indrelid | amname 
+------------+----------+--------
+(0 rows)
+
+INSERT 0 1
+INSERT 0 1
+DROP INDEX
+INSERT 0 1
+INSERT 0 1
+ id |    name    
+----+------------
+    | test_rnd_1
+    | test_rnd_2
+    | same_text
+    | same_text
+(4 rows)
+
+DROP ROLE
+CREATE ROLE
+GRANT
+GRANT
+GRANT
+GRANT
+REVOKE
+REVOKE
+REVOKE
+REVOKE
+DROP ROLE
+DROP TABLE
+CREATE TABLE
+DROP TABLE
+CREATE TABLE
+INSERT 0 15
+INSERT 0 15
+ id | c_numeric_det 
+----+---------------
+  1 | 99999.99
+  7 | 99999.99
+(2 rows)
+
+ id | c_numeric 
+----+-----------
+  1 |  99999.99
+  7 |  99999.99
+(2 rows)
+
+ id |      c_int8_ope      
+----+----------------------
+  4 | -999999
+  9 | -1
+ 13 | -9223372036854775808
+(3 rows)
+
+ id |        c_int8        
+----+----------------------
+  4 |              -999999
+  9 |                   -1
+ 13 | -9223372036854775808
+(3 rows)
+
+ id | c_int4_ope 
+----+------------
+  1 | 20000
+  3 | 2147483647
+  7 | 20000
+  8 | 55555
+ 15 | 65535
+(5 rows)
+
+ id |    c_float8_ope    
+----+--------------------
+  4 | -0.001
+  9 | -1
+ 13 | -1.7976931348e+308
+(3 rows)
+
+ id | c_numeric_ope 
+----+---------------
+  1 | 99999.99
+  2 | 123.45
+  3 | 0.01
+  5 | 0.00
+  6 | 1.00
+  7 | 99999.99
+  8 | 500.00
+  9 | -1.00
+ 10 | 10.10
+ 11 | 20.20
+ 14 | 42.42
+ 15 | 255.55
+(12 rows)
+
+ id | c_varchar_ope 
+----+---------------
+  5 | world
+  7 | David2
+  8 | World
+  9 | xyz_123
+ 10 | test_like
+ 11 | under_score
+(6 rows)
+
+ id | c_bpchar_ope 
+----+--------------
+  1 | 王五
+  2 | Charlie
+  3 | 周八
+  4 | Eve
+  5 | test
+  6 | alice
+  7 | Eve2
+  8 | TEST
+  9 | foo_bar
+ 10 | pct_sign
+ 15 | mixCase
+(11 rows)
+
+ id |        c_bpchar        
+----+------------------------
+  1 | 王五                  
+  2 | Charlie             
+  3 | 周八                  
+  4 | Eve                 
+  5 | test                
+  6 | alice               
+  7 | Eve2                
+  8 | TEST                
+  9 | foo_bar             
+ 10 | pct_sign            
+ 15 | mixCase             
+(11 rows)
+
+ id | c_text_det 
+----+------------
+  1 | 张三
+  4 | 张三丰
+  7 | 张三丰
+(3 rows)
+
+ id | c_text 
+----+--------
+  1 | 张三
+  4 | 张三丰
+  7 | 张三丰
+(3 rows)
+
+ id | c_int8_ope 
+----+------------
+  5 | 0
+  6 | 1
+  9 | -1
+(3 rows)
+
+ id |      c_int8_ope      
+----+----------------------
+  4 | -999999
+  9 | -1
+ 13 | -9223372036854775808
+(3 rows)
+
+ id | c_varchar_ope 
+----+---------------
+ 10 | test_like
+(1 row)
+
+ id | c_float4_ope 
+----+--------------
+  1 | 3.14
+  2 | 1.5
+  3 | 1e+10
+  7 | 3.14
+  8 | 50.5
+ 10 | 10.1
+ 11 | 20.2
+ 14 | 4.2
+ 15 | 255.255
+(9 rows)
+
+ id | c_float4 
+----+----------
+  1 |     3.14
+  2 |      1.5
+  3 |    1e+10
+  7 |     3.14
+  8 |     50.5
+ 10 |     10.1
+ 11 |     20.2
+ 14 |      4.2
+ 15 |  255.255
+(9 rows)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+ id | v1  | v2  
+----+-----+-----
+  1 | 100 | 100
+  3 | 50  | 50
+(2 rows)
+
+ id | v1  | v2  
+----+-----+-----
+  2 | 100 | 200
+(1 row)
+
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+INSERT 0 10
+      t      | count 
+-------------+-------
+ max(32767)  |     1
+ min(-32768) |     1
+ zero(0)     |     1
+ dup(100)    |     2
+ NULL        |     1
+(5 rows)
+
+         t          | count 
+--------------------+-------
+ >0                 |     4
+ <0                 |     4
+ BETWEEN -10 AND 10 |     3
+(3 rows)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 10
+   t   | count 
+-------+-------
+ max   |     1
+ min   |     1
+ max-1 |     1
+ min+1 |     1
+ zero  |     1
+(5 rows)
+
+        t        | count 
+-----------------+-------
+ >0              |     4
+ <0              |     4
+ >0 AND <1000000 |     2
+(3 rows)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 10
+   t   | count 
+-------+-------
+ max   |     1
+ min   |     1
+ max-1 |     1
+ min+1 |     1
+ zero  |     1
+(5 rows)
+
+ t  | count 
+----+-------
+ >0 |     4
+ <0 |     4
+(2 rows)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 9
+    t    | count 
+---------+-------
+ =0.0    |     1
+ =1.0    |     1
+ =3.14   |     1
+ IS NULL |     1
+(4 rows)
+
+ t  | count 
+----+-------
+ >0 |     4
+ <0 |     3
+(2 rows)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 8
+  t   | count 
+------+-------
+ =0.0 |     1
+ =1.0 |     1
+(2 rows)
+
+   t   | count 
+-------+-------
+ >0    |     4
+ <0    |     2
+ >=1.0 |     3
+(3 rows)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 11
+       t        | count 
+----------------+-------
+ =0             |     1
+ =12345.67      |     1
+ =99999.99(dup) |     3
+ IS NULL        |     1
+(4 rows)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 14
+     t      | count 
+------------+-------
+ ='' (空串) |     1
+ =hello     |     1
+ =Hello     |     1
+ =张三      |     1
+ =a%b_c     |     1
+ =12345     |     1
+ <>''       |    12
+(7 rows)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 6
+        t        | count 
+-----------------+-------
+ c1 IS NULL      |     2
+ c2 IS NULL      |     2
+ c3 IS NULL      |     2
+ all NULL        |     1
+ c1=''           |     1
+ c2=0 AND c3=0.0 |     1
+(6 rows)
+
+      t      | count 
+-------------+-------
+ c1 NOT NULL |     4
+ c2 NOT NULL |     4
+ c3 NOT NULL |     4
+(3 rows)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 12
+      t      | count 
+-------------+-------
+ LIKE 'abc%' |     5
+ LIKE 'ab%'  |     6
+ LIKE '张%'  |     2
+(3 rows)
+
+      t       | count 
+--------------+-------
+ LIKE '%abc%' |     7
+ LIKE '%bc%'  |     7
+(2 rows)
+
+        t        | count 
+-----------------+-------
+ NOT LIKE 'abc%' |     6
+(1 row)
+
+     t      | count 
+------------+-------
+ LIKE 'ab_' |     1
+(1 row)
+
+        t         | count 
+------------------+-------
+ LIKE 'abc'(精确) |     1
+ LIKE '''         |     1
+(2 rows)
+
+DROP TABLE
+CREATE TABLE
+DROP TABLE
+CREATE TABLE
+INSERT 0 12
+           t            | count 
+------------------------+-------
+ name='张三' AND age=25 |     1
+ age=30 AND salary>8000 |     1
+ age=28 OR age=35       |     4
+ LIKE+range             |     2
+(4 rows)
+
+         t         | count 
+-------------------+-------
+ age IN(28,30)     |     4
+ age NOT IN(28,30) |     7
+(2 rows)
+
+         t         | count 
+-------------------+-------
+ age 25-30         |     6
+ salary 5000-10000 |     7
+(2 rows)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 6
+   t    | count 
+--------+-------
+ v1=v2  |     4
+ v1<>v2 |     1
+(2 rows)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 50
+INSERT 0 150
+INSERT 0 100
+CREATE INDEX
+CREATE INDEX
+SET
+SET
+     t      | count 
+------------+-------
+ i2 det=200 |     1
+(1 row)
+
+     t      | count 
+------------+-------
+ i2 ope>280 |    20
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 50
+INSERT 0 150
+INSERT 0 100
+CREATE INDEX
+CREATE INDEX
+SET
+SET
+     t      | count 
+------------+-------
+ i4 det=200 |     1
+(1 row)
+
+     t      | count 
+------------+-------
+ i4 ope>280 |    20
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 30
+INSERT 0 150
+CREATE INDEX
+CREATE INDEX
+SET
+SET
+DROP TABLE
+CREATE TABLE
+INSERT 0 50
+INSERT 0 150
+CREATE INDEX
+CREATE INDEX
+SET
+SET
+DROP TABLE
+CREATE TABLE
+INSERT 0 50
+INSERT 0 150
+CREATE INDEX
+CREATE INDEX
+SET
+SET
+DROP TABLE
+CREATE TABLE
+INSERT 0 50
+INSERT 0 150
+CREATE INDEX
+CREATE INDEX
+SET
+SET
+DROP TABLE
+CREATE TABLE
+INSERT 0 50
+INSERT 0 28
+CREATE INDEX
+CREATE INDEX
+DROP TABLE
+CREATE TABLE
+INSERT 0 46
+CREATE INDEX
+CREATE INDEX
+DROP TABLE
+CREATE TABLE
+INSERT 0 46
+CREATE INDEX
+CREATE INDEX
+DROP TABLE
+CREATE TABLE
+INSERT 0 6
+DROP TABLE
+CREATE TABLE
+INSERT 0 9
+DROP TABLE
+CREATE TABLE
+INSERT 0 10
+DROP TABLE
+CREATE TABLE
+INSERT 0 2
+       t       | count 
+---------------+-------
+ session_alive |     2
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 4
+       t       | count 
+---------------+-------
+ text(ope)LIST |     4
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 3
+        t         | count 
+------------------+-------
+ varchar(ope)LIST |     3
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 4
+        t        | count 
+-----------------+-------
+ bpchar(ope)LIST |     4
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 4
+CREATE TABLE
+INSERT 0 4
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 4
+CREATE TABLE
+INSERT 0 4
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 4
+CREATE TABLE
+INSERT 0 4
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 4
+CREATE TABLE
+INSERT 0 4
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 4
+CREATE TABLE
+INSERT 0 4
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 4
+CREATE TABLE
+INSERT 0 4
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+ c2  
+-----
+ 100
+(1 row)
+
+ c2  
+-----
+ 100
+(1 row)
+
+  c4   
+-------
+ 20000
+(1 row)
+
+ c2  
+-----
+ 100
+(1 row)
+
+ c2  
+-----
+ 100
+(1 row)
+
+  c4   
+-------
+ 20000
+(1 row)
+
+ c2  
+-----
+ 100
+(1 row)
+
+  c4   
+-------
+ 20000
+(1 row)
+
+   c8    
+---------
+ 3000000
+(1 row)
+
+  f4  
+------
+ 3.14
+(1 row)
+
+  f4  
+------
+ 3.14
+(1 row)
+
+  f8   
+-------
+ 2.718
+(1 row)
+
+ c2  
+-----
+ 100
+(1 row)
+
+ c2  
+-----
+ 100
+(1 row)
+
+ c2  
+-----
+ 100
+(1 row)
+
+ c2  
+-----
+ 100
+(1 row)
+
+ c2  
+-----
+ 100
+(1 row)
+
+  f4  
+------
+ 3.14
+(1 row)
+
+  f4  
+------
+ 3.14
+(1 row)
+
+  f8   
+-------
+ 2.718
+(1 row)
+
+  tx   
+-------
+ hello
+(1 row)
+
+  vc   
+-------
+ world
+(1 row)
+
+  tx   
+-------
+ hello
+(1 row)
+
+  vc   
+-------
+ world
+(1 row)
+
+  bp  
+------
+ test
+(1 row)
+
+  bp  
+------
+ test
+(1 row)
+
+  tx   
+-------
+ hello
+(1 row)
+
+  vc   
+-------
+ world
+(1 row)
+
+  tx   
+-------
+ hello
+(1 row)
+
+  bp  
+------
+ test
+(1 row)
+
+  tx   
+-------
+ hello
+(1 row)
+
+  bp  
+------
+ test
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 10
+ id |  name   | salary |    dept     | hire_date  | level 
+----+---------+--------+-------------+------------+-------
+  1 | 张三    | 15000  | 技术部      | 2020-03-15 |     5
+  2 | 李四    | 12000  | 市场部      | 2021-06-01 |     4
+  3 | 王五    | 18000  | 技术部      | 2019-01-10 |     6
+  4 | 赵六    | 25000  | 管理部      | 2018-05-20 |     7
+  5 | Alice   | 20000  | Engineering | 2022-01-15 |     5
+  6 | Bob     | 16000  | Sales       | 2021-09-01 |     4
+  7 | Charlie | 22000  | Engineering | 2020-07-10 |     6
+  8 | 孙七    | 9000   | 市场部      |            |     2
+  9 | 周八    |        | 技术部      | 2022-06-01 |     3
+ 10 |         | 11000  | 管理部      | 2023-01-01 |     3
+(10 rows)
+
+ id | name |  dept  
+----+------+--------
+  1 | 张三 | 技术部
+(1 row)
+
+ id | name |  dept  | hire_date  
+----+------+--------+------------
+  1 | 张三 | 技术部 | 2020-03-15
+  3 | 王五 | 技术部 | 2019-01-10
+  9 | 周八 | 技术部 | 2022-06-01
+(3 rows)
+
+ id | name | salary |  dept  
+----+------+--------+--------
+  1 | 张三 | 15000  | 技术部
+  3 | 王五 | 18000  | 技术部
+(2 rows)
+
+ id | name | level 
+----+------+-------
+  1 | 张三 |     5
+(1 row)
+
+ id |  name   | hire_date  
+----+---------+------------
+  4 | 赵六    | 2018-05-20
+  3 | 王五    | 2019-01-10
+  1 | 张三    | 2020-03-15
+  7 | Charlie | 2020-07-10
+  2 | 李四    | 2021-06-01
+  6 | Bob     | 2021-09-01
+  5 | Alice   | 2022-01-15
+  9 | 周八    | 2022-06-01
+ 10 |         | 2023-01-01
+(9 rows)
+
+ id |  name   | salary 
+----+---------+--------
+  4 | 赵六    | 25000
+  7 | Charlie | 22000
+  5 | Alice   | 20000
+  3 | 王五    | 18000
+  6 | Bob     | 16000
+  1 | 张三    | 15000
+  2 | 李四    | 12000
+ 10 |         | 11000
+  8 | 孙七    | 9000
+(9 rows)
+
+ id | name | salary |  dept  
+----+------+--------+--------
+  4 | 赵六 | 25000  | 管理部
+  3 | 王五 | 18000  | 技术部
+(2 rows)
+
+ id | name |      id_card       | hire_date  
+----+------+--------------------+------------
+  8 | 孙七 |                    | 
+ 10 |      | 320101199905209012 | 2023-01-01
+(2 rows)
+
+UPDATE 3
+ id | name |  dept  | level 
+----+------+--------+-------
+  1 | 张三 | 技术部 |     6
+  3 | 王五 | 技术部 |     7
+  9 | 周八 | 技术部 |     4
+(3 rows)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 9
+ id | patient |  diagnosis   |  cost  |     hospital     | department | visit_date 
+----+---------+--------------+--------+------------------+------------+------------
+  1 | 张三    | 高血压       | 1500.5 | 市第一医院       | 心内科     | 2025-01-10
+  2 | 李四    | 急性阑尾炎   | 8500   | 市第一医院       | 普外科     | 2025-01-15
+  3 | 王五    | 糖尿病       | 3200   | 省中心医院       | 内分泌科   | 2025-02-01
+  4 | 赵六    | 骨折         | 12000  | 市骨科医院       | 骨科       | 2025-02-10
+  5 | Alice   | Hypertension | 2500   | General Hospital | Cardiology | 2025-03-01
+  6 | Bob     | Appendicitis | 9000   | General Hospital | Surgery    | 2025-03-05
+  7 | 张三    | 常规体检     | 800    | 市第一医院       | 体检中心   | 2025-03-15
+  8 | 孙七    |              | 1500   | 省中心医院       | 内科       | 
+  9 |         | 肺炎         | 4500   |                  | 呼吸科     | 2025-04-01
+(9 rows)
+
+ id | patient | diagnosis |  hospital  
+----+---------+-----------+------------
+  1 | 张三    | 高血压    | 市第一医院
+  7 | 张三    | 常规体检  | 市第一医院
+(2 rows)
+
+ id | patient | cost  | department 
+----+---------+-------+------------
+  4 | 赵六    | 12000 | 骨科
+  6 | Bob     | 9000  | Surgery
+  2 | 李四    | 8500  | 普外科
+(3 rows)
+
+ name  |    dept     |  diagnosis   |  cost  
+-------+-------------+--------------+--------
+ 张三  | 技术部      | 高血压       | 1500.5
+ 李四  | 市场部      | 急性阑尾炎   | 8500
+ 王五  | 技术部      | 糖尿病       | 3200
+ 赵六  | 管理部      | 骨折         | 12000
+ Alice | Engineering | Hypertension | 2500
+(5 rows)
+
+ id | patient | diagnosis |  cost  
+----+---------+-----------+--------
+  1 | 张三    | 高血压    | 1500.5
+  7 | 张三    | 常规体检  | 800
+(2 rows)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 7
+ id |    account_no    |  balance  | bank_name | acct_type | status 
+----+------------------+-----------+-----------+-----------+--------
+  1 | 6222021234567890 | 50000.00  | 工商银行  | 储蓄账户  | active
+  2 | 6228480987654321 | 150000.00 | 农业银行  | 理财账户  | active
+  3 | 6227003333222244 | 3500.00   | 建设银行  | 储蓄账户  | active
+  4 | 6217001111222233 | 850000.00 | 工商银行  | 储蓄账户  | frozen
+  5 | 6226098888777766 | 25000.00  | 招商银行  | 储蓄账户  | active
+  6 | 6225889999000011 | 1000.00   | 工商银行  | 储蓄账户  | active
+  7 |                  | 750000.00 | 招商银行  | 理财账户  | active
+(7 rows)
+
+ id |  balance  | bank_name 
+----+-----------+-----------
+  4 | 850000.00 | 工商银行
+  7 | 750000.00 | 招商银行
+  2 | 150000.00 | 农业银行
+(3 rows)
+
+ id |  balance  | acct_type 
+----+-----------+-----------
+  1 | 50000.00  | 储蓄账户
+  4 | 850000.00 | 储蓄账户
+(2 rows)
+
+ id |  balance  | bank_name 
+----+-----------+-----------
+  7 | 750000.00 | 招商银行
+(1 row)
+
+ id |    account_no    | balance  
+----+------------------+----------
+  1 | 6222021234567890 | 50000.00
+(1 row)
+
+ id |  balance  | bank_name 
+----+-----------+-----------
+  4 | 850000.00 | 工商银行
+  7 | 750000.00 | 招商银行
+  1 | 50000.00  | 工商银行
+  5 | 25000.00  | 招商银行
+  6 | 1000.00   | 工商银行
+(5 rows)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+DROP TABLE
+CREATE TABLE
+TRUNCATE TABLE
+    t     | count 
+----------+-------
+ restored |     0
+(1 row)
+
+ id | name | age | sal 
+----+------+-----+-----
+(0 rows)
+
+    t     | id | name | age | sal  
+----------+----+------+-----+------
+ original |  1 | 张三 | 25  | 5000
+ original |  2 | 李四 | 30  | 8000
+ original |  3 | 王五 | 28  | 6000
+(3 rows)
+
+DROP TABLE
+CREATE TABLE
+TRUNCATE TABLE
+SET
+     t      | count 
+------------+-------
+ pgdump+\\i |     0
+(1 row)
+
+ id | name | age | sal 
+----+------+-----+-----
+(0 rows)
+
+     t      | count 
+------------+-------
+ kek_backup |     0
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+DROP TABLE
+CREATE TABLE
+ id | name | age | dept 
+----+------+-----+------
+(0 rows)
+
+ count 
+-------
+     0
+(1 row)
+
+ count 
+-------
+     0
+(1 row)
+
+ count 
+-------
+     0
+(1 row)
+
+ count 
+-------
+     0
+(1 row)
+
+ count 
+-------
+     0
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+SET
+ id | name | age | dept 
+----+------+-----+------
+(0 rows)
+
+ count 
+-------
+     0
+(1 row)
+
+ count 
+-------
+     0
+(1 row)
+
+ count 
+-------
+     0
+(1 row)
+
+ count 
+-------
+     0
+(1 row)
+
+ count 
+-------
+     0
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+TRUNCATE TABLE
+        t         | count 
+------------------+-------
+ pgdump+pgrestore |     0
+(1 row)
+
+ id | name | age | sal 
+----+------+-----+-----
+(0 rows)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+   t    | count 
+--------+-------
+ direct |     1
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 2
+UPDATE 0
+     t     | count 
+-----------+-------
+ update_ok |     0
+(1 row)
+
+DELETE 1
+     t     | count 
+-----------+-------
+ delete_ok |     0
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 2
+DROP TABLE
+CREATE TABLE
+CREATE VIEW
+INSERT 0 2
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+TRUNCATE TABLE
+INSERT 0 4
+      t       | count 
+--------------+-------
+ trunc+insert |     4
+(1 row)
+
+ aid | bid 
+-----+-----
+(0 rows)
+
+     t      | count 
+------------+-------
+ session_ok |     4
+(1 row)
+
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE TABLE
+INSERT 0 1
+DROP TABLE
+CREATE TABLE
+INSERT 0 10
+CREATE INDEX
+CREATE INDEX
+ idx_name | amname 
+----------+--------
+(0 rows)
+
+ count 
+-------
+     1
+(1 row)
+
+DROP TABLE
+DROP DEK
+DROP KEK
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+    t    | count 
+---------+-------
+ xdek_ok |     1
+(1 row)
+
+psql:/.../tecc_full_test_suite.sql:30: NOTICE:  table "t_float4_test" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:31: NOTICE:  table "t_rnd_idx_bug" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:32: NOTICE:  table "b1_numeric_det" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:33: NOTICE:  table "b1_v2" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:34: NOTICE:  table "b1_v3" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:35: NOTICE:  table "b1_test" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:36: NOTICE:  table "bug1" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:37: NOTICE:  table "bug2" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:38: NOTICE:  table "bug2b" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:39: NOTICE:  table "bug4" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:40: NOTICE:  table "tecc_test_all" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:41: NOTICE:  role "tecc_test_user" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:42: ERROR:  cannot drop data encryption key "test_dek" because encrypted columns depend on it
+DETAIL:  Encrypted column "v_det" in table OID 16574 uses this DEK.
+psql:/.../tecc_full_test_suite.sql:43: ERROR:  cannot drop key encryption key "test_kek" because encrypted columns depend on it
+psql:/.../tecc_full_test_suite.sql:48: ERROR:  KEK "test_kek" already exists
+psql:/.../tecc_full_test_suite.sql:51: ERROR:  DEK "test_dek" already exists
+psql:/.../tecc_full_test_suite.sql:66: NOTICE:  table "t_det" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:70: NOTICE:  table "t_ope" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:74: NOTICE:  table "t_search" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:78: NOTICE:  table "t_det_search" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:82: NOTICE:  table "t_ope_search" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:86: NOTICE:  table "t_rnd" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:90: NOTICE:  table "t_det_ope" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:91: TECC query preprocessing failed: DET and OPE algorithms are mutually exclusive for column 'name'. Choose either 'det' or 'ope', not both.
+psql:/.../tecc_full_test_suite.sql:94: NOTICE:  table "t_collate" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:95: TECC query preprocessing failed: Column 'name' with COLLATE requires support_algo to include 'ope'. Set support_algo = 'ope' for this column.
+psql:/.../tecc_full_test_suite.sql:102: NOTICE:  table "tecc_test" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:160: TECC query preprocessing failed: 操作符需要OPE（保序加密）算法，但该列未配置OPE。
+psql:/.../tecc_full_test_suite.sql:162: TECC query preprocessing failed: 操作符需要DET或OPE算法，但该列既未配置DET也未配置OPE。
+psql:/.../tecc_full_test_suite.sql:202: TECC query preprocessing failed: 操作符需要SEARCH（可搜索加密）算法，但该列未配置SEARCH。
+psql:/.../tecc_full_test_suite.sql:209: NOTICE:  table "tecc_int_test" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:246: ERROR:  cannot cast type text_enc to int4_enc
+LINE 1: SELECT col_text::int4_enc FROM tecc_test LIMIT 1;
+                       ^
+psql:/.../tecc_full_test_suite.sql:255: ERROR:  cannot create B-tree index on encrypted column without OPE encryption
+DETAIL:  Column "col_text" in table "tecc_test" does not have OPE encryption enabled.
+HINT:  Enable OPE encryption for the column or use Hash index instead.
+psql:/.../tecc_full_test_suite.sql:259: ERROR:  cannot create B-tree index on encrypted column without OPE encryption
+DETAIL:  Column "name" in table "t_rnd" does not have OPE encryption enabled.
+HINT:  Enable OPE encryption for the column or use Hash index instead.
+psql:/.../tecc_full_test_suite.sql:274: NOTICE:  index "idx_t_rnd_btree" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:280: TECC query preprocessing failed: 操作符需要DET或OPE算法，但该列既未配置DET也未配置OPE。
+psql:/.../tecc_full_test_suite.sql:282: TECC query preprocessing failed: 操作符需要OPE（保序加密）算法，但该列未配置OPE。
+psql:/.../tecc_full_test_suite.sql:284: TECC query preprocessing failed: 操作符需要SEARCH（可搜索加密）算法，但该列未配置SEARCH。
+psql:/.../tecc_full_test_suite.sql:292: NOTICE:  role "tecc_test_user" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:313: NOTICE:  table "plain" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:328: NOTICE:  table "enc" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:426: NOTICE:  table "b12_test" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:440: ERROR:  cannot compare encrypted values for equality: neither DET nor OPE ciphertext available
+HINT:  Enable DET or OPE encryption on the column to support equality comparison.
+psql:/.../tecc_full_test_suite.sql:536: TECC query preprocessing failed: 操作符需要OPE（保序加密）算法，但该列未配置OPE。
+TECC ERROR: TECC SCHEDULER ERROR: RND normalize failed: numeric field overflow (code=-1207)
+psql:/.../tecc_full_test_suite.sql:591: TECC query preprocessing failed: Encryption failed: numeric field overflow
+psql:/.../tecc_full_test_suite.sql:615: ERROR:  cannot compare encrypted values for ordering: column has DET but not OPE encryption
+HINT:  DET only supports equality comparison. Add OPE encryption to the column to support ordering.
+psql:/.../tecc_full_test_suite.sql:754: TECC query preprocessing failed: 操作符需要OPE（保序加密）算法，但该列未配置OPE。
+psql:/.../tecc_full_test_suite.sql:756: TECC query preprocessing failed: 操作符需要DET或OPE算法，但该列既未配置DET也未配置OPE。
+psql:/.../tecc_full_test_suite.sql:758: TECC query preprocessing failed: 操作符需要SEARCH（可搜索加密）算法，但该列未配置SEARCH。
+psql:/.../tecc_full_test_suite.sql:760: TECC query preprocessing failed: 操作符需要SEARCH（可搜索加密）算法，但该列未配置SEARCH。
+psql:/.../tecc_full_test_suite.sql:762: ERROR:  cannot cast type text_enc to int4_enc
+LINE 1: SELECT v_text::int4_enc FROM neg_test;
+                     ^
+psql:/.../tecc_full_test_suite.sql:764: ERROR:  cannot cast type int4_enc to text_enc
+LINE 1: SELECT v_det::text_enc FROM neg_test;
+                    ^
+psql:/.../tecc_full_test_suite.sql:766: ERROR:  cannot compare encrypted values for equality: neither DET nor OPE ciphertext available
+HINT:  Enable DET or OPE encryption on the column to support equality comparison.
+psql:/.../tecc_full_test_suite.sql:768: ERROR:  operator does not exist: int4_enc = text
+LINE 1: SELECT * FROM neg_test WHERE v_det = '100'::text;
+                                           ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+psql:/.../tecc_full_test_suite.sql:944: ERROR:  cannot cast type text_enc to int4_enc
+LINE 1: SELECT tx::int4_enc FROM cast_src;
+                 ^
+psql:/.../tecc_full_test_suite.sql:945: ERROR:  cannot cast type text_enc to int4_enc
+LINE 1: SELECT CAST(tx AS int4_enc) FROM cast_src;
+               ^
+psql:/.../tecc_full_test_suite.sql:947: ERROR:  cannot cast type int4_enc to text_enc
+LINE 1: SELECT c4::text_enc FROM cast_src;
+                 ^
+psql:/.../tecc_full_test_suite.sql:954: ERROR:  cannot cast type int8_enc to float8_enc
+LINE 1: SELECT CAST(CAST(CAST(CAST(c2 AS int4_enc) AS int8_enc) AS f...
+                    ^
+psql:/.../tecc_full_test_suite.sql:1014: ERROR:  cannot cast type numeric_enc to numeric
+LINE 1: SELECT dept, count(*) cnt, avg(salary::numeric)::numeric(10,...
+                                             ^
+psql:/.../tecc_full_test_suite.sql:1068: ERROR:  function avg(float8_enc) does not exist
+LINE 1: ...CASE WHEN is_emergency THEN 1 END) emergency_cnt, avg(cost):...
+                                                             ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+psql:/.../tecc_full_test_suite.sql:1104: ERROR:  function sum(numeric_enc) does not exist
+LINE 1: SELECT bank_name, status, count(*) cnt, sum(balance)::numeri...
+                                                ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+psql:/.../tecc_full_test_suite.sql:1236: TECC query preprocessing failed: invalid input syntax for type integer: "1.5"
+psql:/.../tecc_full_test_suite.sql:1241: ERROR:  cannot drop table edge2 because other objects depend on it
+DETAIL:  view edge_view depends on table edge2
+HINT:  Use DROP ... CASCADE to drop the dependent objects too.
+psql:/.../tecc_full_test_suite.sql:1242: ERROR:  relation "edge2" already exists
+psql:/.../tecc_full_test_suite.sql:1257: TECC query preprocessing failed: TECC processor detected encrypted columns but failed to produce rewritten query
+psql:/.../tecc_full_test_suite.sql:1263: ERROR:  operator does not exist: int4_enc > integer
+LINE 1: WITH t AS (SELECT id, v FROM edge2 WHERE v > 0) SELECT count...
+                                                   ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+psql:/.../tecc_full_test_suite.sql:1267: ERROR:  operator does not exist: int4_enc = integer
+LINE 1: SELECT count(*) FROM (SELECT v FROM edge2 WHERE v=500 UNION ...
+                                                         ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+psql:/.../tecc_full_test_suite.sql:1270: ERROR:  column "new_col" of relation "edge2" already exists
+psql:/.../tecc_full_test_suite.sql:1271: ERROR:  cannot alter type of an encrypted column
+DETAIL:  encrypted column edge2.v depends on column "v"
+psql:/.../tecc_full_test_suite.sql:1294: NOTICE:  table "diff2" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:1295: NOTICE:  data encryption key "dek2" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:1296: NOTICE:  key encryption key "kek2" does not exist, skipping
+ERROR: KEY_PATH must be an absolute path for localkms
+ERROR: Failed to validate CREATE KEK options
+psql:/.../tecc_full_test_suite.sql:1297: TECC query preprocessing failed: Processor failed to process query
+[TIMESTAMP] [ERROR] [tecc_key/key_manager.c:391 key_manager_get_kek_info] KEK 'kek2' not found in cache and direct database query is not allowed
+TECC ERROR: KEK 'kek2' cache miss, cannot encrypt DEK
+psql:/.../tecc_full_test_suite.sql:1298: TECC query preprocessing failed: Processor failed to process query
+psql:/.../tecc_full_test_suite.sql:1302: ERROR:  DEK "dek2" not found, cannot create encrypted column "v"
+HINT:  Create the DEK first with CREATE DEK in TECC encryption mode (psql -k on).
+psql:/.../tecc_full_test_suite.sql:1303: ERROR:  relation "diff2" does not exist
+LINE 1: INSERT INTO diff2(v) VALUES (200);
+                    ^
+psql:/.../tecc_full_test_suite.sql:1305: TECC query preprocessing failed: TECC processor detected encrypted columns but failed to produce rewritten query
+psql:/.../tecc_full_test_suite.sql:1307: ERROR:  relation "diff2" does not exist
+LINE 1: SELECT a.id FROM diff1 a, diff2 b WHERE a.v=b.v;
+                                  ^
+ERROR: key_path option is required
+ERROR: Failed to validate CREATE KEK options
+psql:/.../tecc_full_test_suite.sql:1322: TECC query preprocessing failed: Processor failed to process query
+[TIMESTAMP] [ERROR] [tecc_key/key_manager.c:391 key_manager_get_kek_info] KEK 'nonexistent_kek' not found in cache and direct database query is not allowed
+TECC ERROR: KEK 'nonexistent_kek' cache miss, cannot encrypt DEK
+psql:/.../tecc_full_test_suite.sql:1324: TECC query preprocessing failed: Processor failed to process query
+psql:/.../tecc_full_test_suite.sql:1326: ERROR:  cannot drop key encryption key "test_kek" because encrypted columns depend on it
+psql:/.../tecc_full_test_suite.sql:1328: ERROR:  cannot drop data encryption key "test_dek" because encrypted columns depend on it
+DETAIL:  Encrypted column "v" in table OID 17228 uses this DEK.
+ERROR: KEY_PATH must be an absolute path for localkms
+ERROR: Failed to validate CREATE KEK options
+psql:/.../tecc_full_test_suite.sql:1330: TECC query preprocessing failed: Processor failed to process query
+psql:/.../tecc_full_test_suite.sql:1332: NOTICE:  table "diff2" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:1333: NOTICE:  data encryption key "dek2" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:1334: NOTICE:  key encryption key "kek2" does not exist, skipping
+psql:/.../tecc_full_test_suite.sql:1338: ERROR:  DEK "bad_dek_name" not found, cannot create encrypted column "v"
+HINT:  Create the DEK first with CREATE DEK in TECC encryption mode (psql -k on).
+psql:/.../tecc_full_test_suite.sql:1340: ERROR:  encrypted data type "text_enc" requires ENCRYPTED WITH clause
+HINT:  Add ENCRYPTED WITH (dek = dek_name) to the column definition
+psql:/.../tecc_full_test_suite.sql:1347: TECC query preprocessing failed: TECC processor detected encrypted columns but failed to produce rewritten query
+psql:/.../tecc_full_test_suite.sql:1349: ERROR:  column "v_plain" cannot be cast automatically to type int4_enc
+HINT:  You might need to specify "USING v_plain::int4_enc".
+psql:/.../tecc_full_test_suite.sql:1353: ERROR:  relation "def_nosup" already exists
+psql:/.../tecc_full_test_suite.sql:1355: ERROR:  relation "def_sup" already exists
+psql:/.../tecc_full_test_suite.sql:1358: ERROR:  relation "def_int" already exists
+psql:/.../tecc_full_test_suite.sql:1361: ERROR:  invalid hex string: "world"
+DETAIL:  Hex string must contain only 0-9, a-f, A-F characters and may have \x prefix.
+psql:/.../tecc_full_test_suite.sql:1363: ERROR:  relation "def_null" already exists

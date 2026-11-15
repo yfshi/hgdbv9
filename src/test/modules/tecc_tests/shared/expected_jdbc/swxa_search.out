@@ -1,0 +1,28 @@
+NOTICE: table "swxa_search_t" does not exist, skipping
+DROP TABLE
+NOTICE: key encryption key "swxa_search_kek" does not exist, skipping
+DROP KEK
+=== SWXA SEARCH Setup ===
+CREATE KEK
+CREATE DEK
+=== 1 LIKE Wildcard ===
+CREATE TABLE
+INSERT 0 7
+1a_text_like_app_pct|1|apple
+1a_text_like_app_pct|2|application
+1b_vc_like_ban_pct|3|banana
+1c_bp_like_ana_pct|3|banana                                            
+1d_text_like_ple_pct|1|apple
+1d_text_like_ple_pct|4|pineapple
+1d_text_like_ple_pct|5|Apple
+1e_text_like_app|1|apple
+1e_text_like_app|2|application
+1e_text_like_app|4|pineapple
+1f_vc_like_ppl|1|apple
+1f_vc_like_ppl|2|application
+1f_vc_like_ppl|4|pineapple
+1f_vc_like_ppl|5|Apple
+=== SWXA SEARCH Cleanup ===
+DROP TABLE
+DROP DEK
+DROP KEK

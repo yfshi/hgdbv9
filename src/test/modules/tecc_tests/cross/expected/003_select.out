@@ -16,6 +16,12 @@
 3|100|3.33|det_gamma|det_varchar_gamma
 1|100|1.11|det_alpha|det_varchar_alpha
 4|300|4.44|det_alpha|det_varchar_alpha
+=== DET NUMERIC ===
+1|100|1.11|10|det_alpha
+3|100|3.33|10|det_gamma
+4|300|4.44|100|det_alpha
+5|400|5.55|100|det_delta
+6|500|6.66|1000|det_epsilon
 === OPE RANGE ===
 3|25|30.5|ope_cc
 4|35|40.5|ope_dd

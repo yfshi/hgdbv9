@@ -1,0 +1,53 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 3
+ ?column? | id |  c  | s  
+----------+----+-----+----
+ before   |  1 | 100 | 10
+ before   |  2 | 200 | 20
+ before   |  3 | 300 | 30
+(3 rows)
+
+ hg_kek_rotate_dek_arg 
+-----------------------
+ 
+(1 row)
+
+ ?column? | id |  c  | s  
+----------+----+-----+----
+ after    |  1 | 100 | 10
+ after    |  2 | 200 | 20
+ after    |  3 | 300 | 30
+(3 rows)
+
+ ?column? | id 
+----------+----
+ det      |  2
+(1 row)
+
+ ?column? | id 
+----------+----
+ ope      |  2
+ ope      |  3
+(2 rows)
+
+INSERT 0 2
+ ?column? | id |  c  | s  
+----------+----+-----+----
+ all      |  1 | 100 | 10
+ all      |  2 | 200 | 20
+ all      |  3 | 300 | 30
+ all      |  4 | 400 | 40
+ all      |  5 | 500 | 50
+(5 rows)
+
+DROP TABLE
+DROP KEK
+psql:/.../swxa_alter_kek.sql:10: NOTICE:  table "swxa_rot_t" does not exist, skipping
+psql:/.../swxa_alter_kek.sql:11: NOTICE:  data encryption key "swxa_rot_dek" does not exist, skipping
+psql:/.../swxa_alter_kek.sql:12: NOTICE:  key encryption key "swxa_rot_kek" does not exist, skipping
+psql:/.../swxa_alter_kek.sql:55: NOTICE:  drop cascades to data encryption key swxa_rot_dek

@@ -66,8 +66,10 @@
 #include "commands/defrem.h"
 #include "commands/encrypted_column.h"
 #include "commands/event_trigger.h"
+#include "commands/extension.h"
 #include "commands/policy.h"
 #include "commands/sequence.h"
+#include "commands/schemacmds.h"
 #include "commands/tablecmds.h"
 #include "commands/tablespace.h"
 #include "commands/trigger.h"
@@ -1770,6 +1772,19 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 		List	   *idxlist;
 		ListCell   *cell;
 
+		/*
+		 * ReqID:TECC4.0 - 先把父表的密态列元数据整份继承到本分区，再建分区的
+		 * 索引。
+		 *
+		 * 顺序是硬要求：下面的 DefineIndex 会经
+		 * check_index_support_for_encrypted_column() 按 (子表 oid, attnum) 查
+		 * hg_encrypted_columns，才能拦住"密文没有 OPE/DET 段却建索引"。
+		 * 旧实现把继承放在本函数末尾（PARTITION OF 分支），于是分区索引这一次
+		 * 校验整列被跳过；失败关闭开关一开，又被当成"元数据缺失"直接报错——
+		 * 拦的是 DDL 过程中的瞬时状态，不是坏状态。
+		 */
+		hg_process_partition_encrypted_columns(parentId, relationId);
+
 		/* Already have strong enough lock on the parent */
 		parent = table_open(parentId, NoLock);
 		idxlist = RelationGetIndexList(parent);
@@ -1922,6 +1937,18 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
                                        /* Encrypted data type requires encrypted_with clause */
                                        if (!column->encrypted_with)
                                        {
+                                               /*
+                                                * ReqID:TECC4.0 - VIEW bypass:
+                                                * VIEW columns inherit encrypted types from the source
+                                                * table.  Encryption metadata is populated by
+                                                * populate_view_encryption_metadata() in DefineView().
+                                                */
+                                               if (relkind == RELKIND_VIEW)
+                                               {
+                                               	attnum++;
+                                               	continue;
+                                               }
+
                                                /* ReqID:TECC4.0 - CTAS bypass: caller populates hg_encrypted_columns afterwards */
                                                if (stmt->is_ctas)
                                                {
@@ -1930,47 +1957,34 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
                                                }
 
                                                /*
-                                                * ReqID:TECC4.0 - PARTITION OF bypass:
-                                                * Columns inherited from the parent table have an encrypted
-                                                * data type but no ENCRYPTED WITH clause.  Inherit the
-                                                * encryption metadata from the parent.
-                                                */
+						 * ReqID:TECC4.0 - PARTITION OF：
+						 * 列继承自父表，有加密类型但没有 ENCRYPTED WITH 子句。
+						 * 元数据已在建分区索引之前由
+						 * hg_process_partition_encrypted_columns() 整份继承
+						 * （见本函数前面的 if (stmt->partbound) 块），这里只需
+						 * 跳过"缺少 ENCRYPTED WITH 子句"那套报错。
+						 */
                                                if (stmt->partbound != NULL)
                                                {
-                                                       if (inheritOids != NIL)
-                                                       {
-                                                               Oid                     parent_oid = linitial_oid(inheritOids);
-                                                               Oid                     src_dek_oid = InvalidOid;
-                                                               uint32          src_enc_type = 0;
-
-                                                               if (hg_get_encrypted_column_info(parent_oid,
-                                                                                                                                attnum,
-                                                                                                                                &src_dek_oid,
-                                                                                                                                &src_enc_type))
-                                                               {
-                                                                       HgEncryptedColumnCreateParams hg_params;
-
-                                                                       memset(&hg_params, 0, sizeof(hg_params));
-                                                                       hg_params.table_oid = relationId;
-                                                                       hg_params.column_attnum = attnum;
-                                                                       hg_params.column_name = column->colname;
-                                                                       hg_params.data_type = typeOid;
-                                                                       hg_params.column_key_id = src_dek_oid;
-                                                                       hg_params.encryption_type = src_enc_type;
-                                                                       hg_params.type_mod = typmod;
-                                                                       hg_create_encrypted_column(&hg_params);
-                                                               }
-                                                               else
-                                                               {
-                                                                       ereport(WARNING,
-                                                                               (errmsg("could not find encrypted column info for inherited column \"%s\" in partition of \"%s\"",
-                                                                                       column->colname,
-                                                                                       get_rel_name(parent_oid) ? get_rel_name(parent_oid) : "(unknown)")));
-                                                               }
-                                                       }
 
                                                        attnum++;
                                                        continue;
+                                               }
+
+                                               /*
+                                                * ReqID:TECC4.0 - INHERITS with encrypted columns not supported.
+                                                * MergeAttributes drops encrypted_with from inherited ColumnDefs, so even
+                                                * explicit ENCRYPTED WITH in the child definition is lost. Give a clear
+                                                * error instead of the misleading "requires ENCRYPTED WITH clause"
+                                                * message.
+                                                */
+                                               if (inheritOids != NIL && column->inhcount > 0)
+                                               {
+                                               	ereport(ERROR,
+                                               			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+                                               			 errmsg("INHERITS of table with encrypted column \"%s\" is not supported",
+                                               					column->colname),
+                                               			 errhint("Use PARTITION OF instead of INHERITS for table inheritance with encrypted columns")));
                                                }
 
                                                ereport(ERROR,
@@ -8929,7 +8943,11 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	CommandCounterIncrement();
 
 	/* Begin - ReqID:TECC4.0 - Record encrypted column metadata for ADD COLUMN */
-	if (is_encrypted_data_type(typeOid))
+	/* ReqID:TECC4.0 - VIEW bypass:
+	 * VIEW columns inherit encrypted types from the source table.  Encryption
+	 * metadata is populated by populate_view_encryption_metadata() in
+	 * DefineView(), so skip all encrypted column processing for views. */
+	if (is_encrypted_data_type(typeOid) && rel->rd_rel->relkind != RELKIND_VIEW)if (is_encrypted_data_type(typeOid))
 	{
 		/*
 		 * Encrypted data type requires encrypted_with clause.

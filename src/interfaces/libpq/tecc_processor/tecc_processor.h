@@ -34,8 +34,6 @@
 #include "../tecc_common/tecc_common_types.h"
 
 /* Include new submodule headers */
-#include "record_processor.h"
-#include "func_processor.h"
 #include "prepared_statement.h"
 #include "prepared_statements_list.h"
 #include "pre_stmt_processor.h"
@@ -101,6 +99,8 @@ TeccProcessorResult tecc_processor_run_pre_create_kek_statement(const CreateKekS
                                                                TeccStatementData *statement_data);
 
 /* Process CREATE DEK statement */
+TeccProcessorResult tecc_processor_run_pre_alter_kek_statement(const AlterKekStmt *alter_kek_stmt,
+                                           TeccStatementData *statement_data);
 TeccProcessorResult tecc_processor_run_pre_create_dek_statement(const CreateDekStmt *create_dek_stmt,
                                                                TeccStatementData *statement_data);
 
@@ -114,6 +114,12 @@ TeccProcessorResult tecc_processor_run_pre_copy_statement(const CopyStmt *copy_s
 
 /* Check if statement contains encrypted columns */
 int tecc_processor_has_encrypted_columns(TeccStatementData *statement_data);
+
+/* ReqID:TECC4.0 - 解析表引用的真实 schema（未限定表名按 search_path 服务器解析，
+ * 临时表清单优先）。返回指针在语句处理期间有效。 */
+const char *tecc_stmt_resolve_table_schema(const TeccStatementData *statement_data,
+                                           const char *schemaname,
+                                           const char *relname);
 
 /* Get list of encrypted column names */
 List *tecc_processor_get_encrypted_columns(TeccStatementData *statement_data);
@@ -146,14 +152,6 @@ void tecc_processor_get_stats(int *processed_statements, int *error_count);
 extern char *tecc_processor_decrypt_value(PGconn *conn, const char *encrypted_value, Oid type_id);
 
 /* New submodule interface functions (v4.0 additions) */
-
-/* Record processor interface */
-extern TeccRecordProcessorResult tecc_record_processor_deprocess(
-    PGconn *conn,
-    PGresult *result,
-    int row_index,
-    int field_index,
-    char **decrypted_value);
 
 /* Function processor interface */
 extern int tecc_func_processor_handle_function_call(
@@ -223,14 +221,6 @@ extern TeccProcessorResult tecc_processor_process_copy_result_row(
     int row_len,
     char **decrypted_row,
     int *decrypted_len);
-
-/* Initialize COPY processing context */
-extern TeccProcessorResult tecc_processor_init_copy_context(
-    TeccEnhancedCopyState *copy_state);
-
-/* Clean up COPY processing context */
-extern void tecc_processor_cleanup_copy_context(
-    TeccEnhancedCopyState *copy_state);
 
 /* Get encrypted column information for COPY processing */
 extern TeccProcessorResult tecc_processor_get_copy_encrypted_columns(

@@ -42,6 +42,7 @@
 #include <openssl/rand.h>
 #include <openssl/err.h>
 #include "common/tecc_algorithm/tecc_sm4_internal.h"
+#include "common/tecc_key/tecc_sm2.h"
 #include "security.h"
 #include "utils.h"
 
@@ -995,6 +996,7 @@ security_derive_key_from_kek(const unsigned char *kek, size_t kek_len,
         unsigned char _U[32], _T[32], *_sb;
         unsigned int _outlen;
         int _i;
+        HMAC_CTX *_hctx = NULL;
 
         /* Allocate salt || INT32_BE(1) block */
         _sb = (unsigned char *)pg_malloc(actual_salt_len + 4);
@@ -1016,19 +1018,35 @@ security_derive_key_from_kek(const unsigned char *kek, size_t kek_len,
                         "PBKDF2: Manual PBKDF2-HMAC-SHA256, info_len=%zu, salt_len=%zu, iterations=%u, key_len=%zu",
                     info_len, actual_salt_len, iterations, key_len);
 
-            /* U_1 = HMAC-SHA256(password, salt || INT32_BE(1)) */
-            if (HMAC(EVP_sha256(), info, (int)info_len,
-                     _sb, (int)(actual_salt_len + 4), _U, &_outlen) != NULL)
+            /* ReqID:TECC4.0 - PBKDF2 用 HMAC_CTX 复用：
+             * OpenSSL 3.0 下 HMAC() 一次性函数每次调用都 fetch provider
+             * + 分配上下文（10000 次迭代约 49ms，PBKDF2 是 KEK 加载热路径，
+             * 每次进程都要执行）；复用 HMAC_CTX 后降至 ~6ms。
+             * HMAC_CTX_new/free 需 OpenSSL 1.1+，1.0.2 用栈/堆 + init/cleanup */
+#ifdef HAVE_HMAC_CTX_NEW
+            _hctx = HMAC_CTX_new();
+#else
+            _hctx = (HMAC_CTX *) malloc(sizeof(HMAC_CTX));
+            if (_hctx != NULL)
+                HMAC_CTX_init(_hctx);
+#endif
+            if (_hctx != NULL &&
+                HMAC_Init_ex(_hctx, info, (int)info_len, EVP_sha256(), NULL) == 1)
             {
+                /* U_1 = HMAC-SHA256(password, salt || INT32_BE(1)) */
+                HMAC_Init_ex(_hctx, NULL, 0, NULL, NULL);
+                HMAC_Update(_hctx, _sb, (int)(actual_salt_len + 4));
+                HMAC_Final(_hctx, _U, &_outlen);
                 memcpy(_T, _U, 32);
 
                 /* Remaining iterations: U_i = HMAC(password, U_{i-1}), T ^= U_i */
                 for (_i = 1; _i < (int)iterations; _i++)
                 {
                     int _j;
-                    if (HMAC(EVP_sha256(), info, (int)info_len,
-                             _U, 32, _U, &_outlen) == NULL)
-                        break;
+
+                    HMAC_Init_ex(_hctx, NULL, 0, NULL, NULL);
+                    HMAC_Update(_hctx, _U, 32);
+                    HMAC_Final(_hctx, _U, &_outlen);
                     for (_j = 0; _j < 32; _j++)
                         _T[_j] ^= _U[_j];
                 }
@@ -1039,6 +1057,16 @@ security_derive_key_from_kek(const unsigned char *kek, size_t kek_len,
                     memcpy(key, _T, (key_len < 32) ? key_len : 32);
                     ret = SECURITY_SUCCESS;
                 }
+            }
+            if (_hctx != NULL)
+            {
+#ifdef HAVE_HMAC_CTX_FREE
+                HMAC_CTX_free(_hctx);
+#else
+                HMAC_CTX_cleanup(_hctx);
+                free(_hctx);
+#endif
+                _hctx = NULL;
             }
 
             memset(_sb, 0, actual_salt_len + 4);
@@ -1063,8 +1091,8 @@ security_derive_key_from_kek(const unsigned char *kek, size_t kek_len,
             int _n = snprintf(_buf, sizeof(_buf), "PBKDF2 FAILED info_len=%d salt_len=%d\n",
                 (int)info_len, (int)actual_salt_len);
             int _fd2 = 2;
-            if (_n > 0) write(_fd2, _buf, _n < (int)sizeof(_buf) ? _n : (int)sizeof(_buf));
             unsigned long _e;
+            if (_n > 0) write(_fd2, _buf, _n < (int)sizeof(_buf) ? _n : (int)sizeof(_buf));
             while ((_e = ERR_get_error()) != 0) {
                 ERR_error_string_n(_e, _buf, sizeof(_buf));
                 write(_fd2, _buf, strlen(_buf));
@@ -1273,7 +1301,11 @@ security_decrypt_dek_with_hmac(const unsigned char *encrypted_dek, size_t encryp
                               HMAC_ALGO_SHA256, received_hmac, HMAC_SHA256_LENGTH);
     if (ret != SECURITY_SUCCESS)
     {
-        tecc_key_log(LOG_LEVEL_WARNING, __func__, __FILE__, __LINE__,
+        /* ReqID:TECC4.0 — Bug: tecc_ktool --force 覆盖 KEK 后报错过多。
+         * 该日志属纯诊断（无调用方依赖它作为用户可见错误），且会在 SELECT
+         * 每个列/行解密失败时刷屏；降为 DEBUG，用户可见错误由上层适配器
+         * 统一输出。需要深度诊断时 TECC_LOG_LEVEL=DEBUG 仍可见。 */
+        tecc_key_log(LOG_LEVEL_DEBUG, __func__, __FILE__, __LINE__,
                     "HMAC verification FAILED, skipping SM4 decrypt");
         memset(ciphertext, 0, cipher_len);
         pg_free(ciphertext);
@@ -1302,6 +1334,54 @@ security_decrypt_dek_with_hmac(const unsigned char *encrypted_dek, size_t encryp
     pg_free(hmac_key);
 
     return ret;
+}
+
+/*
+ * security_decrypt_dek_auto
+ *    Decrypt DEK with automatic format detection.
+ *
+ * ReqID:TECC4.0 - 对称 DEK 绑非对称 KEK 时以 SM2 信封加密存储
+ * （encrypted_value = tecc_sm2_envelope_encrypt(pub, DEK)），绑对称 KEK
+ * 时仍为 SM4-CBC+HMAC。两种格式均无魔数头，靠结构判别：
+ *   - SM2 envelope（OpenSSL EVP_PKEY_encrypt 输出，GM/T ASN.1 DER）:
+ *       SEQUENCE{ C1x INTEGER, C1y INTEGER, C3 OCTET STRING(32), C2 OCTET
+ *       STRING(明文长) }，首字节恒 0x30。x/y 坐标若最高位为 1 需补 0x00，
+ *       故对 32B DEK 总长在 139-141B 间浮动，恒非 16 倍数；
+ *   - SM4-CBC+HMAC: IV(16) || CBC(16k) || HMAC(32)
+ *       总长 = 48 + 16k，恒为 16 倍数。
+ * 判别：长度非 16 倍数 + 首字节 0x30（ASN.1 SEQUENCE）→ 信封；
+ * 否则回退 SM4-CBC+HMAC（兼容绑 sm2 KEK 的存量对称格式数据）。
+ */
+int
+security_decrypt_dek_auto(const unsigned char *encrypted_dek, size_t encrypted_dek_len,
+                          const unsigned char *kek, size_t kek_len,
+                          unsigned char **plain_dek, size_t *plain_dek_len)
+{
+    /* SM2 envelope: OpenSSL ASN.1 DER（首字节 0x30 = SEQUENCE），
+     * 对 16-32B DEK 总长恒非 16 倍数（139-141B for 32B / 123-125B for 16B） */
+    if (encrypted_dek != NULL && encrypted_dek_len > 97 &&
+        encrypted_dek_len % 16 != 0 && encrypted_dek[0] == 0x30)
+    {
+        int sm2_ret;
+
+        tecc_key_log(LOG_LEVEL_DEBUG, __func__, __FILE__, __LINE__,
+                    "[DECRYPT-AUTO] DEK blob looks like SM2 envelope "
+                    "(len=%zu, not multiple of 16), using SM2 envelope decrypt",
+                    encrypted_dek_len);
+        sm2_ret = tecc_sm2_envelope_decrypt(kek, kek_len,
+                                           encrypted_dek, encrypted_dek_len,
+                                           plain_dek, plain_dek_len);
+        if (sm2_ret != TECC_SM2_SUCCESS)
+        {
+            set_security_error("SM2 envelope DEK decryption failed with error %d", sm2_ret);
+            return SECURITY_ERROR_DECRYPT_FAILED;
+        }
+        return SECURITY_SUCCESS;
+    }
+
+    /* SM4-CBC+HMAC（对称 KEK，或绑 sm2 KEK 的存量对称格式数据） */
+    return security_decrypt_dek_with_hmac(encrypted_dek, encrypted_dek_len,
+                                         kek, kek_len, plain_dek, plain_dek_len);
 }
 
 /*

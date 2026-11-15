@@ -45,14 +45,6 @@ extern bool is_valid_hex_string(const char *str);
 extern CipherDataType *hex_to_cipherdata(const char *hex_str);
 
 /*
- * Convert CipherDataType to hexadecimal string
- *
- * Converts a CipherDataType to a hexadecimal string with PostgreSQL prefix ("\x").
- * The caller is responsible for freeing the returned string.
- */
-extern char *cipherdata_to_hex(const CipherDataType *cipherdata);
-
-/*
  * Convert binary data to hexadecimal string
  *
  * Converts binary data to a hexadecimal string with PostgreSQL prefix ("\x").

@@ -255,3 +255,5 @@ tecc__scan_string      268
 tecc__switch_to_buffer 269
 tecc_wrap      270
 PQteccRefreshCache     271
+PQteccSetMode       272
+PQteccGetMode       273

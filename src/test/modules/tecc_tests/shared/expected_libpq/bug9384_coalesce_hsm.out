@@ -1,0 +1,46 @@
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE KEK
+CREATE DEK
+========== 1. 硬加密 coalesce 加密常量（期望 10|10|10） ==========
+ coalesce | coalesce | coalesce 
+----------+----------+----------
+ 10       | 10       | 10
+(1 row)
+
+========== 2. 硬加密 裸加密常量（期望 10） ==========
+ int2_enc 
+----------
+ 10
+(1 row)
+
+========== 3. 软加密 coalesce 加密常量（期望 10|10|10） ==========
+ coalesce | coalesce | coalesce 
+----------+----------+----------
+ 10       | 10       | 10
+(1 row)
+
+========== 4. 硬加密 coalesce 加密列（期望 10） ==========
+CREATE TABLE
+INSERT 0 1
+ coalesce | coalesce 
+----------+----------
+ 10       | 20
+(1 row)
+
+========== 5. cleanup ==========
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+psql:/.../bug9384_coalesce_hsm.sql:17: NOTICE:  table "bug9384_t" does not exist, skipping
+psql:/.../bug9384_coalesce_hsm.sql:18: NOTICE:  data encryption key "dek_test9384" does not exist, skipping
+psql:/.../bug9384_coalesce_hsm.sql:19: NOTICE:  data encryption key "dek_test9384_soft" does not exist, skipping
+psql:/.../bug9384_coalesce_hsm.sql:20: NOTICE:  key encryption key "kek_test9384" does not exist, skipping
+psql:/.../bug9384_coalesce_hsm.sql:21: NOTICE:  key encryption key "kek_test9384_soft" does not exist, skipping

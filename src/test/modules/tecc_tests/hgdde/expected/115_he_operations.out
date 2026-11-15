@@ -1,0 +1,21 @@
+=== 5B.1 建表：he-add 两列、he-mul 两列、int8 he-add 一列（同 he-add DEK）并分发 ===
+
+=== 5B.2 加法同态：列×列 加/减 + 标量加（常量在右/左）+ 标量乘 ===
+1|13|7|110|110|30
+2|24|16|120|120|60
+3|35|25|130|130|90
+=== 5B.3 加法同态 SUM（跨分片两阶段密文合并）===
+60|12
+=== 5B.4 乘法同态：列×列 + 标量乘（客户端加密常量）+ 幂（^ 与 power 等价）===
+1|10|10|8|8
+2|21|15|27|27
+3|44|20|64|64
+=== 5B.5 跨类型运算：int4_enc + int8_enc（同 he-add DEK）→ int8_enc ===
+1|110
+2|220
+3|330
+=== 5B.6 结果类型提升 ===
+int4_enc|int8_enc|int8_enc
+int8_enc
+=== 5B.7 密态列不支持 AVG（客户端 fail-closed）===
+psql:/.../115_he_operations.sql:66: TECC query preprocessing failed: aggregate function "avg" is not supported on encrypted column "a"

@@ -1,0 +1,44 @@
+NOTICE: table "swxa_ope_t" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "swxa_ope_dek" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "swxa_ope_kek" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 4
+=== SWXA OPE: 全表解密 ===
+1|10|100|1000|10.5|100.5|1000.5|r1
+2|20|200|2000|20.5|200.5|2000.5|r2
+3|30|300|3000|30.5|300.5|3000.5|r3
+4|-5|-50|-500|-5.5|-50.5|-500.5|r4
+=== SWXA OPE: 范围查询 ===
+r2
+r3
+r2
+r3
+r1
+r4
+r1
+r4
+r2
+r1
+r2
+r3
+r4
+=== SWXA OPE: ORDER BY ===
+4|-50
+1|100
+2|200
+3|300
+3|300
+2|200
+1|100
+4|-50
+=== SWXA OPE: 聚合 ===
+4
+=== SWXA OPE: 清理 ===
+DROP TABLE
+DROP DEK
+DROP KEK

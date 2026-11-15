@@ -1,0 +1,29 @@
+NOTICE: table "swxa_rot_t" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "swxa_rot_dek" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "swxa_rot_kek" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 3
+before|1|100|10
+before|2|200|20
+before|3|300|30
+ALTER KEK
+after|1|100|10
+after|2|200|20
+after|3|300|30
+det|2
+ope|2
+ope|3
+INSERT 0 2
+all|1|100|10
+all|2|200|20
+all|3|300|30
+all|4|400|40
+all|5|500|50
+DROP TABLE
+NOTICE: drop cascades to data encryption key swxa_rot_dek
+DROP KEK

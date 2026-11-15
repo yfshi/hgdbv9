@@ -1,0 +1,80 @@
+NOTICE: key encryption key "kek_b" does not exist, skipping
+DROP KEK
+NOTICE: key encryption key "kek_c" does not exist, skipping
+DROP KEK
+NOTICE: data encryption key "dek_b" does not exist, skipping
+DROP DEK
+NOTICE: data encryption key "dek_c" does not exist, skipping
+DROP DEK
+CREATE KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+NOTICE: table "t_a" does not exist, skipping
+NOTICE: table "t_d" does not exist, skipping
+NOTICE: table "t_e" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+INSERT 0 3
+INSERT 0 2
+=== 1 set ops ===
+CREATE TABLE
+INSERT 0 4
+1a_total|4
+1a_mem|1|1
+1a_mem|2|1
+1a_mem|3|1
+1a_mem|4|1
+1b_total|7
+1b_mem|1|2
+1b_mem|2|1
+1b_mem|3|3
+1b_mem|4|1
+1c_total|2
+1c_mem|1|1
+1c_mem|2|0
+1c_mem|3|1
+1c_mem|4|0
+1d_total|1
+1d_mem|1|0
+1d_mem|2|1
+1d_mem|3|0
+1d_mem|4|0
+1e_total|4
+1e_mem|1|1
+1e_mem|2|1
+1e_mem|3|1
+1e_mem|4|1
+=== 2 correlated subqueries ===
+2a_corr_in|1
+2b_corr_any|1
+2c_corr_not_exists|2
+2d_corr_exists|1
+2d_corr_exists|3
+2d_corr_exists|4
+=== 3 JOIN combos ===
+3a_det_join|1
+3a_det_join|3
+3a_det_join|4
+3b_det_join_where|1
+3b_det_join_where|3
+3b_det_join_where|4
+3c_ope_join|3
+3c_ope_join|4
+3d_ope_range_join|2
+3d_ope_range_join|3
+3d_ope_range_join|3
+3d_ope_range_join|4
+3d_ope_range_join|4
+3e_det_ope_mix|3
+3e_det_ope_mix|4
+ERROR: cannot compare encrypted columns with different DEKs: "t_a.v" (DEK sym:dek_b) and "t_e.v" (DEK sym:dek_c)
+=== 9 CLEANUP ===
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK

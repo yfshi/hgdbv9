@@ -130,7 +130,9 @@ typedef unsigned int Oid;
 #define FE_T_CreateKekStmt 100
 #define FE_T_CreateDekStmt 101
 #define FE_T_DropStmt 102
+#define FE_T_AlterKekStmt 115
 #define FE_T_SelectStmt 241
+#define FE_T_SetStmt 334  /* VariableSetStmt（SET 语句透传节点）- ReqID:TECC4.0 */
 #define FE_T_InsertStmt 238
 #define FE_T_UpdateStmt 240
 #define FE_T_DeleteStmt 239
@@ -149,6 +151,7 @@ typedef unsigned int Oid;
 #define FE_T_DeclareCursorStmt 222  /* 暂不确定后端值，保持原值 */
 #define FE_T_DeallocateStmt 223  /* DEALLOCATE statement node type - ReqID:TECC4.0 */
 #define FE_T_CreateTableAsStmt 1013  /* CREATE TABLE AS statement node type - ReqID:TECC4.0 */
+#define FE_T_ViewStmt 1016  /* CREATE VIEW statement node type - ReqID:TECC4.0 密态视图支持 */
 #define FE_T_CopyStmt 253
 #define FE_T_GroupClause 1012
 #define FE_T_CreateStmt 254
@@ -402,6 +405,39 @@ typedef struct SelectStmt {
 } SelectStmt;
 #endif /* SELECTSTMT_DEFINED */
 
+/* ReqID:TECC4.0 - SET 语句透传节点
+ *
+ * 前端解析器支持完整 SET 语法（SET/SET LOCAL/SET SESSION + 各变体：
+ * generic_set、TIME ZONE、ROLE、SESSION AUTHORIZATION、TRANSACTION、
+ * NAMES、XML OPTION 等），TECC 处理器对其**透传**（不重写、不加密）。
+ * 目的：避免多语句消息（如 "SET ...; SELECT 密态表达式 ..."）因 SET
+ * 语句无法解析而整体失败，导致表达式结果列元数据（pending_expr_col）
+ * 无法收集、解密路径错误。
+ * 附加语义：对 SET search_path 类语句，TECC 处理器在透传的同时做
+ * **同串即时性预测**（在 ParameterStatus 权威值到达前，为同一查询串内
+ * 后续语句预写 search_path 缓存），因此 kind/args 需携带取值信息。 */
+#ifndef SETSTMT_DEFINED
+#define SETSTMT_DEFINED
+
+/* SET 语句取值种类（对齐 PG VariableSetKind，仅 TECC 所需最小集） */
+typedef enum TeccSetKind
+{
+    TECC_SET_VALUE = 0,    /* SET name = value / SET name TO value */
+    TECC_SET_DEFAULT = 1,  /* SET name TO DEFAULT（恢复会话默认） */
+    TECC_SET_CURRENT = 2,  /* SET name FROM CURRENT */
+    TECC_SET_MULTI = 3     /* 其他变体（TRANSACTION 等），TECC 不消费 */
+} TeccSetKind;
+
+typedef struct SetStmt {
+    NodeTag type;
+    int location;        /* 语句起始位置 */
+    char *name;          /* GUC 名（透传用，可空） */
+    bool is_local;       /* SET LOCAL 标志 */
+    int kind;            /* TeccSetKind：取值种类 */
+    List *args;          /* 值列表（Const* 节点），kind==TECC_SET_VALUE 时有效 */
+} SetStmt;
+#endif /* SETSTMT_DEFINED */
+
 /*
  * EXPLAIN 语句节点
  * 前端只识别语法结构，options 不解析留给后端
@@ -536,6 +572,7 @@ typedef struct CreateStmt {
     struct TypeName *ofTypename; /* OF子句（类型化表） - 必须支持处理器模块的类型处理 */
     int stmt_location;      /* 语句开始位置 - 必须：支持处理器模块的SQL改写 */
     int stmt_len;           /* 语句长度 - 必须：支持处理器模块的SQL改写 */
+    bool is_temp;           /* TEMP/TEMPORARY 标记（opt_temp 规则传递） - ReqID:TECC4.0 */
 } CreateStmt;
 
 /*
@@ -625,6 +662,15 @@ typedef struct CreateKekStmt {
     int stmt_location;      /* 语句开始位置 - 必须：支持处理器模块的SQL改写 */
     int stmt_len;           /* 语句长度 - 必须：支持处理器模块的SQL改写 */
 } CreateKekStmt;
+
+/* ALTER KEK语句节点 */
+typedef struct AlterKekStmt {
+    NodeTag type;
+    List *names;            /* KEK全限定名 */
+    List *options;          /* WITH选项列表 (KEY_PATH等) */
+    int stmt_location;      /* 语句开始位置 */
+    int stmt_len;           /* 语句长度 */
+} AlterKekStmt;
 
 /* CREATE DEK语句节点 */
 typedef struct CreateDekStmt {
@@ -738,6 +784,7 @@ typedef struct FuncCall {
 	bool agg_within_group;  /* WITHIN GROUP 有序集聚合 */
     struct WindowDef *over; /* OVER子句 */
     int location;           /* 位置信息 - 必须支持处理器模块的SQL改写 */
+    int end_location;       /* ReqID:TECC4.0 - Byte after closing parenthesis */
 } FuncCall;
 
 /* 操作符表达式节点 */
@@ -918,6 +965,12 @@ typedef struct Const {
     int constlen;           /* 常量长度 */
     bool constbyval;        /* 是否按值传递 */
     bool constisnull;       /* 是否为空 */
+    /* ReqID:TECC4.0 - 标记该字符串常量的文本源自 FLOAT 字面量（数值形态）。
+     * 前端为保精度把浮点字面量原样保留为 TEXTOID 字符串常量（见
+     * tecc_grammar.y 的 FLOAT 规则），参数组合校验需据此按数值族归类，
+     * 否则 numeric/float 列的常量比较会被误判为"常量类型不匹配"。
+     * 字符串字面量（'123' 等）保持 false，仍按 STRING 族处理。 */
+    bool text_numeric_literal;
     int location;           /* 位置信息 - 字节偏移量，由scanner在yylex时设置 */
     int data_size;          /* 常量值在原始SQL中的文本长度 */
     union {
@@ -1099,7 +1152,26 @@ typedef struct CreateTableAsStmt {
     RangeVar *relation;     /* 目标表名 - 必须支持处理器模块的加密列识别 */
     Node *query;            /* 查询(SelectStmt或ExecuteStmt) - 必须支持处理器模块的子查询遍历 */
     bool if_not_exists;     /* IF NOT EXISTS标志 */
+    int objtype;            /* 0=CREATE TABLE AS, 1=CREATE MATERIALIZED VIEW - ReqID:TECC4.0 */
+    bool skipData;          /* WITH NO DATA标志（物化视图用）- ReqID:TECC4.0 */
 } CreateTableAsStmt;
+
+/* ----------------------
+ *      CREATE VIEW Statement
+ *      Supports: CREATE [OR REPLACE] [TEMP] VIEW name [(cols)] AS SelectStmt
+ * - ReqID:TECC4.0 密态视图支持
+ * ----------------------
+ */
+typedef struct ViewStmt {
+    NodeTag type;
+    int location;           /* 位置信息 - 必须支持处理器模块的SQL改写 */
+    int length;             /* 节点长度 */
+    RangeVar *relation;     /* 视图名 - 必须支持处理器模块的加密列识别 */
+    Node *query;            /* 定义查询(SelectStmt) - 必须支持处理器模块的子查询遍历 */
+    bool replace;           /* OR REPLACE标志 */
+    bool temp;              /* TEMP/TEMPORARY标志 */
+    List *aliases;          /* 可选的列名列表(ResTarget列表, 无则为NIL) */
+} ViewStmt;
 
 /* ----------------------
  *      DECLARE CURSOR Statement
@@ -1143,6 +1215,9 @@ extern bool list_is_empty(const List *list);
 /* 节点创建函数 */
 Node *makeIntConst(int64_t val, int location, int data_size);
 Node *makeStringConst(const char *str, int location, int data_size);
+/* ReqID:TECC4.0 - FLOAT 字面量专用：保留原始文本(TEXTOID) 但标记为数值形态，
+ * 供参数组合校验按数值族归类（见 Const.text_numeric_literal）。 */
+Node *makeNumericTextConst(const char *str, int location, int data_size);
 Node *makeFloatConst(double val, int location, int data_size);
 Node *makeNullConst(int location, int data_size);
 
@@ -1155,6 +1230,7 @@ CreateStmt *makeCreateStmt(int stmt_location, int stmt_len);
 AlterTableStmt *makeAlterTableStmt(int stmt_location, int stmt_len);
 AlterTableCmd *makeAlterTableCmd(AlterTableType subtype, Node *def, char *name, DropBehavior behavior, bool missing_ok, int location);
 CreateKekStmt *makeCreateKekStmt(int stmt_location, int stmt_len);
+AlterKekStmt *makeAlterKekStmt(int stmt_location, int stmt_len);
 CreateDekStmt *makeCreateDekStmt(int stmt_location, int stmt_len);
 DropStmt *makeDropStmt(int stmt_location, int stmt_len);
 
@@ -1169,6 +1245,7 @@ ExecuteStmt *makeExecuteStmt(char *name, List *params, int nparams, Oid *paramty
                             const char *const *paramValues, int *paramLengths, int *paramFormats, int location);
 DeallocateStmt *makeDeallocateStmt(char *name, int location);
 CreateTableAsStmt *makeCreateTableAsStmt(RangeVar *relation, Node *query, bool if_not_exists, int location);
+ViewStmt *makeViewStmt(RangeVar *relation, Node *query, bool replace, bool temp, List *aliases, int location);
 
 /* 列定义节点创建函数 */
 ColumnDef *makeColumnDef(int location, int len);
@@ -1233,6 +1310,8 @@ RangeVar *makeRangeVar(char *schemaname, char *relname, int location);
 RangeVar *makeRangeVarFromQualifiedName(const char *qualified_name, int location, int length);
 Alias *makeAlias(char *aliasname, List *colnames);
 DefElem *makeDefElem(char *defname, Node *arg, int location);
+/* ReqID:TECC4.0 - SET 语句透传节点创建函数 */
+SetStmt *makeSetStmt(char *name, bool is_local, int location, int kind, List *args);
 
 /* 缺失的函数声明 */
 TypeName *makeTypeName(const char *name, int location, int length);
@@ -1259,7 +1338,9 @@ void freeUpdateStmt(UpdateStmt *stmt);
 void freeDeleteStmt(DeleteStmt *stmt);
 void freeCreateStmt(CreateStmt *stmt);
 void freeCreateKekStmt(CreateKekStmt *stmt);
+void freeAlterKekStmt(AlterKekStmt *stmt);
 void freeCreateDekStmt(CreateDekStmt *stmt);
+void freeAlterKekStmt(AlterKekStmt *stmt);
 void freeDropStmt(DropStmt *stmt);
 void list_free_node_list(List *list);
 
@@ -1277,6 +1358,7 @@ void freePrepareStmt(PrepareStmt *stmt);
 void freeExecuteStmt(ExecuteStmt *stmt);
 void freeDeallocateStmt(DeallocateStmt *stmt);
 void freeCreateTableAsStmt(CreateTableAsStmt *stmt);
+void freeViewStmt(ViewStmt *stmt);
 
 /* DECLARE CURSOR node functions */
 DeclareCursorStmt *makeDeclareCursorStmt(char *portalname, Node *query, int location);

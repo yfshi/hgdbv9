@@ -37,34 +37,12 @@ extern TeccFormatterErrorCode tecc_validate_input_data(
 #define tecc_data_validator_validate_input tecc_validate_input_data
 
 /*
- * Validate encrypted data integrity
+ * ReqID:TECC4.0 - Validate integer decimal string against type range.
+ * Used by HE decryption path where results are decimal strings
+ * (from BN_bn2dec) rather than normalized binary.
+ * Returns TECC_FORMATTER_SUCCESS if in range, error code otherwise.
  */
-extern TeccFormatterErrorCode tecc_data_validator_validate_encrypted_data(
-    const unsigned char *encrypted_data,
-    size_t encrypted_len,
-    TeccAlgorithmType algo_type
-);
-
-/*
- * Adjust data size if needed
- */
-extern TeccFormatterErrorCode tecc_data_validator_adjust_data_size(
-    const unsigned char *input_data,
-    size_t input_len,
-    Oid data_type,
-    TeccAlgorithmType algo_type,
-    unsigned char **adjusted_data,
-    size_t *adjusted_len
-);
-
-/*
- * Check data compatibility with encryption algorithm
- */
-extern bool tecc_data_validator_is_compatible(
-    const unsigned char *data,
-    size_t len,
-    Oid data_type,
-    TeccAlgorithmType algo_type
-);
+extern TeccFormatterErrorCode tecc_validate_integer_range(
+	const char *str, size_t len, Oid data_type);
 
 #endif /* TECC_DATA_VALIDATOR_H */

@@ -263,4 +263,6 @@ INSERT 和 SELECT 共用 `tecc_search_sm4_encrypt`，同一连接同一密钥，
 | update_delete.sql | UPDATE/DELETE | ✅ 通过 |
 
 ### 独立测试
-- `test_only_insert` — libpq INSERT端到端测试 (通过 ✅)
+- ~~`test_only_insert`~~ — 原 libpq INSERT端到端测试 (通过 ✅)。**2026-09-20 退役**：
+  只有一张无加密列的普通表 + 一次 INSERT/SELECT，两个驱动都测不到密态能力；
+  随 `jdbc/` 目录解散一并归档到 `archive/jdbc_dir_retired_20260920/`。

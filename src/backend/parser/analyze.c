@@ -69,6 +69,8 @@
 #include "utils/guc.h"
 #include "utils/queryjumble.h"
 #include "utils/rel.h"
+#include "commands/prepare.h"
+#include "utils/plancache.h"
 #include "utils/syscache.h"
 #include "utils/ora_compatible.h"
 #include "funcapi.h" /* SRS-PLSQL-SUBPROC */
@@ -2905,6 +2907,66 @@ ora_build_nested_agg_outer_expr(Node *node, void *context)
 								   ora_build_nested_agg_outer_expr,
 								   (void *) ctx);
 }
+
+/*
+ * tecc_ctas_encrypted_with_from_raw_select
+ *		从原始 SELECT 的目标列里抽出每列 TypeCast 上挂的 ENCRYPTED WITH 选项，
+ *		返回与目标列一一对应的 List（没有的项为 NIL）。
+ */
+static List *
+tecc_ctas_encrypted_with_from_raw_select(SelectStmt *raw)
+{
+	List	   *enc_list = NIL;
+	ListCell   *lc;
+
+	if (raw == NULL || raw->targetList == NIL)
+		return NIL;
+
+	foreach(lc, raw->targetList)
+	{
+		ResTarget  *rt = (ResTarget *) lfirst(lc);
+		List	   *enc_opts = NIL;
+
+		if (rt->val != NULL && IsA(rt->val, TypeCast))
+		{
+			TypeCast   *tc = (TypeCast *) rt->val;
+
+			if (tc->typeName != NULL)
+				enc_opts = tc->typeName->encrypted_with;
+		}
+
+		enc_list = lappend(enc_list, enc_opts);
+	}
+
+	return enc_list;
+}
+
+/*
+ * tecc_ctas_raw_select_of_execute
+ *		取 CREATE TABLE ... AS EXECUTE <name> 里被 PREPARE 的那条语句的原始
+ *		SELECT 解析树；不是 SELECT、prepared 语句不存在或已丢失原始解析树时
+ *		返回 NULL（那种情况交给后面正常流程报错）。
+ */
+static SelectStmt *
+tecc_ctas_raw_select_of_execute(ExecuteStmt *estmt)
+{
+	PreparedStatement *pstmt;
+	RawStmt    *raw;
+
+	pstmt = FetchPreparedStatement(estmt->name, true);
+	if (pstmt == NULL || pstmt->plansource == NULL)
+		return NULL;
+
+	raw = pstmt->plansource->raw_parse_tree;
+	if (raw == NULL)
+		return NULL;
+
+	if (!IsA(raw->stmt, SelectStmt))
+		return NULL;
+
+	return (SelectStmt *) raw->stmt;
+}
+
 
 /*
  * ora_rewrite_nested_agg_two_stage
@@ -6087,27 +6149,21 @@ transformCreateTableAsStmt(ParseState *pstate, CreateTableAsStmt *stmt)
 	 * target list before transformStmt converts TypeCast nodes. */
 	if (IsA(stmt->query, SelectStmt))
 	{
-		SelectStmt *raw = (SelectStmt *) stmt->query;
-		List	   *enc_list = NIL;
-		ListCell   *lc;
-
-		foreach(lc, raw->targetList)
-		{
-			ResTarget  *rt = (ResTarget *) lfirst(lc);
-			List	   *enc_opts = NIL;
-
-			if (rt->val != NULL && IsA(rt->val, TypeCast))
-			{
-				TypeCast   *tc = (TypeCast *) rt->val;
-
-				if (tc->typeName != NULL)
-					enc_opts = tc->typeName->encrypted_with;
-			}
-
-			enc_list = lappend(enc_list, enc_opts);
-		}
-
-		stmt->into->encrypted_with_list = enc_list;
+		stmt->into->encrypted_with_list =
+			tecc_ctas_encrypted_with_from_raw_select((SelectStmt *) stmt->query);
+	}
+	else if (IsA(stmt->query, ExecuteStmt))
+	{
+		/*
+		 * ReqID:TECC4.0 - CREATE TABLE ... AS EXECUTE <prepared>：
+		 * 待执行语句的解析树在 PREPARE 时就定下了，本处取回它并做与直接
+		 * SELECT 同样的抽取。不这样做的话结果表的加密列既拿不到 ENCRYPTED
+		 * WITH、也追不到源表列，最后落成"有加密类型、无元数据"的表（客户端
+		 * 无法加解密，写入校验也会被失败关闭开关拦下）。
+		 */
+		stmt->into->encrypted_with_list =
+			tecc_ctas_encrypted_with_from_raw_select(
+				tecc_ctas_raw_select_of_execute((ExecuteStmt *) stmt->query));
 	}
 	else
 		stmt->into->encrypted_with_list = NIL;

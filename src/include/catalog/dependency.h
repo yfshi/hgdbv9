@@ -3,7 +3,6 @@
  * dependency.h
  *	  Routines to support inter-object dependencies.
  *
- *
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
@@ -151,10 +150,11 @@ typedef enum ObjectClass
 	OCLASS_DEK,					/* hg_dek */
 	OCLASS_ENCRYPTED_COLUMN,	/* hg_encrypted_columns */
 	OCLASS_KEK_ARGS,			/* hg_kek_args */
-	OCLASS_DEK_ARGS				/* hg_dek_args */
+	OCLASS_DEK_ARGS,				/* hg_dek_args */
+	OCLASS_ENCRYPTED_COLUMN_ARGS	/* hg_encrypted_column_args */
 } ObjectClass;
 
-#define LAST_OCLASS		OCLASS_DEK_ARGS
+#define LAST_OCLASS		OCLASS_ENCRYPTED_COLUMN_ARGS
 
 /* flag bits for performDeletion/performMultipleDeletions: */
 #define PERFORM_DELETION_INTERNAL			0x0001	/* internal action */

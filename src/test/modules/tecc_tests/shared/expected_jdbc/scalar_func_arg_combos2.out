@@ -1,0 +1,40 @@
+NOTICE: table "enc_pgfunc_test_det" does not exist, skipping
+DROP TABLE
+NOTICE: table "enc_pgfunc_test_ope" does not exist, skipping
+DROP TABLE
+NOTICE: table "enc_arg_combos2_ope" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "enc_pgfunc_dek" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "enc_pgfunc_kek" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+ERROR: nullif does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: nullif does not support this argument combination: encrypted-type constants and plain constants cannot be mixed
+ERROR: nullif does not support this argument combination: the constant type does not match the encrypted column type
+ERROR: nullif does not support this argument combination: the constant type does not match the encrypted column type
+ERROR: nullif does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: nullif does not support this argument combination: encrypted columns and plain columns cannot be mixed
+10
+ERROR: decode does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: decode does not support this argument combination: encrypted-type constants and plain constants cannot be mixed
+ERROR: decode does not support this argument combination: the constant type does not match the encrypted column type
+ERROR: decode does not support this argument combination: encrypted columns and plain columns cannot be mixed
+ERROR: decode does not support this argument combination: the constant type does not match the encrypted column type
+ERROR: decode does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: ERROR: function decode(text_enc, text_enc, text_enc, text_enc, text_enc, text_enc) does not exist
+  Hint: No function matches the given name and argument types. You might need to add explicit type casts.
+  Position: 8
+ERROR: power does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: power does not support this argument combination: encrypted-type constants and plain constants cannot be mixed
+ERROR: TECC strict: function 'power' requires HE-MUL on encrypted column [enc_arg_combos2_ope.c_int4], but column uses OPE. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'power' requires HE-MUL on encrypted column [enc_arg_combos2_ope.c_int4], but column uses OPE. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: power does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: TECC strict: function 'power' requires HE-MUL on encrypted column [enc_arg_combos2_ope.c_int4], but column uses OPE. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'power' requires HE-MUL on encrypted column [enc_arg_combos2_ope.c_text], but column uses OPE. Reconfigure the column with the required algorithm or rewrite the SQL.
+DROP TABLE
+DROP DEK
+DROP KEK

@@ -1,0 +1,34 @@
+NOTICE: table "test_copy_enc" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "dek_copy_enc" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "kek_copy_enc" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+1|Alice
+2|Bob
+3|Charlie
+COPY TEST_COPY_ENC
+TRUNCATE TEST_COPY_ENC
+COPY TEST_COPY_ENC
+1|Alice
+2|Bob
+3|Charlie
+=== COPY (SELECT ...) TO STDOUT ===
+NOTICE: table "test_cp_select" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+1|Alice
+2|Bob
+COPY (SELECT
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK

@@ -1,0 +1,32 @@
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+DROP SCHEMA
+CREATE SCHEMA
+SET
+DROP SCHEMA
+sch_bnd, public
+server_current_schema|public
+CREATE KEK
+kek_ns|public
+CREATE DEK
+dek_ns|public
+CREATE TABLE
+INSERT 0 1
+SELECT 1
+
+dek_reencrypted|t
+read_after_rotate|1|alpha
+orphan_kek|0
+SET
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+cleanup_done
+psql:/.../kek_bare_after_schema_drop.sql:44: NOTICE:  table "t_bnd" does not exist, skipping
+psql:/.../kek_bare_after_schema_drop.sql:45: NOTICE:  table "t_bnd_snap" does not exist, skipping
+psql:/.../kek_bare_after_schema_drop.sql:46: NOTICE:  data encryption key "dek_bnd" does not exist, skipping
+psql:/.../kek_bare_after_schema_drop.sql:47: NOTICE:  key encryption key "kek_bnd" does not exist, skipping
+psql:/.../kek_bare_after_schema_drop.sql:48: NOTICE:  schema "sch_bnd" does not exist, skipping

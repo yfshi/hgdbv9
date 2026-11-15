@@ -26,12 +26,378 @@
 #include "tecc_error.h"
 #include "feparser_memutils.h"
 #include <string.h>
+#include <stdlib.h>
 #include "port.h"  /* for pg_strncasecmp */
 
 /* 包含处理器调试宏 */
 #include "../tecc_processor/internal/tecc_processor_internal.h"
 
 /* 函数声明在tecc_parser_simple.h中 */
+
+/*
+ * ReqID:TECC4.0 - 前端语法未建模语句的掩码支持
+ *
+ * 前端语法只建模了 SELECT/INSERT/UPDATE/DELETE/WITH/COPY/EXPLAIN/PREPARE/
+ * EXECUTE/DEALLOCATE/DECLARE/SET 以及 CREATE|ALTER|DROP 的 KEK/DEK/TABLE/
+ * VIEW/MATVIEW 等语句。批量语句（单次 PQexec 多条 SQL）中出现其它语句
+ * （BEGIN/COMMIT/SHOW/TRUNCATE/COMMENT/ANALYZE/DROP VIEW/CREATE INDEX ...）
+ * 会让整批解析失败、整批按原文放行，批内密态常量因此以明文发往服务端
+ * （服务端报 invalid hex string）。
+ *
+ * 处理方式：整批解析失败时逐条试解析，把无法解析的语句在“解析器视野内”
+ * 整条掩码为等长空格（含结尾分号），长度不变，因此解析树中的字节偏移仍与
+ * 原始 SQL 一致；真正发往服务端的 SQL 仍是原始文本，被掩码语句原样保留。
+ */
+
+/* 语句区间：end 指向语句结尾分号之后（无分号则为文本结尾） */
+typedef struct TeccStmtSpan
+{
+    const char *start;
+    const char *end;
+} TeccStmtSpan;
+
+/* 取语句的第 n 个词（1-based）写入 out，返回是否取到 */
+static bool
+tecc_parser_span_word(const char *stmt, const char *limit, int nth,
+                      char *out, size_t out_size)
+{
+    const char *p = stmt;
+    size_t      len;
+    int         index = 0;
+
+    while (index < nth)
+    {
+        while (p < limit && (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r'))
+            p++;
+
+        len = 0;
+        while (p + len < limit && len + 1 < out_size)
+        {
+            char c = p[len];
+
+            if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                  (c >= '0' && c <= '9') || c == '_'))
+                break;
+            out[len] = c;
+            len++;
+        }
+        out[len] = '\0';
+
+        if (len == 0)
+            return false;
+
+        p += len;
+        index++;
+    }
+
+    return true;
+}
+
+/*
+ * ReqID:TECC4.0 - 判断语句是否属于“前端语法解析不出、但必须由客户端处理”的
+ * 密态 DDL：pg_dump 还原输出的是规范括号形式 `CREATE KEK schema.name (...)`，
+ * 前端语法解析失败，但客户端要对其做 key 文件校验（缺 .pub 必须中止还原）与
+ * 改写，因此这类语句不允许被掩码掉。
+ */
+static bool
+tecc_parser_span_is_client_handled_ddl(const char *stmt, const char *limit)
+{
+    char first[16];
+    char second[24];
+
+    if (!tecc_parser_span_word(stmt, limit, 1, first, sizeof(first)))
+        return false;
+    if (!tecc_parser_span_word(stmt, limit, 2, second, sizeof(second)))
+        return false;
+
+    if (pg_strcasecmp(first, "CREATE") != 0 &&
+        pg_strcasecmp(first, "ALTER") != 0 &&
+        pg_strcasecmp(first, "DROP") != 0)
+        return false;
+
+    return (pg_strcasecmp(second, "KEK") == 0 ||
+            pg_strcasecmp(second, "DEK") == 0 ||
+            pg_strcasecmp(second, "TABLE") == 0);
+}
+
+/*
+ * 按顶层分号切分 SQL 文本为语句区间（识别单引号/双引号/美元引用/注释，
+ * 不把字符串或注释里的分号当分隔符）。spans 由调用方 free。
+ */
+static TeccStmtSpan *
+tecc_parser_split_statements(const char *query, int *span_count)
+{
+    size_t       query_len = strlen(query);
+    TeccStmtSpan *spans;
+    int          count = 0;
+    const char   *stmt_start = query;
+    const char   *p = query;
+
+    /* 语句数不超过分号数 + 1 */
+    spans = (TeccStmtSpan *) malloc(sizeof(TeccStmtSpan) * (query_len + 2));
+    if (spans == NULL)
+        return NULL;
+
+    while (*p != '\0')
+    {
+        char c = *p;
+
+        /* 单引号字符串（'' 与 \' 转义） */
+        if (c == '\'')
+        {
+            p++;
+            while (*p != '\0')
+            {
+                if (*p == '\\' && p[1] != '\0')
+                {
+                    p += 2;
+                    continue;
+                }
+                if (*p == '\'')
+                {
+                    if (p[1] == '\'')
+                    {
+                        p += 2;
+                        continue;
+                    }
+                    p++;
+                    break;
+                }
+                p++;
+            }
+            continue;
+        }
+
+        /* 双引号标识符（"" 转义） */
+        if (c == '"')
+        {
+            p++;
+            while (*p != '\0')
+            {
+                if (*p == '"')
+                {
+                    if (p[1] == '"')
+                    {
+                        p += 2;
+                        continue;
+                    }
+                    p++;
+                    break;
+                }
+                p++;
+            }
+            continue;
+        }
+
+        /* 美元引用 $tag$ ... $tag$ */
+        if (c == '$')
+        {
+            const char *tag_end = p + 1;
+
+            while ((*tag_end >= 'a' && *tag_end <= 'z') ||
+                   (*tag_end >= 'A' && *tag_end <= 'Z') ||
+                   (*tag_end >= '0' && *tag_end <= '9') || *tag_end == '_')
+                tag_end++;
+
+            if (*tag_end == '$')
+            {
+                size_t tag_len = (size_t) (tag_end - p) + 1;
+                const char *close = NULL;
+                const char *scan = tag_end + 1;
+
+                while (*scan != '\0')
+                {
+                    if (*scan == '$' && strncmp(scan, p, tag_len) == 0)
+                    {
+                        close = scan;
+                        break;
+                    }
+                    scan++;
+                }
+                if (close != NULL)
+                {
+                    p = close + tag_len;
+                    continue;
+                }
+            }
+            p++;
+            continue;
+        }
+
+        /* 行注释 */
+        if (c == '-' && p[1] == '-')
+        {
+            while (*p != '\0' && *p != '\n')
+                p++;
+            continue;
+        }
+
+        /* 块注释（支持嵌套） */
+        if (c == '/' && p[1] == '*')
+        {
+            int depth = 1;
+
+            p += 2;
+            while (*p != '\0' && depth > 0)
+            {
+                if (p[0] == '/' && p[1] == '*')
+                {
+                    depth++;
+                    p += 2;
+                }
+                else if (p[0] == '*' && p[1] == '/')
+                {
+                    depth--;
+                    p += 2;
+                }
+                else
+                    p++;
+            }
+            continue;
+        }
+
+        if (c == ';')
+        {
+            spans[count].start = stmt_start;
+            spans[count].end = p + 1;
+            count++;
+            stmt_start = p + 1;
+            p++;
+            continue;
+        }
+
+        p++;
+    }
+
+    /* 末尾残余（可能只有空白） */
+    if (stmt_start < query + query_len)
+    {
+        spans[count].start = stmt_start;
+        spans[count].end = query + query_len;
+        count++;
+    }
+
+    *span_count = count;
+    return spans;
+}
+
+/*
+ * ReqID:TECC4.0 - 批量语句容错：返回一份把“前端语法无法解析的语句”掩码为
+ * 等长空格的 SQL 副本，供解析器使用；全部语句均可解析时返回 NULL
+ * （调用方直接用原文本）。返回缓冲区由调用方 free。
+ *
+ * 单条语句能否解析由“试解析”判定，因此不需要维护语句类型白名单；
+ * 掩码不改变长度，解析树中的字节偏移仍对原始 SQL 有效。
+ */
+static char *
+tecc_parser_mask_unparsable_stmts(const char *query)
+{
+    TeccStmtSpan *spans;
+    char         *masked = NULL;
+    char         *piece = NULL;
+    int          span_count = 0;
+    int          i;
+
+    spans = tecc_parser_split_statements(query, &span_count);
+    if (spans == NULL)
+        return NULL;
+
+    for (i = 0; i < span_count; i++)
+    {
+        const char *stmt = spans[i].start;
+        const char *limit = spans[i].end;
+        const char *q = stmt;
+        size_t      piece_len = (size_t) (limit - stmt);
+        Node        *piece_tree;
+        bool        blank = false;
+
+        /* 跳过空白；空语句（如 ";;"）也掩码掉 */
+        while (q < limit && (*q == ' ' || *q == '\t' || *q == '\n' || *q == '\r'))
+            q++;
+
+        if (q >= limit || *q == ';')
+            blank = true;
+        else if (tecc_parser_span_is_client_handled_ddl(stmt, limit))
+        {
+            /* 密态 DDL（CREATE/ALTER/DROP KEK|DEK|TABLE）必须留给客户端处理，
+             * 不掩码；若其无法被前端语法解析，后面的整体校验会放弃掩码。 */
+            continue;
+        }
+        else
+        {
+            piece = (char *) malloc(piece_len + 1);
+            if (piece == NULL)
+            {
+                free(masked);
+                free(spans);
+                return NULL;
+            }
+            memcpy(piece, stmt, piece_len);
+            piece[piece_len] = '\0';
+
+            piece_tree = tecc_parser_parse_node(piece);
+            if (piece_tree == NULL)
+                blank = true;        /* 前端语法无法解析该语句 → 掩码 */
+            else
+                tecc_parser_free_tree_node(piece_tree);
+
+            free(piece);
+            piece = NULL;
+        }
+
+        if (!blank)
+            continue;
+
+        if (masked == NULL)
+        {
+            masked = (char *) malloc(strlen(query) + 1);
+            if (masked == NULL)
+            {
+                free(spans);
+                return NULL;
+            }
+            memcpy(masked, query, strlen(query) + 1);
+        }
+
+        {
+            size_t off_start = (size_t) (spans[i].start - query);
+            size_t off_end = (size_t) (spans[i].end - query);
+            size_t k;
+
+            for (k = off_start; k < off_end; k++)
+            {
+                if (masked[k] != '\n')
+                    masked[k] = ' ';
+            }
+        }
+    }
+
+    free(spans);
+
+    /* 掩码后仍解析失败（或解析结果为空语句列表）时放弃掩码，调用方按原文
+     * 处理（与既有行为一致）：CREATE KEK 还原语句等需要走解析树为空的分支
+     * 做 key 文件校验，不能被掩码成空文本。 */
+    if (masked != NULL)
+    {
+        Node *masked_tree = tecc_parser_parse_node(masked);
+
+        if (masked_tree == NULL)
+        {
+            free(masked);
+            return NULL;
+        }
+        if (nodeTag(masked_tree) == FE_T_List &&
+            ((List *) masked_tree)->length == 0)
+        {
+            tecc_parser_free_tree_node(masked_tree);
+            free(masked);
+            return NULL;
+        }
+        tecc_parser_free_tree_node(masked_tree);
+    }
+
+    return masked;
+}
 
 /*
  * tecc_parser_parse - SQL语句解析接口
@@ -99,6 +465,24 @@ List *tecc_parser_parse(const char *query_string) {
                         "DEBUG: tecc_parser_parse: Starting parse for query: %s",
                         query_string);
     result = tecc_parser_parse_list(query_string);
+
+    /* ReqID:TECC4.0 - 整批解析失败时（批量语句中夹带前端未建模语句，
+     * 如 BEGIN/COMMIT/SHOW/TRUNCATE/COMMENT/ANALYZE/DROP VIEW/CREATE INDEX），
+     * 逐条试解析并把无法解析的语句在解析器视野内掩码为等长空格后重试，
+     * 使同批次其它语句照常识别与加密。发往服务端的 SQL 仍是原始文本，
+     * 被掩码语句原样保留。 */
+    if (result == NULL)
+    {
+        char *masked_query = tecc_parser_mask_unparsable_stmts(query_string);
+
+        if (masked_query != NULL)
+        {
+            tecc_processor_debug(TECC_LOG_DEBUG1,
+                                "DEBUG: tecc_parser_parse: Retrying parse with unparsable statements masked");
+            result = tecc_parser_parse_list(masked_query);
+            free(masked_query);
+        }
+    }
     tecc_processor_debug(TECC_LOG_DEBUG1,
                         "DEBUG: tecc_parser_parse: tecc_parser_parse_list returned %p",
                         result);

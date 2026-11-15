@@ -86,14 +86,34 @@ SELECT
         ELSE col.collcollate
     END AS collation_locale,
     ec.column_key_id,
-    ec.create_date
+    ec.create_date,
+    /* ReqID:TECC4.0 - P0-2 一列多 DEK：he-add/he-mul DEK 名称 */
+    he_add.dek_name AS he_add_dek,
+    he_mul.dek_name AS he_mul_dek
 FROM hg_encrypted_columns ec
-JOIN hg_dek d ON ec.column_key_id = d.oid
+/* ReqID:TECC4.0 - 纯 HE 列（column_key_id=0，无对称 DEK）也能出现在视图里，
+ * 用 LEFT JOIN 而非 INNER JOIN；对称 DEK 名由 dek_name 承载（纯 HE 列为 NULL）。 */
+LEFT JOIN hg_dek d ON ec.column_key_id = d.oid
 LEFT JOIN pg_collation col ON ec.collation_oid = col.oid
-WHERE EXISTS (
+/* ReqID:TECC4.0 - 一列多 DEK：LEFT JOIN args → hg_dek 解析 DEK 名称 */
+LEFT JOIN hg_encrypted_column_args eca_add
+    ON eca_add.column_id = ec.oid AND eca_add.key = 'he_add_dek'
+LEFT JOIN hg_dek he_add ON he_add.oid = tecc_dek_oid_from_dist_id(
+    (SELECT convert_from(a.value, 'UTF8')::oid FROM hg_encrypted_column_args a WHERE a.column_id = ec.oid AND a.key = 'he_add_dek'))
+LEFT JOIN hg_encrypted_column_args eca_mul
+    ON eca_mul.column_id = ec.oid AND eca_mul.key = 'he_mul_dek'
+LEFT JOIN hg_dek he_mul ON he_mul.oid = tecc_dek_oid_from_dist_id(
+    (SELECT convert_from(a.value, 'UTF8')::oid FROM hg_encrypted_column_args a WHERE a.column_id = ec.oid AND a.key = 'he_mul_dek'))
+WHERE (ec.column_key_id = 0 OR EXISTS (
     SELECT 1 FROM hg_dek d2
     WHERE d2.oid = ec.column_key_id
-);
+));
+
+/*
+ * ReqID:TECC4.0 - Bug 9255: ALTER KEK 轮换的元数据写回函数已移至
+ * src/backend/catalog/hg_rotate_funcs.sql —— 它们用 plpgsql 编写，而本文件在
+ * initdb 中早于 load_plpgsql() 执行（此时语言尚未创建）。
+ */
 
 -- /*
 --  * Metadata Version Table

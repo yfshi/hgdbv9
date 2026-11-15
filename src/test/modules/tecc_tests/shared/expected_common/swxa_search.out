@@ -2,8 +2,6 @@ DROP TABLE
 DROP KEK
 === SWXA SEARCH Setup ===
 (1 row)
-Setting up SWXA KEK: swxa_search_kek (key index: 1)
-SUCCESS: Key found in SWXA password machine at index 1
 CREATE KEK
 CREATE DEK
 === 1 LIKE Wildcard ===
@@ -15,7 +13,8 @@ INSERT 0 7
 (2 rows)
 1b_vc_like_ban_pct|3|banana
 (1 row)
-(0 rows)
+1c_bp_like_ana_pct|3|banana
+(1 row)
 1d_text_like_ple_pct|1|apple
 1d_text_like_ple_pct|4|pineapple
 1d_text_like_ple_pct|5|Apple

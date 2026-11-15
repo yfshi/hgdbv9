@@ -47,6 +47,10 @@ static bool set_param_column_info(TeccPreparedStatement *stmt, int param_index,
     const char *table_name, const char *column_name, TeccStatementData *statement_data);
 static void map_select_params_in_expr(Node *expr, TeccPreparedStatement *stmt,
     const char *table_name, TeccStatementData *statement_data);
+/* ReqID:TECC4.0 - 参数映射里把 CTE 名 / 派生表别名解析回基表 */
+static const char *first_from_relname(List *from_clause);
+static const char *resolve_param_table(const TeccPreparedStatement *stmt,
+    const char *table_name);
 
 /* Global prepared statements list has been moved to TeccState structure for thread safety */
 
@@ -504,6 +508,8 @@ create_prepared_statement(const char *stmt_name, const char *query_string)
     stmt->last_used_time = 0;
     stmt->error_code = TECC_PREPARED_STATEMENT_SUCCESS;
     stmt->error_msg[0] = '\0';
+    stmt->alias_names = NIL;
+    stmt->alias_tables = NIL;
     stmt->next = NULL;
 
     return stmt;
@@ -527,6 +533,16 @@ free_prepared_statement(TeccPreparedStatement *stmt)
             }
         }
         pg_free(stmt->params);
+    }
+
+    /* ReqID:TECC4.0 - 释放分析期间的别名映射（元素是 AST 里的名字，不归本模块所有） */
+    if (stmt->alias_names != NULL) {
+        list_free(stmt->alias_names);
+        stmt->alias_names = NIL;
+    }
+    if (stmt->alias_tables != NULL) {
+        list_free(stmt->alias_tables);
+        stmt->alias_tables = NIL;
     }
 
     /* Free strings */
@@ -770,8 +786,85 @@ analyze_query_for_params(TeccPreparedStatement *stmt, TeccStatementData *stateme
                     }
                 }
 
-                if (table_name != NULL)
+                if (table_name != NULL || sel->cteList != NIL ||
+                    sel->fromClause != NIL)
                 {
+                    /* Begin - ReqID:TECC4.0 - 建立「限定名 → 基表」映射 */
+                    {
+                        ListCell *alc;
+
+                        /* CTE：名字 → 其定义查询的基表（链式由解析循环兜底） */
+                        foreach(alc, sel->cteList)
+                        {
+                            CommonTableExpr *cte = (CommonTableExpr *)lfirst(alc);
+                            const char *base = NULL;
+
+                            if (cte == NULL || cte->ctename == NULL ||
+                                cte->ctequery == NULL)
+                                continue;
+                            if (nodeTag(cte->ctequery) == FE_T_SelectStmt)
+                                base = first_from_relname(
+                                    ((SelectStmt *)cte->ctequery)->fromClause);
+                            if (base != NULL)
+                            {
+                                stmt->alias_names = lappend(stmt->alias_names,
+                                                            (void *)cte->ctename);
+                                stmt->alias_tables = lappend(stmt->alias_tables,
+                                                             (void *)base);
+                            }
+                        }
+
+                        /* FROM 项：别名 → 基表（派生表取其内部的基表） */
+                        foreach(alc, sel->fromClause)
+                        {
+                            Node *fn = (Node *)lfirst(alc);
+
+                            if (fn == NULL)
+                                continue;
+                            if (nodeTag(fn) == FE_T_RangeVar)
+                            {
+                                RangeVar *rv = (RangeVar *)fn;
+                                const char *nm;
+
+                                if (rv->relname == NULL)
+                                    continue;
+                                nm = (rv->alias != NULL && rv->alias->aliasname != NULL)
+                                     ? rv->alias->aliasname : rv->relname;
+                                stmt->alias_names = lappend(stmt->alias_names,
+                                                            (void *)nm);
+                                stmt->alias_tables = lappend(stmt->alias_tables,
+                                                             (void *)rv->relname);
+                            }
+                            else if (nodeTag(fn) == FE_T_RangeSubselect)
+                            {
+                                RangeSubselect *rs = (RangeSubselect *)fn;
+                                const char *nm;
+                                const char *base = NULL;
+
+                                if (rs->alias == NULL || rs->alias->aliasname == NULL)
+                                    continue;
+                                nm = rs->alias->aliasname;
+                                if (rs->subquery != NULL &&
+                                    nodeTag(rs->subquery) == FE_T_SelectStmt)
+                                    base = first_from_relname(
+                                        ((SelectStmt *)rs->subquery)->fromClause);
+                                if (base != NULL)
+                                {
+                                    stmt->alias_names = lappend(stmt->alias_names,
+                                                                (void *)nm);
+                                    stmt->alias_tables = lappend(stmt->alias_tables,
+                                                                 (void *)base);
+                                }
+                            }
+                        }
+                    }
+                    /* End - ReqID:TECC4.0 */
+
+                    /* ReqID:TECC4.0 - FROM 是派生表/CTE 时上面取不到基表名，
+                     * 用映射里的第一个基表兜底，让不带限定符的列也能命中 */
+                    if (table_name == NULL && stmt->alias_tables != NIL)
+                        table_name = (const char *)list_nth(stmt->alias_tables, 0);
+
                     /* Map Param nodes to encrypted columns via A_Expr walk */
                     map_select_params_in_expr((Node *)sel->whereClause, stmt,
                         table_name, statement_data);
@@ -1482,6 +1575,77 @@ analyze_update_params(UpdateStmt *update_stmt,
  * Set column info on a parameter and check if it needs encryption.
  * Looks up the column in the metadata cache to determine encryption status.
  */
+/*
+ * ReqID:TECC4.0 - 取 FROM 子句里第一个基表名（派生表则递归进其子查询），
+ * 用于建立「别名 → 基表」映射。
+ */
+static const char *
+first_from_relname(List *from_clause)
+{
+    ListCell *lc;
+
+    foreach(lc, from_clause)
+    {
+        Node *n = (Node *)lfirst(lc);
+
+        if (n == NULL)
+            continue;
+        if (nodeTag(n) == FE_T_RangeVar)
+            return ((RangeVar *)n)->relname;
+        if (nodeTag(n) == FE_T_RangeSubselect)
+        {
+            RangeSubselect *rs = (RangeSubselect *)n;
+
+            if (rs->subquery != NULL && nodeTag(rs->subquery) == FE_T_SelectStmt)
+                return first_from_relname(((SelectStmt *)rs->subquery)->fromClause);
+        }
+    }
+    return NULL;
+}
+
+/*
+ * ReqID:TECC4.0 - 把限定名（CTE 名 / 派生表别名）解析成基表名。
+ * PREPARE 内层里 `WITH a AS (SELECT ... FROM t) ... a.col = $1` 或
+ * `FROM (SELECT ... FROM t) s WHERE s.col = $1` 的限定名都不是基表，直接拿
+ * 它们查加密列缓存必然落空，参数会因此不加密并以明文外发。链式 CTE
+ * （别名指向另一个别名）按映射迭代解开。
+ */
+static const char *
+resolve_param_table(const TeccPreparedStatement *stmt, const char *table_name)
+{
+    const char *cur;
+    int depth;
+
+    if (stmt == NULL || table_name == NULL || stmt->alias_names == NIL)
+        return table_name;
+
+    cur = table_name;
+    for (depth = 0; depth < 8; depth++)
+    {
+        int n;
+        int i;
+        const char *next;
+
+        next = NULL;
+        n = list_length(stmt->alias_names);
+        for (i = 0; i < n; i++)
+        {
+            const char *nm = (const char *)list_nth(stmt->alias_names, i);
+
+            if (nm != NULL && strcmp(nm, cur) == 0)
+            {
+                next = (const char *)list_nth(stmt->alias_tables, i);
+                break;
+            }
+        }
+        if (next == NULL || strcmp(next, cur) == 0)
+            break;
+        cur = next;
+    }
+
+    return cur;
+}
+
 static bool
 set_param_column_info(TeccPreparedStatement *stmt, int param_index,
                       const char *table_name, const char *column_name,
@@ -1500,6 +1664,11 @@ set_param_column_info(TeccPreparedStatement *stmt, int param_index,
     if (stmt == NULL || param_index < 0 || param_index >= stmt->num_params)
         return false;
     if (table_name == NULL || column_name == NULL)
+        return false;
+
+    /* ReqID:TECC4.0 - 限定名可能是 CTE 名或派生表别名，先解析回基表名 */
+    table_name = resolve_param_table(stmt, table_name);
+    if (table_name == NULL)
         return false;
 
     param_info = stmt->params[param_index];
@@ -1636,32 +1805,49 @@ map_select_params_in_expr(Node *expr, TeccPreparedStatement *stmt,
             left = a->lexpr;
             right = a->rexpr;
 
-            if (left != NULL && right != NULL)
+            /*
+             * ReqID:TECC4.0 - 参数侧可能带显式类型声明（`$1::text_enc`），
+             * 此时右操作数是 TypeCast 而非 Param。字面量路径不受影响
+             * （它拿的是 AST 求值后的值），参数路径必须自己剥掉这层，
+             * 否则 `col = $1::text_enc` 永远匹配不上列，参数不加密、明文
+             * 直发服务端（实测报 invalid hex string）。
+             */
             {
-                /* Case: ColumnRef op Param */
-                if (nodeTag(left) == FE_T_ColumnRef && nodeTag(right) == FE_T_Param)
+                Node *lkey = left;
+                Node *rkey = right;
+
+                if (lkey != NULL && nodeTag(lkey) == FE_T_TypeCast)
+                    lkey = ((TypeCast *)lkey)->arg;
+                if (rkey != NULL && nodeTag(rkey) == FE_T_TypeCast)
+                    rkey = ((TypeCast *)rkey)->arg;
+
+                if (lkey != NULL && rkey != NULL)
                 {
-                    ColumnRef *col = (ColumnRef *)left;
-                    Param *param = (Param *)right;
-                    if (col->fields != NULL && col->fields->tail != NULL)
+                    /* Case: ColumnRef op Param */
+                    if (nodeTag(lkey) == FE_T_ColumnRef && nodeTag(rkey) == FE_T_Param)
                     {
-                        colname = strVal(col->fields->tail->data.ptr_value);
-                        if (colname != NULL)
-                            set_param_column_info(stmt, param->paramid - 1,
-                                table_name, colname, statement_data);
+                        ColumnRef *col = (ColumnRef *)lkey;
+                        Param *param = (Param *)rkey;
+                        if (col->fields != NULL && col->fields->tail != NULL)
+                        {
+                            colname = strVal(col->fields->tail->data.ptr_value);
+                            if (colname != NULL)
+                                set_param_column_info(stmt, param->paramid - 1,
+                                    table_name, colname, statement_data);
+                        }
                     }
-                }
-                /* Case: Param op ColumnRef */
-                else if (nodeTag(left) == FE_T_Param && nodeTag(right) == FE_T_ColumnRef)
-                {
-                    Param *param = (Param *)left;
-                    ColumnRef *col = (ColumnRef *)right;
-                    if (col->fields != NULL && col->fields->tail != NULL)
+                    /* Case: Param op ColumnRef */
+                    else if (nodeTag(lkey) == FE_T_Param && nodeTag(rkey) == FE_T_ColumnRef)
                     {
-                        colname = strVal(col->fields->tail->data.ptr_value);
-                        if (colname != NULL)
-                            set_param_column_info(stmt, param->paramid - 1,
-                                table_name, colname, statement_data);
+                        Param *param = (Param *)lkey;
+                        ColumnRef *col = (ColumnRef *)rkey;
+                        if (col->fields != NULL && col->fields->tail != NULL)
+                        {
+                            colname = strVal(col->fields->tail->data.ptr_value);
+                            if (colname != NULL)
+                                set_param_column_info(stmt, param->paramid - 1,
+                                    table_name, colname, statement_data);
+                        }
                     }
                 }
             }

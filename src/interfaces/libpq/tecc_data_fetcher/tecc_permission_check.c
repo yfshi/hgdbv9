@@ -26,20 +26,33 @@
 
 /* 辅助函数声明 */
 static char *tecc_escape_string(const char *str);
+static TeccFetcherErrorCode tecc_check_key_permission(const TeccState *state,
+                                                       const char *table_name,
+                                                       const char *key_column,
+                                                       const char *priv_func,
+                                                       const char *key_name,
+                                                       const char *key_namespace);
 
 /* 当前用户缓存 - 已移除，改为从PGconn连接获取 */
 
 /*
- * tecc_check_kek_permission - 检查KEK权限
+ * tecc_check_key_permission - 检查密钥权限（公共实现）
  *
  * state: TECC状态结构
- * key_name: KEK名称
+ * table_name: 系统表名（hg_kek 或 hg_dek）
+ * key_column: 密钥名字段（kek_name 或 dek_name）
+ * priv_func: 权限检查函数名（has_kek_privilege 或 has_dek_privilege）
+ * key_name: 密钥名称
  * key_namespace: 命名空间
  * 返回: 错误码，TECC_FETCHER_OK表示有权限
  */
-TeccFetcherErrorCode
-tecc_check_kek_permission(const TeccState *state,
-                          const char *key_name, const char *key_namespace)
+static TeccFetcherErrorCode
+tecc_check_key_permission(const TeccState *state,
+                           const char *table_name,
+                           const char *key_column,
+                           const char *priv_func,
+                           const char *key_name,
+                           const char *key_namespace)
 {
     PGconn *conn;
     char *query = NULL;
@@ -49,126 +62,8 @@ tecc_check_kek_permission(const TeccState *state,
     bool has_permission = false;
 
     /* 参数检查 */
-    if (state == NULL || key_name == NULL)
-    {
-        return TECC_FETCHER_ERROR_INVALID_PARAM;
-    }
-
-    /* 获取连接（主连接空闲时直接使用，繁忙时自动创建临时连接） */
-    conn = tecc_data_fetcher_get_connection(state);
-    if (conn == NULL)
-    {
-        return TECC_FETCHER_ERROR_CONNECTION;
-    }
-
-    /* 转义输入字符串 */
-    escaped_key_name = tecc_escape_string(key_name);
-    escaped_namespace = (key_namespace != NULL) ? tecc_escape_string(key_namespace) : NULL;
-
-    if (escaped_key_name == NULL)
-    {
-        tecc_data_fetcher_release_connection(state, conn);
-        return TECC_FETCHER_ERROR_MEMORY;
-    }
-
-    /* 构建权限检查查询 */
-    {
-        int ns_len = (escaped_namespace != NULL) ? strlen(escaped_namespace) : 0;
-        query_len = strlen(escaped_key_name) * 3 + ns_len * 3 + 350;
-    }
-
-    query = (char *)pg_malloc(query_len);
-    if (query == NULL)
-    {
-        pg_free(escaped_key_name);
-        if (escaped_namespace != NULL)
-            pg_free(escaped_namespace);
-        tecc_data_fetcher_release_connection(state, conn);
-        return TECC_FETCHER_ERROR_MEMORY;
-    }
-
-    if (escaped_namespace != NULL && strcmp(key_namespace, "pg_catalog") != 0)
-    {
-        snprintf(query, query_len,
-                 "SELECT has_kek_privilege("
-                 "  (SELECT k.oid FROM hg_kek k "
-                 "   JOIN pg_namespace n ON k.key_namespace = n.oid "
-                 "   WHERE lower(k.kek_name) = lower('%s') AND lower(n.nspname) = lower('%s')), "
-                 "'USAGE')",
-                 escaped_key_name, escaped_namespace);
-    }
-    else if (escaped_namespace != NULL)
-    {
-        snprintf(query, query_len,
-                 "SELECT has_kek_privilege("
-                 "  (SELECT k.oid FROM hg_kek k "
-                 "   JOIN pg_namespace n ON k.key_namespace = n.oid "
-                 "   WHERE lower(k.kek_name) = lower('%s') AND lower(n.nspname) = lower('%s')), "
-                 "'USAGE')",
-                 escaped_key_name, escaped_namespace);
-    }
-    else
-    {
-        snprintf(query, query_len,
-                 "SELECT has_kek_privilege("
-                 "  (SELECT k.oid FROM hg_kek k "
-                 "   JOIN pg_namespace n ON k.key_namespace = n.oid "
-                 "   WHERE lower(k.kek_name) = lower('%s') "
-                 "   LIMIT 1), "
-                 "'USAGE')",
-                 escaped_key_name);
-    }
-
-    /* 释放转义字符串 */
-    pg_free(escaped_key_name);
-    if (escaped_namespace != NULL)
-        pg_free(escaped_namespace);
-
-    /* 直接使用PQexec执行权限检查（避免tecc_fetcher_execute_query的游标开销） */
-    {
-        PGresult *pg_result;
-        pg_result = PQexec(conn, query);
-        if (pg_result && PQresultStatus(pg_result) == PGRES_TUPLES_OK && PQntuples(pg_result) > 0)
-        {
-            const char *val = PQgetvalue(pg_result, 0, 0);
-            if (val && strcmp(val, "t") == 0)
-                has_permission = true;
-        }
-        if (pg_result) PQclear(pg_result);
-    }
-    pg_free(query);
-
-    tecc_data_fetcher_release_connection(state, conn);
-
-    if (!has_permission)
-    {
-        return TECC_FETCHER_ERROR_PERMISSION;
-    }
-
-    return TECC_FETCHER_OK;
-}
-
-/*
- * tecc_check_dek_permission - 检查DEK权限
- *
- * state: TECC状态结构
- * key_name: DEK名称
- * key_namespace: 命名空间
- * 返回: 错误码，TECC_FETCHER_OK表示有权限
- */
-TeccFetcherErrorCode
-tecc_check_dek_permission(const TeccState *state,
-                          const char *key_name, const char *key_namespace)
-{
-    PGconn *conn;
-    char *query = NULL;
-    char *escaped_key_name = NULL;
-    char *escaped_namespace = NULL;
-    int query_len;
-    bool has_permission = false;
-
-    /* 参数检查 */
-    if (state == NULL || key_name == NULL)
+    if (state == NULL || key_name == NULL || table_name == NULL ||
+        key_column == NULL || priv_func == NULL)
     {
         return TECC_FETCHER_ERROR_INVALID_PARAM;
     }
@@ -208,22 +103,24 @@ tecc_check_dek_permission(const TeccState *state,
     if (escaped_namespace != NULL)
     {
         snprintf(query, query_len,
-                 "SELECT has_dek_privilege("
-                 "  (SELECT d.oid FROM hg_dek d "
-                 "   JOIN pg_namespace n ON d.key_namespace = n.oid "
-                 "   WHERE lower(d.dek_name) = lower('%s') AND lower(n.nspname) = lower('%s')), "
+                 "SELECT %s("
+                 "  (SELECT k.oid FROM %s k "
+                 "   JOIN pg_namespace n ON k.key_namespace = n.oid "
+                 "   WHERE lower(k.%s) = lower('%s') AND lower(n.nspname) = lower('%s')), "
                  "'USAGE')",
+                 priv_func, table_name, key_column,
                  escaped_key_name, escaped_namespace);
     }
     else
     {
         snprintf(query, query_len,
-                 "SELECT has_dek_privilege("
-                 "  (SELECT d.oid FROM hg_dek d "
-                 "   JOIN pg_namespace n ON d.key_namespace = n.oid "
-                 "   WHERE lower(d.dek_name) = lower('%s') "
+                 "SELECT %s("
+                 "  (SELECT k.oid FROM %s k "
+                 "   JOIN pg_namespace n ON k.key_namespace = n.oid "
+                 "   WHERE lower(k.%s) = lower('%s') "
                  "   LIMIT 1), "
                  "'USAGE')",
+                 priv_func, table_name, key_column,
                  escaped_key_name);
     }
 
@@ -254,6 +151,38 @@ tecc_check_dek_permission(const TeccState *state,
     }
 
     return TECC_FETCHER_OK;
+}
+
+/*
+ * tecc_check_kek_permission - 检查KEK权限
+ *
+ * state: TECC状态结构
+ * key_name: KEK名称
+ * key_namespace: 命名空间
+ * 返回: 错误码，TECC_FETCHER_OK表示有权限
+ */
+TeccFetcherErrorCode
+tecc_check_kek_permission(const TeccState *state,
+                          const char *key_name, const char *key_namespace)
+{
+    return tecc_check_key_permission(state, "hg_kek", "kek_name",
+                                     "has_kek_privilege", key_name, key_namespace);
+}
+
+/*
+ * tecc_check_dek_permission - 检查DEK权限
+ *
+ * state: TECC状态结构
+ * key_name: DEK名称
+ * key_namespace: 命名空间
+ * 返回: 错误码，TECC_FETCHER_OK表示有权限
+ */
+TeccFetcherErrorCode
+tecc_check_dek_permission(const TeccState *state,
+                          const char *key_name, const char *key_namespace)
+{
+    return tecc_check_key_permission(state, "hg_dek", "dek_name",
+                                     "has_dek_privilege", key_name, key_namespace);
 }
 
 /*

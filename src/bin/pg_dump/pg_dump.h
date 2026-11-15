@@ -64,6 +64,8 @@ typedef enum
 	DO_OPCLASS,
 	DO_OPFAMILY,
 	DO_COLLATION,
+	DO_KEK,
+	DO_DEK,
 	DO_CONVERSION,
 	DO_TABLE,
 	DO_TABLE_ATTACH,
@@ -337,6 +339,26 @@ typedef struct _collInfo
 	int			collencoding;
 } CollInfo;
 
+typedef struct _kekInfo
+{
+	DumpableObject dobj;
+	char	   *rolname;		/* name of owner, or empty string */
+	int			nargs;
+	char	  **arg_keys;
+	char	  **arg_values;
+} KekInfo;
+
+typedef struct _dekInfo
+{
+	DumpableObject dobj;
+	char	   *rolname;		/* name of owner, or empty string */
+	char	   *kek_name;		/* referenced KEK name */
+	Oid			kek_oid;		/* referenced KEK OID */
+	int			nargs;
+	char	  **arg_keys;
+	char	  **arg_values;
+} DekInfo;
+
 typedef struct _convInfo
 {
 	DumpableObject dobj;
@@ -430,6 +452,10 @@ typedef struct _tableInfo
 	char	  **att_enc_dek_name;	/* DEK name from hg_dek */
 	char	  **att_enc_dek_namespace; /* DEK namespace (schema) from hg_dek */
 	char	  **att_enc_support_algo;	/* algo string e.g. "det,search" */
+	char	  **att_enc_he_add_dek_name;	/* HE_ADD_DEK name from hg_dek */
+	char	  **att_enc_he_add_dek_namespace; /* HE_ADD_DEK namespace from hg_dek */
+	char	  **att_enc_he_mul_dek_name;	/* HE_MUL_DEK name from hg_dek */
+	char	  **att_enc_he_mul_dek_namespace; /* HE_MUL_DEK namespace from hg_dek */
 
 	/*
 	 * Stuff computed only for dumpable tables.

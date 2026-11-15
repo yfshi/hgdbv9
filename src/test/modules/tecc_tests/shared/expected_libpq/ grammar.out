@@ -1532,4 +1532,5 @@ psql:/.../grammar.sql:968: NOTICE:  table "test_kw_case3" does not exist, skippi
 psql:/.../grammar.sql:1006: NOTICE:  table "test_kw_case" does not exist, skipping
 psql:/.../grammar.sql:1007: NOTICE:  table "test_kw_case2" does not exist, skipping
 psql:/.../grammar.sql:1008: NOTICE:  table "test_kw_case3" does not exist, skipping
-psql:/.../grammar.sql:1014: NOTICE:  drop cascades to data encryption key dek_grammar
+psql:/.../grammar.sql:1017: NOTICE:  key encryption key "kek_grammar_schema" does not exist, skipping
+psql:/.../grammar.sql:1054: NOTICE:  drop cascades to data encryption key dek_grammar

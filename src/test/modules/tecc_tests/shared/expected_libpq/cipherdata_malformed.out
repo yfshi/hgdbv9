@@ -1,0 +1,27 @@
+ v1_partial_bytes 
+------------------
+             9028
+(1 row)
+
+ v1_allfour_bytes 
+------------------
+               92
+(1 row)
+
+                 probe                 
+---------------------------------------
+ server survived malformed ciphertexts
+(1 row)
+
+psql:/.../cipherdata_malformed.sql:41: ERROR:  invalid CipherDataType structure
+LINE 1: SELECT pg_column_size('HEX_STR...
+                              ^
+psql:/.../cipherdata_malformed.sql:44: ERROR:  invalid encrypted data: size mismatch
+LINE 1: SELECT pg_column_size('HEX_STR...
+                              ^
+psql:/.../cipherdata_malformed.sql:47: ERROR:  invalid encrypted data: negative segment length
+LINE 1: SELECT pg_column_size('HEX_STR...
+                              ^
+psql:/.../cipherdata_malformed.sql:50: ERROR:  invalid encrypted data: truncated header
+LINE 1: SELECT pg_column_size('HEX_STR...
+                              ^

@@ -1,0 +1,54 @@
+NOTICE: schema "sp1" does not exist, skipping
+DROP SCHEMA
+NOTICE: key encryption key "kek_pub" does not exist, skipping
+DROP KEK
+NOTICE: key encryption key "kek_sp1" does not exist, skipping
+DROP KEK
+NOTICE: data encryption key "dek_sp1" does not exist, skipping
+DROP DEK
+CREATE KEK
+CREATE SCHEMA
+SET SEARCH_PATH
+CREATE KEK
+CREATE DEK
+SET SEARCH_PATH
+CREATE DEK
+SET SEARCH_PATH
+CREATE DEK
+SET SEARCH_PATH
+SET SEARCH_PATH
+CREATE DEK
+SET SEARCH_PATH
+RESET SEARCH_PATH
+CREATE DEK
+BEGIN
+SET SEARCH_PATH
+ROLLBACK
+CREATE DEK
+SET SEARCH_PATH
+SET SEARCH_PATH
+CREATE DEK
+SET SEARCH_PATH
+CREATE TABLE
+SET SEARCH_PATH
+INSERT 0 1
+1|100
+RESET SEARCH_PATH
+NOTICE: drop cascades to 6 other objects
+DROP SCHEMA
+NOTICE: table "t_pub" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "dek_a" does not exist, skipping
+DROP DEK
+NOTICE: data encryption key "dek_b" does not exist, skipping
+DROP DEK
+DROP DEK
+DROP DEK
+DROP DEK
+NOTICE: data encryption key "dek_f" does not exist, skipping
+DROP DEK
+NOTICE: data encryption key "dek_sp1" does not exist, skipping
+DROP DEK
+DROP KEK
+NOTICE: key encryption key "kek_sp1" does not exist, skipping
+DROP KEK

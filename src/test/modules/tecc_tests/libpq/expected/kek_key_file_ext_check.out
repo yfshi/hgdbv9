@@ -1,0 +1,21 @@
+DROP KEK
+DROP KEK
+DROP KEK
+DROP KEK
+CREATE KEK
+kek_ext_sym
+DROP KEK
+psql:/.../kek_key_file_ext_check.sql:22: NOTICE:  key encryption key "kek_ext_sym" does not exist, skipping
+psql:/.../kek_key_file_ext_check.sql:23: NOTICE:  key encryption key "kek_ext_badpriv" does not exist, skipping
+psql:/.../kek_key_file_ext_check.sql:24: NOTICE:  key encryption key "kek_ext_badpub" does not exist, skipping
+psql:/.../kek_key_file_ext_check.sql:25: NOTICE:  key encryption key "kek_ext_nodef" does not exist, skipping
+ERROR: .key extension required for SM4 keys
+ERROR: Failed to setup local KEK
+psql:/.../kek_key_file_ext_check.sql:42: TECC query preprocessing failed: Processor failed to process query
+ERROR: .key extension required for SM4 keys
+ERROR: Failed to setup local KEK
+psql:/.../kek_key_file_ext_check.sql:49: TECC query preprocessing failed: Processor failed to process query
+ERROR: KEY_ALGO omitted (defaults to sm4, which uses .key files);
+       SM2 key file (.priv) requires explicit KEY_ALGO='sm2'
+ERROR: Failed to setup local KEK
+psql:/.../kek_key_file_ext_check.sql:55: TECC query preprocessing failed: Processor failed to process query

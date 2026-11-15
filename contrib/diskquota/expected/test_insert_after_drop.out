@@ -20,6 +20,7 @@ insert into a select generate_series(1,100);
 ERROR:  schema's disk space quota exceeded
 drop extension diskquota;
 select pg_sleep(5);
+select pg_sleep(1);
  pg_sleep 
 ----------
  
@@ -53,6 +54,7 @@ insert into a select generate_series(1,100);
 ERROR:  role's disk space quota exceeded
 drop extension diskquota;
 select pg_sleep(5);
+select pg_sleep(1);
  pg_sleep 
 ----------
  

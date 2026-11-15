@@ -1,0 +1,68 @@
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+CREATE KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE DEK
+=== 1 建表 ===
+CREATE TABLE
+INSERT 0 1
+=== 2.1 Bug 9313: DET 密文 → OPE 列 ===
+=== 2.2 Bug 9313 镜像: OPE 密文 → DET 列 ===
+=== 2.3 Bug 9314: 对称密文 → he-add 列 ===
+=== 2.4 Bug 9314 镜像: 对称密文 → he-mul 列 ===
+=== 2.5 被拒后列值与本列算法能力保持完好 ===
+3|30||
+1
+1
+=== 3.1 同算法跨表赋值（子查询 / FROM） ===
+CREATE TABLE
+INSERT 0 1
+UPDATE 1
+UPDATE 1
+3|30
+1
+=== 3.2 常量写入 ===
+UPDATE 1
+INSERT 0 1
+1
+=== 3.3 同态结果回写纯 HE 列 ===
+CREATE TABLE
+INSERT 0 1
+UPDATE 1
+UPDATE 1
+14
+14|10
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+psql:/.../enc_assign_algo_mismatch.sql:42: NOTICE:  table "eam_t" does not exist, skipping
+psql:/.../enc_assign_algo_mismatch.sql:42: NOTICE:  table "eam_ref" does not exist, skipping
+psql:/.../enc_assign_algo_mismatch.sql:42: NOTICE:  table "eam_he" does not exist, skipping
+psql:/.../enc_assign_algo_mismatch.sql:43: NOTICE:  data encryption key "eam_d" does not exist, skipping
+psql:/.../enc_assign_algo_mismatch.sql:44: NOTICE:  data encryption key "eam_add" does not exist, skipping
+psql:/.../enc_assign_algo_mismatch.sql:45: NOTICE:  data encryption key "eam_mul" does not exist, skipping
+psql:/.../enc_assign_algo_mismatch.sql:46: NOTICE:  key encryption key "eam_ksym" does not exist, skipping
+psql:/.../enc_assign_algo_mismatch.sql:47: NOTICE:  key encryption key "eam_khe" does not exist, skipping
+psql:/.../enc_assign_algo_mismatch.sql:87: ERROR:  cannot store ciphertext missing the OPE segment into column "ope"
+DETAIL:  The column is declared with support_algo 'ope', but the assigned value carries no OPE ciphertext.
+HINT:  Assign a value encrypted for this column's algorithms (for example from a column with the same support_algo), or adjust the column's support_algo.
+psql:/.../enc_assign_algo_mismatch.sql:90: ERROR:  cannot store ciphertext missing the DET segment into column "det"
+DETAIL:  The column is declared with support_algo 'det', but the assigned value carries no DET ciphertext.
+HINT:  Assign a value encrypted for this column's algorithms (for example from a column with the same support_algo), or adjust the column's support_algo.
+psql:/.../enc_assign_algo_mismatch.sql:93: ERROR:  cannot store ciphertext missing the he-add segment into column "addc"
+DETAIL:  The column is declared with support_algo 'he-add', but the assigned value carries no he-add ciphertext.
+HINT:  Assign a value encrypted for this column's algorithms (for example from a column with the same support_algo), or adjust the column's support_algo.
+psql:/.../enc_assign_algo_mismatch.sql:96: ERROR:  cannot store ciphertext missing the he-mul segment into column "mulc"
+DETAIL:  The column is declared with support_algo 'he-mul', but the assigned value carries no he-mul ciphertext.
+HINT:  Assign a value encrypted for this column's algorithms (for example from a column with the same support_algo), or adjust the column's support_algo.

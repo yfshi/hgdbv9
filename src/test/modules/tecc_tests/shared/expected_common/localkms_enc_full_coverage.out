@@ -1,0 +1,664 @@
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+=== Part 2.1: 创建全覆盖表 ===
+(1 row)
+CREATE TABLE
+=== Part 2.2: 创建DET专项表 ===
+(1 row)
+CREATE TABLE
+=== Part 2.3: 创建OPE专项表 ===
+(1 row)
+CREATE TABLE
+=== Part 2.4: 创建SEARCH专项表 ===
+(1 row)
+CREATE TABLE
+=== Part 2.5: 创建DEFAULT值测试表 ===
+(1 row)
+CREATE TABLE
+=== Part 3.1: 全覆盖表单行INSERT ===
+(1 row)
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+=== Part 3.2: 全覆盖表多行INSERT ===
+(1 row)
+INSERT 0 5
+=== Part 3.3: 全覆盖表省略列名多行INSERT ===
+(1 row)
+INSERT 0 2
+=== Part 3.4: DET专项表INSERT ===
+(1 row)
+INSERT 0 1
+INSERT 0 1
+INSERT 0 3
+=== Part 3.5: OPE专项表INSERT ===
+(1 row)
+INSERT 0 1
+INSERT 0 1
+INSERT 0 5
+=== Part 3.6: SEARCH专项表INSERT ===
+(1 row)
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+=== Part 3.7: NULL和边界值INSERT ===
+(1 row)
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+=== Part 3.8: DEFAULT值表INSERT ===
+(1 row)
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+=== Part 4.1: 全表解密 SELECT * ===
+(1 row)
+1|1|100|10000|1.5|3.14|999.99|Alice|ENGINEER|Software Engineer Alice|row1
+(1 row)
+1|1|100|10000|1.5|3.14|999.99|Alice|ENGINEER|Software Engineer Alice|row1
+2|2|200|20000|2.5|2.71|500.50|Bob|MANAGER|Product Manager Bob|row2
+3|3|300|30000|3.5|1.41|0.01|Charlie|ANALYST|Data Analyst Charlie|row3
+4|10|1000|100000|10.1|10.01|111.11|Diana|DESIGNER|UX Designer Diana|row4
+5|20|2000|200000|20.2|20.02|222.22|Eve|DEVOPS|DevOps Eve|row5
+6|30|3000|300000|30.3|30.03|333.33|Frank|TESTER|QA Tester Frank|row6
+7|40|4000|400000|40.4|40.04|444.44|Grace|ARCHITECT|Architect Grace|row7
+8|50|5000|500000|50.5|50.05|555.55|Henry|DBA|Database Admin Henry|row8
+9|60|6000|600000|60.6|60.06|666.66|Ivan|SRE|SRE Ivan|row9
+10|70|7000|700000|70.7|70.07|777.77|Julia|SUPPORT|Support Julia|row10
+11||||||||||null_row
+12||-2147483648|||||min_int||INT_MIN boundary test|boundary_min
+13||2147483647|||||max_int||INT_MAX boundary test|boundary_max
+14||-1|||||neg_one||Negative one|boundary_neg1
+15||0|||||zero||Zero value|boundary_zero
+16||1|||||one||One value|boundary_one
+(16 rows)
+=== Part 4.2: DET等值查询 ===
+(1 row)
+DET: int2 = 11
+(1 row)
+det_r1
+(1 row)
+DET: int4 = 222
+(1 row)
+det_r2
+(1 row)
+DET: int8 = 3333
+(1 row)
+det_r3
+(1 row)
+DET: float4 = 44.4
+(1 row)
+det_r4
+(1 row)
+DET: float8 = 55.55
+(1 row)
+det_r5
+(1 row)
+DET: numeric = 22.222
+(1 row)
+det_r2
+(1 row)
+DET: varchar = 'alpha'
+(1 row)
+det_r1
+det_r4
+(2 rows)
+DET: bpchar = 'C3'
+(1 row)
+det_r3
+(1 row)
+DET: text = 'DET text delta'
+(1 row)
+det_r5
+(1 row)
+=== Part 4.3: DET IN 多值匹配 ===
+(1 row)
+DET: det_i4 IN (111, 333, 555)
+(1 row)
+det_r1|111
+det_r3|333
+det_r5|555
+(3 rows)
+DET: det_vc IN ('alpha', 'gamma')
+(1 row)
+det_r1|alpha
+det_r3|gamma
+det_r4|alpha
+(3 rows)
+=== Part 4.4: DET不等值查询 ===
+(1 row)
+DET: det_i4 <> 222
+(1 row)
+det_r1|111
+det_r3|333
+det_r4|444
+det_r5|555
+(4 rows)
+DET: det_vc != 'beta'
+(1 row)
+det_r1|alpha
+det_r3|gamma
+det_r4|alpha
+det_r5|delta
+(4 rows)
+=== Part 4.5: DET AND组合条件 ===
+(1 row)
+DET: det_i4 = 111 AND det_vc = 'alpha'
+(1 row)
+det_r1
+(1 row)
+DET: det_i2 = 44 AND det_txt = 'DET text alpha2'
+(1 row)
+det_r4
+(1 row)
+=== Part 4.6: DET OR条件 ===
+(1 row)
+DET: det_vc = 'alpha' OR det_vc = 'gamma'
+(1 row)
+det_r1|alpha
+det_r3|gamma
+det_r4|alpha
+(3 rows)
+=== Part 4.7: OPE范围查询 ===
+(1 row)
+OPE: ope_i2 > 10
+(1 row)
+20
+30
+40
+50
+(4 rows)
+OPE: ope_i2 < 0
+(1 row)
+-50
+(1 row)
+OPE: ope_i2 >= 20
+(1 row)
+20
+30
+40
+50
+(4 rows)
+OPE: ope_i2 <= 10
+(1 row)
+-50
+0
+10
+(3 rows)
+OPE: ope_i4 > 200
+(1 row)
+300
+400
+500
+(3 rows)
+OPE: ope_i4 < 200
+(1 row)
+-500
+0
+100
+(3 rows)
+OPE: ope_i8 >= 3000
+(1 row)
+3000
+4000
+5000
+(3 rows)
+OPE: ope_i8 <= 1000
+(1 row)
+-5000
+0
+1000
+(3 rows)
+OPE: ope_f4 > 20.5
+(1 row)
+30.5
+40.5
+50.5
+(3 rows)
+OPE: ope_f8 >= 300.5
+(1 row)
+300.5
+400.5
+500.5
+(3 rows)
+OPE: ope_num < 200.55
+(1 row)
+-555.55
+0.0
+100.55
+(3 rows)
+OPE: ope_vc > 'CCC'
+(1 row)
+DDD
+EEE
+FFF
+GGG
+(4 rows)
+OPE: ope_vc >= 'EEE'
+(1 row)
+EEE
+FFF
+GGG
+(3 rows)
+OPE: ope_txt >= 'ope_medium'
+(1 row)
+ope_medium
+ope_minus
+ope_small
+ope_xlarge
+ope_zero
+(5 rows)
+=== Part 4.8: OPE BETWEEN 范围查询 ===
+(1 row)
+OPE: ope_i4 BETWEEN 100 AND 400
+(1 row)
+100
+200
+300
+400
+(4 rows)
+OPE: ope_f8 BETWEEN 100.5 AND 400.5
+(1 row)
+100.5
+200.5
+300.5
+400.5
+(4 rows)
+OPE: ope_vc BETWEEN 'BBB' AND 'EEE'
+(1 row)
+BBB
+CCC
+DDD
+EEE
+(4 rows)
+=== Part 4.9: OPE ORDER BY 保序验证 ===
+(1 row)
+OPE: ORDER BY ope_i4 ASC
+(1 row)
+-500
+0
+100
+200
+300
+400
+500
+(7 rows)
+OPE: ORDER BY ope_i4 DESC
+(1 row)
+500
+400
+300
+200
+100
+0
+-500
+(7 rows)
+OPE: ORDER BY ope_f8 ASC
+(1 row)
+-500.5
+0
+100.5
+200.5
+300.5
+400.5
+500.5
+(7 rows)
+OPE: ORDER BY ope_f8 DESC
+(1 row)
+500.5
+400.5
+300.5
+200.5
+100.5
+0
+-500.5
+(7 rows)
+OPE: ORDER BY ope_num ASC
+(1 row)
+-555.55
+0.0
+100.55
+200.55
+300.55
+400.55
+500.55
+(7 rows)
+OPE: ORDER BY ope_vc ASC
+(1 row)
+AAA
+BBB
+CCC
+DDD
+EEE
+FFF
+GGG
+(7 rows)
+OPE: ORDER BY ope_vc DESC
+(1 row)
+GGG
+FFF
+EEE
+DDD
+CCC
+BBB
+AAA
+(7 rows)
+OPE: ORDER BY ope_txt ASC
+(1 row)
+ope_large
+ope_max
+ope_medium
+ope_minus
+ope_small
+ope_xlarge
+ope_zero
+(7 rows)
+=== Part 4.10: OPE范围 + ORDER BY 组合 ===
+(1 row)
+OPE: ope_i4 > 100 ORDER BY ope_i4 DESC
+(1 row)
+500
+400
+300
+200
+(4 rows)
+OPE: ope_f8 BETWEEN 0 AND 400 ORDER BY ope_f8 ASC
+(1 row)
+0
+100.5
+200.5
+300.5
+(4 rows)
+=== Part 4.11: SEARCH LIKE 包含匹配 ===
+(1 row)
+SEARCH: LIKE '%eng%'
+(1 row)
+Alice Wang is a software engineer
+David Liu is a DevOps engineer
+(2 rows)
+SEARCH: LIKE '%manager%'
+(1 row)
+Bob Chen is a product manager
+(1 row)
+SEARCH: LIKE 'Alice%'
+(1 row)
+Alice Wang
+(1 row)
+SEARCH: LIKE 'Bob%'
+(1 row)
+Bob Chen is a product manager
+(1 row)
+SEARCH: LIKE '%test.com'
+(1 row)
+alice@test.com
+charlie@test.com
+eve@test.com
+(3 rows)
+SEARCH: LIKE '%engineer'
+(1 row)
+Alice Wang is a software engineer
+David Liu is a DevOps engineer
+(2 rows)
+SEARCH: srch_vc LIKE '%Zhang%'
+(1 row)
+Charlie Zhang
+(1 row)
+SEARCH: srch_bp LIKE '%example%'
+(1 row)
+bob@example.org
+(1 row)
+=== Part 4.12: SEARCH NOT LIKE ===
+(1 row)
+SEARCH: srch_txt NOT LIKE '%engineer%'
+(1 row)
+Bob Chen is a product manager
+Charlie Zhang is a data analyst
+Eve Zhao is a QA tester
+(3 rows)
+SEARCH: srch_vc NOT LIKE '%Zhao%'
+(1 row)
+Alice Wang
+Bob Chen
+Charlie Zhang
+David Liu
+(4 rows)
+=== Part 4.13: SEARCH LIKE + AND 组合 ===
+(1 row)
+SEARCH: srch_txt LIKE '%is a%' AND srch_bp LIKE '%test.com%'
+(1 row)
+Alice Wang
+Charlie Zhang
+Eve Zhao
+(3 rows)
+=== Part 4.14: 密态列 + 普通列 组合条件 ===
+(1 row)
+MIXED: tag = 'row1' AND c_vc_det = 'Alice'
+(1 row)
+row1|Alice
+(1 row)
+MIXED: c_f8_ope > 10 AND tag LIKE 'row%'
+(1 row)
+row4|10.01
+row5|20.02
+row6|30.03
+row7|40.04
+row8|50.05
+row9|60.06
+row10|70.07
+(7 rows)
+=== Part 4.15: NULL值查询 ===
+(1 row)
+NULL: c_int4 IS NULL
+(1 row)
+null_row|
+(1 row)
+NULL: c_vc_det IS NOT NULL AND c_int4 IS NULL
+(1 row)
+(0 rows)
+=== Part 4.16: 边界值查询 ===
+(1 row)
+BOUNDARY: tag = 'boundary_min'
+(1 row)
+boundary_min|-2147483648
+(1 row)
+BOUNDARY: tag = 'boundary_max'
+(1 row)
+boundary_max|2147483647
+(1 row)
+BOUNDARY: tag = 'boundary_zero'
+(1 row)
+boundary_zero|0
+(1 row)
+BOUNDARY: tag = 'boundary_neg1'
+(1 row)
+boundary_neg1|-1
+(1 row)
+=== Part 4.17: DEFAULT值验证 ===
+(1 row)
+DEFAULT: 全部默认值
+(1 row)
+1|100|hello_default|default_text|all defaults
+(1 row)
+DEFAULT: 全部显式值
+(1 row)
+2|200|explicit_val|explicit_text|explicit all
+(1 row)
+DEFAULT: 部分默认
+(1 row)
+3|100|hello_default|only_text_set|partial default
+(1 row)
+DEFAULT: 等值查询 def_i4 = 100
+(1 row)
+1|100
+3|100
+(2 rows)
+DEFAULT: LIKE查询 def_txt LIKE '%default%'
+(1 row)
+1|default_text
+(1 row)
+=== Part 4.18: 聚合函数查询 ===
+(1 row)
+AGG: COUNT(*)
+(1 row)
+16
+(1 row)
+AGG: COUNT(c_int4)
+(1 row)
+15
+(1 row)
+AGG: MIN/MAX OPE
+(1 row)
+-500|500
+(1 row)
+=== Part 4.19: DET JOIN ===
+(1 row)
+DET JOIN: a.det_vc = b.det_vc
+(1 row)
+det_r1|det_r1
+det_r1|det_r4
+(2 rows)
+=== Part 4.20: 子查询 ===
+(1 row)
+SUBQUERY: WHERE c_vc_det IN (SELECT det_vc FROM localkms_det_tbl WHERE det_i4 = 111)
+(1 row)
+(0 rows)
+=== Part 5.1: UPDATE by plaintext condition ===
+(1 row)
+UPDATE 1
+row1|Alice_Updated
+(1 row)
+=== Part 5.2: UPDATE by DET condition ===
+(1 row)
+UPDATE 1
+det_r1|alpha_modified
+(1 row)
+=== Part 5.3: UPDATE by OPE range ===
+(1 row)
+UPDATE 2
+400|ope_updated
+500|ope_updated
+(2 rows)
+=== Part 5.4: UPDATE by SEARCH LIKE ===
+(1 row)
+UPDATE 2
+Alice Wang|srch_updated
+David Liu|srch_updated
+(2 rows)
+=== Part 5.5: UPDATE 多列 ===
+(1 row)
+UPDATE 1
+row5|99999|99.99|multi_update_test
+(1 row)
+=== Part 6.1: DELETE by plaintext ===
+(1 row)
+INSERT 0 1
+DELETE 1
+DELETE plaintext: row deleted, count check
+(1 row)
+0
+(1 row)
+=== Part 6.2: DELETE by DET ===
+(1 row)
+INSERT 0 1
+DELETE 1
+DELETE DET: row deleted, count check
+(1 row)
+0
+(1 row)
+=== Part 6.3: DELETE by OPE range ===
+(1 row)
+INSERT 0 1
+DELETE 1
+DELETE OPE: rows > 500 deleted
+(1 row)
+0
+(1 row)
+=== Part 6.4: DELETE by SEARCH LIKE ===
+(1 row)
+INSERT 0 1
+DELETE 1
+DELETE SEARCH: row deleted by LIKE
+(1 row)
+0
+(1 row)
+=== Part 7: 最终全表验证 ===
+(1 row)
+All enc table final state
+(1 row)
+1|row1
+2|row2
+3|row3
+4|row4
+5|row5
+6|row6
+7|row7
+8|row8
+9|row9
+10|row10
+11|null_row
+12|boundary_min
+13|boundary_max
+14|boundary_neg1
+15|boundary_zero
+16|boundary_one
+(16 rows)
+DET table final state
+(1 row)
+1|det_r1|alpha_modified
+2|det_r2|beta
+3|det_r3|gamma
+4|det_r4|alpha
+5|det_r5|delta
+(5 rows)
+OPE table final state
+(1 row)
+1|-500|ope_r1
+2|0|ope_r2
+3|100|ope_r3
+4|200|ope_r4
+5|300|ope_r5
+6|400|ope_updated
+7|500|ope_updated
+(7 rows)
+SEARCH table final state
+(1 row)
+1|Alice Wang|srch_updated
+2|Bob Chen|srch_r2
+3|Charlie Zhang|srch_r3
+4|David Liu|srch_updated
+5|Eve Zhao|srch_r5
+(5 rows)
+DEFAULT table final state
+(1 row)
+1|100|hello_default|default_text|all defaults
+2|200|explicit_val|explicit_text|explicit all
+3|100|hello_default|only_text_set|partial default
+(3 rows)
+=== Part 8: 清理 ===
+(1 row)
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+NOTICE: table "localkms_all_enc" does not exist, skipping
+NOTICE: table "localkms_det_tbl" does not exist, skipping
+NOTICE: table "localkms_ope_tbl" does not exist, skipping
+NOTICE: table "localkms_search_tbl" does not exist, skipping
+NOTICE: table "localkms_default_tbl" does not exist, skipping
+NOTICE: data encryption key "localkms_dek" does not exist, skipping
+NOTICE: key encryption key "localkms_kek" does not exist, skipping

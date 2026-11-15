@@ -47,6 +47,7 @@
    &alterFunction;
    &alterGroup;
    &alterIndex;
+   &alterKek;
    &alterLanguage;
    &alterLargeObject;
    &alterMaterializedView;

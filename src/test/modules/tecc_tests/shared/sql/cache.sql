@@ -146,6 +146,61 @@ REVOKE ALL ON SCHEMA public FROM test_noperm_user;
 DROP USER IF EXISTS test_noperm_user;
 
 -- ============================================================
+-- update_meta() 手动刷新元数据缓存测试（ReqID:TECC4.0）
+-- ============================================================
+SELECT '=== update_meta mark 置位测试 ===';
+-- 先清 mark，确保初始状态为 false
+SELECT hg_clear_kek_mark(), hg_clear_dek_mark(), hg_clear_column_mark();
+-- 初始 mark 应为 false
+SELECT '5a_mark_before', hg_is_kek_updated() AS kek, hg_is_dek_updated() AS dek, hg_is_column_updated() AS col;
+-- 执行 update_meta：服务端广播 invalidation，各后端 mark 置 true
+SELECT update_meta();
+-- mark 应置 true
+SELECT '5c_mark_after', hg_is_kek_updated() AS kek, hg_is_dek_updated() AS dek, hg_is_column_updated() AS col;
+-- 清 mark，避免影响后续用例
+SELECT hg_clear_kek_mark(), hg_clear_dek_mark(), hg_clear_column_mark();
+
+-- ============================================================
+-- 6. Bug 9155 — Failed CREATE TABLE stale cache sentinel
+--    After a failed CREATE TABLE (wrong DEK), a subsequent
+--    successful CREATE TABLE + INSERT must still encrypt.
+-- ============================================================
+SELECT '=== 6 Bug 9155 Stale Cache Sentinel ===';
+
+CREATE SCHEMA IF NOT EXISTS sch_bug9155;
+
+-- Step 1: CREATE TABLE with wrong DEK — TECC reports error but backend
+-- may still create the relation. Drop to clean state.
+SELECT '6a_wrong_dek_err';
+CREATE TABLE sch_bug9155.t_base(
+    id int,
+    col_det text_enc encrypted with (dek = dek_cache2, support_algo = 'det')
+);
+DROP TABLE IF EXISTS sch_bug9155.t_base CASCADE;
+
+-- Step 2: INSERT into non-existent table — should fail
+SELECT '6b_insert_no_table_err';
+INSERT INTO sch_bug9155.t_base(id, col_det) VALUES (1, 'test1');
+
+-- Step 3: CREATE TABLE with correct DEK — should succeed
+SELECT '6c_correct_dek_ok';
+CREATE TABLE sch_bug9155.t_base(
+    id int,
+    col_det text_enc encrypted with (dek = dek_cache, support_algo = 'det')
+);
+
+-- Step 4: INSERT — must encrypt successfully (was 'invalid hex string' before fix)
+SELECT '6d_insert_ok';
+INSERT INTO sch_bug9155.t_base(id, col_det) VALUES (1, 'test1'), (2, 'test2');
+
+-- Step 5: Verify data round-trips correctly
+SELECT '6e_select', id, col_det FROM sch_bug9155.t_base ORDER BY id;
+
+-- Cleanup
+DROP TABLE IF EXISTS sch_bug9155.t_base CASCADE;
+DROP SCHEMA IF EXISTS sch_bug9155 CASCADE;
+
+-- ============================================================
 -- Cleanup
 -- ============================================================
 SELECT '=== Cleanup ===';

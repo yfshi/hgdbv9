@@ -1,0 +1,37 @@
+=== 0 准备：sm2 KEK + he-add DEK + 纯 HE 表，导出还原脚本 ===
+NOTICE:  database "tecc_rp_src" does not exist, skipping
+NOTICE:  database "tecc_rp_dst_nopub" does not exist, skipping
+NOTICE:  database "tecc_rp_dst_ok" does not exist, skipping
+=== 1 目标目录只有 .priv → 还原必须失败 ===
+SET
+SET
+SET
+SET
+SET
+ set_config 
+------------
+ 
+(1 row)
+
+SET
+SET
+SET
+SET
+ERROR: public key file not found: kek_rp.pub
+HINT: tecc_ktool generate generates both .priv and .pub
+HINT: Restore requires .priv and .pub in the same directory
+ERROR: CREATE KEK restore aborted: key file(s) missing or invalid
+psql:/.../tecc_rp_dump.sql:31: TECC query preprocessing failed: Processor failed to process query
+psql rc=3
+目标库里没有建出 KEK（0 = 正确）：
+0
+=== 2 对照组：.priv + .pub 齐备 → 还原成功 ===
+ set_config 
+------------
+ 
+(1 row)
+
+psql rc=0
+目标库里 KEK 已建出（1 = 正确）：
+1
+=== 99 CLEANUP ===

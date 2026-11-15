@@ -1,0 +1,260 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+          ?column?          
+----------------------------
+ === 1 CREATE KEK (old) ===
+(1 row)
+
+CREATE KEK
+       ?column?       
+----------------------
+ === 2 CREATE DEK ===
+(1 row)
+
+CREATE DEK
+            ?column?             
+---------------------------------
+ === 3 CREATE TABLE + INSERT ===
+(1 row)
+
+CREATE TABLE
+INSERT 0 3
+        ?column?        
+------------------------
+ === 4 BEFORE ALTER ===
+(1 row)
+
+ id |  name   | age 
+----+---------+-----
+  1 | Alice   | 30
+  2 | Bob     | 25
+  3 | Charlie | 35
+(3 rows)
+
+      ?column?       
+---------------------
+ === 5 ALTER KEK ===
+(1 row)
+
+ hg_kek_rotate_dek_arg 
+-----------------------
+ 
+(1 row)
+
+             ?column?             
+----------------------------------
+ === 6 AFTER ALTER (old data) ===
+(1 row)
+
+ id |  name   | age 
+----+---------+-----
+  1 | Alice   | 30
+  2 | Bob     | 25
+  3 | Charlie | 35
+(3 rows)
+
+         ?column?          
+---------------------------
+ === 7 INSERT new data ===
+(1 row)
+
+INSERT 0 2
+      ?column?      
+--------------------
+ === 8 ALL data ===
+(1 row)
+
+ id |  name   | age 
+----+---------+-----
+  1 | Alice   | 30
+  2 | Bob     | 25
+  3 | Charlie | 35
+  4 | Diana   | 28
+  5 | Eve     | 22
+(5 rows)
+
+     ?column?     
+------------------
+ === 9 SEARCH ===
+(1 row)
+
+ id | name  | age 
+----+-------+-----
+  1 | Alice | 30
+(1 row)
+
+       ?column?       
+----------------------
+ === 10 OPE range ===
+(1 row)
+
+ id |  name   | age 
+----+---------+-----
+  4 | Diana   | 28
+  1 | Alice   | 30
+  3 | Charlie | 35
+(3 rows)
+
+DROP TABLE
+DROP DEK
+DROP KEK
+               ?column?               
+--------------------------------------
+ === 11 CREATE asym KEK + sym DEK ===
+(1 row)
+
+CREATE KEK
+CREATE DEK
+             ?column?              
+-----------------------------------
+ === 12 envelope length assert ===
+(1 row)
+
+ is_envelope 
+-------------
+ t
+(1 row)
+
+                  ?column?                   
+---------------------------------------------
+ === 13 CREATE TABLE + INSERT (envelope) ===
+(1 row)
+
+CREATE TABLE
+INSERT 0 3
+ id | name  
+----+-------
+  1 | Eve
+  2 | Frank
+  3 | Grace
+(3 rows)
+
+                  ?column?                  
+--------------------------------------------
+ === 14 ALTER KEK (envelope re-encrypt) ===
+(1 row)
+
+ hg_kek_rotate_kek_arg 
+-----------------------
+ 
+(1 row)
+
+             ?column?              
+-----------------------------------
+ === 15 AFTER ALTER (envelope) ===
+(1 row)
+
+ id | name  
+----+-------
+  1 | Eve
+  2 | Frank
+  3 | Grace
+(3 rows)
+
+INSERT 0 1
+ id | name  
+----+-------
+  1 | Eve
+  2 | Frank
+  3 | Grace
+  4 | Hank
+(4 rows)
+
+                       ?column?                        
+-------------------------------------------------------
+ === 16 PUBLIC_KEY updated (HE DEK after rotation) ===
+(1 row)
+
+ pub_len_ok 
+------------
+ t
+(1 row)
+
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+ id | i4_a 
+----+------
+  1 | 100
+  2 | 200
+(2 rows)
+
+                 ?column?                  
+-------------------------------------------
+ === 17 ALTER KEK privilege (Bug 9255) ===
+(1 row)
+
+DROP ROLE
+CREATE ROLE
+GRANT
+SET
+RESET
+GRANT
+SET
+ hg_kek_rotate_dek_arg 
+-----------------------
+ 
+(1 row)
+
+RESET
+ id |  name   | age 
+----+---------+-----
+  1 | Alice   | 30
+  2 | Bob     | 25
+  3 | Charlie | 35
+  4 | Diana   | 28
+  5 | Eve     | 22
+(5 rows)
+
+SET
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+ id |   v    
+----+--------
+  1 | owner1
+  2 | owner2
+(2 rows)
+
+ hg_kek_rotate_dek_arg 
+-----------------------
+ 
+(1 row)
+
+ id |   v    
+----+--------
+  1 | owner1
+  2 | owner2
+(2 rows)
+
+RESET
+      ?column?      
+--------------------
+ === 99 CLEANUP ===
+(1 row)
+
+DROP TABLE
+DROP DEK
+DROP KEK
+REVOKE
+REVOKE
+DROP ROLE
+DROP TABLE
+DROP DEK
+DROP KEK
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+psql:/.../alter_kek.sql:16: NOTICE:  table "rot_test" does not exist, skipping
+psql:/.../alter_kek.sql:17: NOTICE:  data encryption key "dek_rotate" does not exist, skipping
+psql:/.../alter_kek.sql:18: NOTICE:  key encryption key "kek_rotate" does not exist, skipping
+psql:/.../alter_kek.sql:114: NOTICE:  table "env_test" does not exist, skipping
+psql:/.../alter_kek.sql:115: NOTICE:  data encryption key "dek_env" does not exist, skipping
+psql:/.../alter_kek.sql:116: NOTICE:  key encryption key "kek_env" does not exist, skipping
+psql:/.../alter_kek.sql:222: NOTICE:  role "u_rot" does not exist, skipping
+psql:/.../alter_kek.sql:228: ERROR:  permission denied for key encryption key kek_rotate

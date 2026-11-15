@@ -1,0 +1,138 @@
+DROP VIEW
+DROP MATERIALIZED VIEW
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 3
+=== 1 普通视图: 定义中 WHERE 密态列 ===
+(1 row)
+CREATE VIEW
+1|Alice
+(1 row)
+=== 2 普通视图: 查询时追加过滤 ===
+(1 row)
+1|Alice
+(1 row)
+(0 rows)
+=== 3 普通视图: OR REPLACE / 列名列表 ===
+(1 row)
+CREATE VIEW
+2|Bob
+(1 row)
+CREATE VIEW
+3|Charlie
+(1 row)
+=== 3.1 Bug 9153: OR REPLACE 追加密态列 ===
+(1 row)
+CREATE TABLE
+INSERT 0 2
+CREATE VIEW
+2
+(1 row)
+CREATE VIEW
+1|10
+2|20
+(2 rows)
+DROP VIEW
+CREATE VIEW
+1|Alice
+(1 row)
+CREATE VIEW
+1|Alice|10
+2|Bob|20
+(2 rows)
+DROP VIEW
+DROP TABLE
+=== 4 普通视图: 无加密列 ===
+(1 row)
+CREATE VIEW
+1
+(1 row)
+=== 5 普通视图: 边界报错 ===
+(1 row)
+=== 6 物化视图: 定义中 WHERE 密态列 ===
+(1 row)
+SELECT 1
+1|Alice
+(1 row)
+=== 7 物化视图: 元数据继承 ===
+(1 row)
+name|dek_ev|1
+(1 row)
+=== 7.1 一列多 DEK: 视图读取 ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+c|dek_ev|dek_ev_he|dek_ev_hm
+(1 row)
+2
+(1 row)
+SELECT 1
+DROP TABLE
+0
+(1 row)
+=== 8 物化视图: REFRESH 同步 ===
+(1 row)
+SELECT 2
+2|Bob
+3|Charlie
+(2 rows)
+INSERT 0 1
+REFRESH MATERIALIZED VIEW
+2|Bob
+3|Charlie
+4|David
+(3 rows)
+name|dek_ev
+(1 row)
+=== 9 物化视图: WITH NO DATA ===
+(1 row)
+CREATE MATERIALIZED VIEW
+REFRESH MATERIALIZED VIEW
+3|Charlie
+4|David
+(2 rows)
+=== 10 物化视图: 查询时追加过滤 ===
+(1 row)
+2|Bob
+(1 row)
+=== 11 物化视图: 边界报错 ===
+(1 row)
+DROP MATERIALIZED VIEW
+DROP TABLE
+DROP DEK
+DROP KEK
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+NOTICE: view "v_enc" does not exist, skipping
+NOTICE: view "v_enc2" does not exist, skipping
+NOTICE: view "v_plain" does not exist, skipping
+NOTICE: materialized view "mv_enc" does not exist, skipping
+NOTICE: materialized view "mv_enc2" does not exist, skipping
+NOTICE: materialized view "mv_empty" does not exist, skipping
+NOTICE: table "ev_base" does not exist, skipping
+NOTICE: data encryption key "dek_ev" does not exist, skipping
+NOTICE: key encryption key "kek_ev" does not exist, skipping
+TECC ERROR: Operator||not compatible with encrypted columns
+psql:/.../encrypted_view.sql:123: TECC query preprocessing failed: Operator in SELECT expression is not supported with encrypted columns
+psql:/.../encrypted_view.sql:127: TECC query preprocessing failed: ORDER BY column "name" requires OPE (order-preserving encryption) but the column is not configured with OPE. Please include 'ope' in support_algo.
+NOTICE: table "ev_multi" does not exist, skipping
+ERROR: materialized view "mv_empty" has not been populated
+HINT:  Use the REFRESH MATERIALIZED VIEW command.
+TECC ERROR: Operator||not compatible with encrypted columns
+psql:/.../encrypted_view.sql:225: TECC query preprocessing failed: Operator in SELECT expression is not supported with encrypted columns
+ERROR: cannot compare encrypted values for ordering: no OPE ciphertext available
+ERROR: view "v_order" does not exist
+NOTICE: drop cascades to 2 other objects
+DETAIL:  drop cascades to view v_enc
+drop cascades to view v_enc2

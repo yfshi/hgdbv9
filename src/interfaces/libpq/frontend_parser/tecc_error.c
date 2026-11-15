@@ -1,4 +1,4 @@
-﻿/*
+/*
  * TECC前端解析器错误处理机制
  * 严格按照详细设计文档第4章要求实现
  * 支持处理器模块的错误处理需求
@@ -17,13 +17,6 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
-
-/* Portability: MSVC does not support __attribute__((unused)) */
-#ifdef _MSC_VER
-#define TECC_ATTR_UNUSED
-#else
-#define TECC_ATTR_UNUSED __attribute__((unused))
-#endif
 
 /* 线程局部存储宏定义 - 与tecc_parser.c保持一致
  * 在支持__thread的编译器（GCC/Clang）中使用__thread
@@ -394,20 +387,6 @@ static ParserError *create_parser_error_internal(int error_code,
     error->next = NULL;
 
     return error;
-}
-
-/* 格式化错误详情 */
-TECC_ATTR_UNUSED static char *format_error_detail(const char *format, ...) {
-    /* ReqID:TECC4.0 - Fix C90 mixed declaration warning */
-    char buffer[1024];
-    va_list args;
-
-    if (!format) return NULL;
-    va_start(args, format);
-    vsnprintf(buffer, sizeof(buffer), format, args);
-    va_end(args);
-
-    return tecc_pstrdup(buffer);
 }
 
 /* 调用错误处理器 */

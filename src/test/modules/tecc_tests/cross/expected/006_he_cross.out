@@ -1,0 +1,21 @@
+NOTICE: table "he_cross_t" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "he_cross_add" does not exist, skipping
+DROP DEK
+NOTICE: data encryption key "he_cross_mul" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "kek_he_cross" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+=== 006 HE CROSS: 写入侧轮询解密 ===
+1|10|2|1000
+2|100|5|2000
+3|0|0|0
+4|-5|-3|-100

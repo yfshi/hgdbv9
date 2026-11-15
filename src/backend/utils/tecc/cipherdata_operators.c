@@ -40,6 +40,33 @@
  */
 
 /*
+ * cipherdata_check_dek_consistency
+ *		Reject comparing cipherdata values encrypted with different DEKs.
+ *
+ *		Comparing ciphertexts produced under different DEKs is meaningless
+ *		(the ciphertexts are incomparable) and would silently return wrong
+ *		results -- e.g. an equality JOIN on columns with different DEKs
+ *		returns no rows instead of an error.  We therefore reject any such
+ *		comparison explicitly with ERRCODE_TECC_DEK_MISMATCH.
+ *
+ *		Float sentinels (RANGE partition boundaries, see
+ *		CIPHERDATA_IS_FLOAT_SENTINEL) are synthetic values with no real
+ *		DEK identity, so they are skipped.
+ */
+static void
+cipherdata_check_dek_consistency(const void *left, const void *right)
+{
+	/* Float sentinels are synthetic partition boundaries, no DEK to compare */
+	if (CIPHERDATA_IS_FLOAT_SENTINEL(left) || CIPHERDATA_IS_FLOAT_SENTINEL(right))
+		return;
+
+	if (CIPHERDATA_DEK_DIST_OID(left) != CIPHERDATA_DEK_DIST_OID(right))
+		ereport(ERROR,
+				(errcode(ERRCODE_TECC_DEK_MISMATCH),
+				 errmsg("cannot compare encrypted values with different DEKs")));
+}
+
+/*
  * Helper function to compare two CipherDataType structures.
  * Uses const void * and CD_* macros for varlena-header independence.
  *
@@ -55,7 +82,60 @@
 static int
 cipherdata_cmp_internal(const void *left, const void *right)
 {
+	bool		left_sentinel;
+	bool		right_sentinel;
 	int			result;
+
+	/*
+	 * ReqID:TECC4.0 - Float sentinel comparison (Infinity/-Infinity).
+	 *
+	 * When a float4_enc/float8_enc column uses Infinity/-Infinity as a
+	 * RANGE partition boundary, the value is stored as a sentinel
+	 * CipherDataType whose OPE section contains raw IEEE 754 float bytes.
+	 *
+	 * Ordering guarantee: -Infinity < any real encrypted value < +Infinity.
+	 * This matches PostgreSQL's native float4/float8 partition semantics.
+	 */
+	left_sentinel  = CIPHERDATA_IS_FLOAT_SENTINEL(left);
+	right_sentinel = CIPHERDATA_IS_FLOAT_SENTINEL(right);
+
+	if (left_sentinel || right_sentinel)
+	{
+		if (left_sentinel && right_sentinel)
+		{
+			/* Both sentinels — compare IEEE 754 float values directly.
+			 * Promote float4 to float8 for comparison (Infinity is exact). */
+			double	lv, rv;
+
+			if (CIPHERDATA_DATUM_OPE_LEN(left) == sizeof(float))
+				lv = (double) (*(const float *)CIPHERDATA_DATUM_OPE_PTR(left));
+			else
+				lv = *(const double *)CIPHERDATA_DATUM_OPE_PTR(left);
+
+			if (CIPHERDATA_DATUM_OPE_LEN(right) == sizeof(float))
+				rv = (double) (*(const float *)CIPHERDATA_DATUM_OPE_PTR(right));
+			else
+				rv = *(const double *)CIPHERDATA_DATUM_OPE_PTR(right);
+
+			if (lv < rv) return -1;
+			if (lv > rv) return 1;
+			return 0;
+		}
+
+		/*
+		 * One sentinel, one regular encrypted value.
+		 * -Infinity sentinel (sign bit set) < any real value.
+		 * +Infinity sentinel (sign bit clear) > any real value.
+		 */
+		if (left_sentinel)
+			return CIPHERDATA_SENTINEL_IS_NEGATIVE(left) ? -1 : 1;
+		else
+			return CIPHERDATA_SENTINEL_IS_NEGATIVE(right) ? 1 : -1;
+	}
+
+	/* ReqID:TECC4.0 - Both operands must be encrypted with the same DEK,
+	 * otherwise the comparison is meaningless (silently wrong results). */
+	cipherdata_check_dek_consistency(left, right);
 
 	/* Compare OPE ciphertexts for ordering.
 	 * OPE is the only valid method for ordering encrypted values. */
@@ -72,11 +152,21 @@ cipherdata_cmp_internal(const void *left, const void *right)
 		return 0;
 	}
 
-	/* Neither OPE nor DET available */
+	/* Neither OPE available for ordering.
+	 * Distinguish: DET-only (has equality but not ordering) vs
+	 * no comparable segment at all. */
+	if (CIPHERDATA_DATUM_DET_LEN(left) > 0 && CIPHERDATA_DATUM_DET_LEN(right) > 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_TECC_NO_OPE_CIPHERTEXT),
+				 errmsg("cannot compare encrypted values for ordering: "
+						"column has DET but not OPE encryption"),
+				 errhint("DET only supports equality comparison. "
+						 "Add OPE encryption to the column to support ordering.")));
 	ereport(ERROR,
 			(errcode(ERRCODE_TECC_NO_OPE_CIPHERTEXT),
-			 errmsg("cannot compare encrypted values for ordering: no OPE or DET ciphertext available"),
-			 errhint("Enable OPE or DET encryption on the column to support comparison.")));
+			 errmsg("cannot compare encrypted values for ordering: "
+					"no comparable ciphertext available"),
+			 errhint("Enable DET or OPE encryption on the column to support comparison.")));
 
 	return 0;	/* unreachable */
 }
@@ -154,6 +244,8 @@ cipherdata_eq_bpchar(PG_FUNCTION_ARGS)
 {
 	Datum ld = PG_GETARG_DATUM(0), rd = PG_GETARG_DATUM(1);
 	const void *l = PG_DETOAST_DATUM(ld), *r = PG_DETOAST_DATUM(rd);
+	/* ReqID:TECC4.0 - Both operands must use the same DEK */
+	cipherdata_check_dek_consistency(l, r);
 	if (CIPHERDATA_DATUM_DET_LEN(l) > 0 && CIPHERDATA_DATUM_DET_LEN(r) > 0) {
 		const unsigned char *lc, *rc; int32 ll, rl;
 		cipherdata_text_strip_format(CIPHERDATA_DATUM_DET_PTR(l), CIPHERDATA_DATUM_DET_LEN(l), &lc, &ll);
@@ -172,6 +264,182 @@ cipherdata_eq_bpchar(PG_FUNCTION_ARGS)
 	ereport(ERROR,(errcode(ERRCODE_TECC_NO_DET_CIPHERTEXT),
 		errmsg("neither DET nor OPE available for BPCHAR comparison")));
 	PG_RETURN_BOOL(false);
+}
+
+/*
+ * ReqID:TECC4.0 - text_enc / varchar_enc equality (trailing spaces significant)
+ *
+ * Shared implementation for the two text-family types that treat trailing
+ * spaces as part of the value:
+ *   - 'abc'::varchar(10) = 'abc   '::varchar(10) -> f (A6)
+ *   - '   '::varchar(10) = ''::varchar(10)       -> f
+ *   - '   '::varchar(10) = '   '::varchar(10)    -> t (D5)
+ *
+ * The encrypted core is compared first and the space count afterwards, so
+ * values differing only in trailing blanks are not equal.  bpchar_enc has its
+ * own variant (cipherdata_eq_bpchar) that ignores trailing spaces.
+ */
+static Datum
+cipherdata_eq_text(PG_FUNCTION_ARGS)
+{
+	Datum		ld = PG_GETARG_DATUM(0);
+	Datum		rd = PG_GETARG_DATUM(1);
+	const void *l = PG_DETOAST_DATUM(ld);
+	const void *r = PG_DETOAST_DATUM(rd);
+
+	/* ReqID:TECC4.0 - Both operands must use the same DEK */
+	cipherdata_check_dek_consistency(l, r);
+
+	if (CIPHERDATA_DATUM_DET_LEN(l) > 0 && CIPHERDATA_DATUM_DET_LEN(r) > 0)
+	{
+		const unsigned char *lc;
+		const unsigned char *rc;
+		int32		ll;
+		int32		rl;
+		uint32		lspc;
+		uint32		rspc;
+
+		cipherdata_text_strip_format_with_space(
+			CIPHERDATA_DATUM_DET_PTR(l), CIPHERDATA_DATUM_DET_LEN(l), &lc, &ll, &lspc);
+		cipherdata_text_strip_format_with_space(
+			CIPHERDATA_DATUM_DET_PTR(r), CIPHERDATA_DATUM_DET_LEN(r), &rc, &rl, &rspc);
+		if (ll != rl || memcmp(lc, rc, ll) != 0)
+			PG_RETURN_BOOL(false);
+		PG_RETURN_BOOL(lspc == rspc);
+	}
+
+	if (CIPHERDATA_DATUM_OPE_LEN(l) > 0 && CIPHERDATA_DATUM_OPE_LEN(r) > 0)
+	{
+		const unsigned char *lc;
+		const unsigned char *rc;
+		int32		ll;
+		int32		rl;
+		uint32		lspc;
+		uint32		rspc;
+		int			cmp;
+
+		cipherdata_text_strip_format_with_space(
+			CIPHERDATA_DATUM_OPE_PTR(l), CIPHERDATA_DATUM_OPE_LEN(l), &lc, &ll, &lspc);
+		cipherdata_text_strip_format_with_space(
+			CIPHERDATA_DATUM_OPE_PTR(r), CIPHERDATA_DATUM_OPE_LEN(r), &rc, &rl, &rspc);
+		cmp = memcmp(lc, rc, Min(ll, rl));
+		if (cmp != 0 || ll != rl)
+			PG_RETURN_BOOL(false);
+		PG_RETURN_BOOL(lspc == rspc);
+	}
+
+	ereport(ERROR,
+			(errcode(ERRCODE_TECC_NO_DET_CIPHERTEXT),
+			 errmsg("neither DET nor OPE available for equality comparison")));
+	PG_RETURN_BOOL(false);
+}
+
+/*
+ * ReqID:TECC4.0 - text_enc / varchar_enc ordering (trailing spaces significant)
+ *
+ * Shared implementation for the two text-family types whose ordering treats
+ * trailing spaces as part of the value:
+ *   - 'abc'::varchar(10) < 'abc   '::varchar(10) -> t (spaces make larger)
+ *   - ''::varchar(10) < '   '::varchar(10)       -> t
+ *
+ * The format byte and the space count are stripped before comparing: the
+ * encrypted core decides first, and only when the cores tie does the space
+ * count break it (more spaces = larger).  Comparing the raw OPE section
+ * instead (cipherdata_cmp_internal) would fold the format byte into the
+ * ordering and give wrong results.  bpchar_enc has its own variant
+ * (cipherdata_cmp_bpchar) that ignores trailing spaces.
+ */
+static Datum
+cipherdata_cmp_text(PG_FUNCTION_ARGS)
+{
+	Datum		ld = PG_GETARG_DATUM(0);
+	Datum		rd = PG_GETARG_DATUM(1);
+	const void *l = PG_DETOAST_DATUM(ld);
+	const void *r = PG_DETOAST_DATUM(rd);
+	int			result;
+
+	/* ReqID:TECC4.0 - Both operands must use the same DEK */
+	cipherdata_check_dek_consistency(l, r);
+
+	if (CIPHERDATA_DATUM_OPE_LEN(l) > 0 && CIPHERDATA_DATUM_OPE_LEN(r) > 0)
+	{
+		const unsigned char *lc;
+		const unsigned char *rc;
+		int32		ll;
+		int32		rl;
+		uint32		lspc;
+		uint32		rspc;
+		Size		min_len;
+
+		cipherdata_text_strip_format_with_space(
+			CIPHERDATA_DATUM_OPE_PTR(l), CIPHERDATA_DATUM_OPE_LEN(l), &lc, &ll, &lspc);
+		cipherdata_text_strip_format_with_space(
+			CIPHERDATA_DATUM_OPE_PTR(r), CIPHERDATA_DATUM_OPE_LEN(r), &rc, &rl, &rspc);
+		min_len = Min(ll, rl);
+		result = memcmp(lc, rc, min_len);
+		if (result != 0)
+			PG_RETURN_INT32((result < 0) ? -1 : 1);
+		if (ll != rl)
+			PG_RETURN_INT32((ll < rl) ? -1 : 1);
+		/* Core equal: more trailing spaces means larger. */
+		if (lspc != rspc)
+			PG_RETURN_INT32((lspc < rspc) ? -1 : 1);
+		PG_RETURN_INT32(0);
+	}
+
+	ereport(ERROR,
+			(errcode(ERRCODE_TECC_NO_OPE_CIPHERTEXT),
+			 errmsg("cannot compare encrypted values for ordering: no OPE ciphertext available")));
+	PG_RETURN_INT32(0);
+}
+
+/*
+ * ReqID:TECC4.0 - bpchar_enc ordering (trailing spaces ignored)
+ *
+ * BPCHAR ordering rule: trailing spaces do not affect ordering.
+ *   - 'abc'::bpchar(10) < 'abc   '::bpchar(10) -> f (equal, spaces ignored)
+ *   - ''::bpchar(10) < '   '::bpchar(10)       -> f (equal, both empty)
+ *
+ * Only the encrypted core (format byte and space count stripped) is compared.
+ */
+static Datum
+cipherdata_cmp_bpchar(PG_FUNCTION_ARGS)
+{
+	Datum		ld = PG_GETARG_DATUM(0);
+	Datum		rd = PG_GETARG_DATUM(1);
+	const void *l = PG_DETOAST_DATUM(ld);
+	const void *r = PG_DETOAST_DATUM(rd);
+	int			result;
+
+	/* ReqID:TECC4.0 - Both operands must use the same DEK */
+	cipherdata_check_dek_consistency(l, r);
+
+	if (CIPHERDATA_DATUM_OPE_LEN(l) > 0 && CIPHERDATA_DATUM_OPE_LEN(r) > 0)
+	{
+		const unsigned char *lc;
+		const unsigned char *rc;
+		int32		ll;
+		int32		rl;
+		Size		min_len;
+
+		cipherdata_text_strip_format(
+			CIPHERDATA_DATUM_OPE_PTR(l), CIPHERDATA_DATUM_OPE_LEN(l), &lc, &ll);
+		cipherdata_text_strip_format(
+			CIPHERDATA_DATUM_OPE_PTR(r), CIPHERDATA_DATUM_OPE_LEN(r), &rc, &rl);
+		min_len = Min(ll, rl);
+		result = memcmp(lc, rc, min_len);
+		if (result != 0)
+			PG_RETURN_INT32((result < 0) ? -1 : 1);
+		if (ll != rl)
+			PG_RETURN_INT32((ll < rl) ? -1 : 1);
+		/* Core equal: bpchar ignores trailing spaces. */
+		PG_RETURN_INT32(0);
+	}
+
+	ereport(ERROR,
+			(errcode(ERRCODE_TECC_NO_OPE_CIPHERTEXT),
+			 errmsg("cannot compare encrypted values for ordering: no OPE ciphertext available")));
+	PG_RETURN_INT32(0);
 }
 
 /*
@@ -196,6 +464,9 @@ cipherdata_eq(PG_FUNCTION_ARGS)
 	const void *right = PG_DETOAST_DATUM(right_datum);
 	Size		min_len;
 	int			cmp;
+
+	/* ReqID:TECC4.0 - Both operands must use the same DEK */
+	cipherdata_check_dek_consistency(left, right);
 
 	/* If both have DET ciphertexts, use DET for equality */
 	if (CIPHERDATA_DATUM_DET_LEN(left) > 0 && CIPHERDATA_DATUM_DET_LEN(right) > 0)
@@ -268,6 +539,52 @@ cipherdata_lt(PG_FUNCTION_ARGS)
 
 	cmp = cipherdata_cmp_internal(left, right);
 	PG_RETURN_BOOL(cmp < 0);
+}
+
+/*
+ * ReqID:TECC4.0 - min/max(int*_enc/float*_enc/numeric_enc/text_enc/
+ * varchar_enc/bpchar_enc) 聚合 transfn（需求 4.4.1.4）：
+ * 依赖 OPE 密文比较（对齐 cipherdata_lt 语义），返回较小/较大入参。
+ * 平局返回第二个参数（对齐原生 int4smaller/int4larger 语义）。
+ */
+PG_FUNCTION_INFO_V1(cipherdata_smaller);
+Datum
+cipherdata_smaller(PG_FUNCTION_ARGS)
+{
+	Datum		left_datum = PG_GETARG_DATUM(0);
+	Datum		right_datum = PG_GETARG_DATUM(1);
+	const void *left = PG_DETOAST_DATUM(left_datum);
+	const void *right = PG_DETOAST_DATUM(right_datum);
+	int			cmp;
+
+	if (CIPHERDATA_DATUM_OPE_LEN(left) == 0 || CIPHERDATA_DATUM_OPE_LEN(right) == 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_TECC_NO_OPE_CIPHERTEXT),
+				 errmsg("cannot compare encrypted values for ordering: OPE ciphertext not available"),
+				 errhint("Enable OPE encryption on the column to support min/max aggregation.")));
+
+	cmp = cipherdata_cmp_internal(left, right);
+	return (cmp < 0) ? left_datum : right_datum;
+}
+
+PG_FUNCTION_INFO_V1(cipherdata_larger);
+Datum
+cipherdata_larger(PG_FUNCTION_ARGS)
+{
+	Datum		left_datum = PG_GETARG_DATUM(0);
+	Datum		right_datum = PG_GETARG_DATUM(1);
+	const void *left = PG_DETOAST_DATUM(left_datum);
+	const void *right = PG_DETOAST_DATUM(right_datum);
+	int			cmp;
+
+	if (CIPHERDATA_DATUM_OPE_LEN(left) == 0 || CIPHERDATA_DATUM_OPE_LEN(right) == 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_TECC_NO_OPE_CIPHERTEXT),
+				 errmsg("cannot compare encrypted values for ordering: OPE ciphertext not available"),
+				 errhint("Enable OPE encryption on the column to support min/max aggregation.")));
+
+	cmp = cipherdata_cmp_internal(left, right);
+	return (cmp > 0) ? left_datum : right_datum;
 }
 
 /*
@@ -448,6 +765,9 @@ cipherdata_like(PG_FUNCTION_ARGS)
 	int32		search_len;
 	const char *search_ptr;
 
+	/* ReqID:TECC4.0 - Both operands must use the same DEK */
+	cipherdata_check_dek_consistency(left, right);
+
 	/* Check if both have SEARCH ciphertexts */
 	if (CIPHERDATA_DATUM_SEARCH_LEN(left) == 0 || CIPHERDATA_DATUM_SEARCH_LEN(right) == 0)
 		ereport(ERROR,
@@ -527,6 +847,9 @@ cipherdata_nlike(PG_FUNCTION_ARGS)
 	bool		result;
 	int32		search_len;
 	const char *search_ptr;
+
+	/* ReqID:TECC4.0 - Both operands must use the same DEK */
+	cipherdata_check_dek_consistency(left, right);
 
 	/* Check if both have SEARCH ciphertexts */
 	if (CIPHERDATA_DATUM_SEARCH_LEN(left) == 0 || CIPHERDATA_DATUM_SEARCH_LEN(right) == 0)
@@ -917,50 +1240,15 @@ numeric_enc_cmp(PG_FUNCTION_ARGS)
 /*
  * ReqID:TECC4.0 - varchar_enc equality comparison
  *
- * VARCHAR semantic rules (same as TEXT):
- *   - VARCHAR retains trailing spaces in comparisons
- *   - 'abc'::varchar(10) = 'abc   '::varchar(10) → f (A6)
- *   - '   '::varchar(10) = ''::varchar(10)      → f
- *   - '   '::varchar(10) = '   '::varchar(10)    → t (D5)
- *
- * Implementation: strip format_byte+space_count, compare encrypted core,
- * then compare space_count. Different space_count → not equal.
+ * VARCHAR semantic rules (same as TEXT): trailing spaces are significant.
+ * Semantics and the shared, DEK-checked implementation live in
+ * cipherdata_eq_text.
  */
 PG_FUNCTION_INFO_V1(varchar_enc_eq);
 Datum
 varchar_enc_eq(PG_FUNCTION_ARGS)
 {
-	Datum ld = PG_GETARG_DATUM(0), rd = PG_GETARG_DATUM(1);
-	const void *l = PG_DETOAST_DATUM(ld), *r = PG_DETOAST_DATUM(rd);
-		if (CIPHERDATA_DATUM_DET_LEN(l) > 0 && CIPHERDATA_DATUM_DET_LEN(r) > 0) {
-		const unsigned char *lc, *rc;
-		int32 ll, rl;
-		uint32 lspc, rspc;
-		cipherdata_text_strip_format_with_space(
-			CIPHERDATA_DATUM_DET_PTR(l), CIPHERDATA_DATUM_DET_LEN(l), &lc, &ll, &lspc);
-		cipherdata_text_strip_format_with_space(
-			CIPHERDATA_DATUM_DET_PTR(r), CIPHERDATA_DATUM_DET_LEN(r), &rc, &rl, &rspc);
-		if (ll != rl || memcmp(lc, rc, ll) != 0)
-			PG_RETURN_BOOL(false);
-		PG_RETURN_BOOL(lspc == rspc);
-	}if (CIPHERDATA_DATUM_OPE_LEN(l) > 0 && CIPHERDATA_DATUM_OPE_LEN(r) > 0) {
-		const unsigned char *lc, *rc;
-		int32 ll, rl;
-		uint32 lspc, rspc;
-		int cmp;
-		cipherdata_text_strip_format_with_space(
-			CIPHERDATA_DATUM_OPE_PTR(l), CIPHERDATA_DATUM_OPE_LEN(l), &lc, &ll, &lspc);
-		cipherdata_text_strip_format_with_space(
-			CIPHERDATA_DATUM_OPE_PTR(r), CIPHERDATA_DATUM_OPE_LEN(r), &rc, &rl, &rspc);
-		cmp = memcmp(lc, rc, Min(ll, rl));
-		if (cmp != 0 || ll != rl)
-			PG_RETURN_BOOL(false);
-		PG_RETURN_BOOL(lspc == rspc);
-	}
-	ereport(ERROR,
-		(errcode(ERRCODE_TECC_NO_DET_CIPHERTEXT),
-		 errmsg("neither DET nor OPE available for equality comparison")));
-	PG_RETURN_BOOL(false);
+	return cipherdata_eq_text(fcinfo);
 }
 
 PG_FUNCTION_INFO_V1(varchar_enc_ne);
@@ -1006,45 +1294,14 @@ varchar_enc_ge(PG_FUNCTION_ARGS)
  * ReqID:TECC4.0 - varchar_enc range comparison (ORDER BY, <, >, BETWEEN)
  *
  * VARCHAR ordering rule: trailing spaces matter (more spaces = larger).
- *   - 'abc'::varchar(10) < 'abc   '::varchar(10) → t (spaces make larger)
- *   - ''::varchar(10) < '   '::varchar(10)       → t
- *
- * Implementation: strip OPE format_byte+space_count, compare core.
- * When core equal, compare space_count (more spaces = larger).
- * This matches PG's VARCHAR ordering semantics.
+ * Semantics and the shared, DEK-checked implementation live in
+ * cipherdata_cmp_text.
  */
 PG_FUNCTION_INFO_V1(varchar_enc_cmp);
 Datum
 varchar_enc_cmp(PG_FUNCTION_ARGS)
 {
-	Datum ld = PG_GETARG_DATUM(0), rd = PG_GETARG_DATUM(1);
-	const void *l = PG_DETOAST_DATUM(ld), *r = PG_DETOAST_DATUM(rd);
-	int			result;
-	if (CIPHERDATA_DATUM_OPE_LEN(l) > 0 && CIPHERDATA_DATUM_OPE_LEN(r) > 0)
-	{
-		const unsigned char *lc, *rc;
-		int32 ll, rl;
-		uint32 lspc, rspc;
-		Size	min_len;
-		cipherdata_text_strip_format_with_space(
-			CIPHERDATA_DATUM_OPE_PTR(l), CIPHERDATA_DATUM_OPE_LEN(l), &lc, &ll, &lspc);
-		cipherdata_text_strip_format_with_space(
-			CIPHERDATA_DATUM_OPE_PTR(r), CIPHERDATA_DATUM_OPE_LEN(r), &rc, &rl, &rspc);
-		min_len = Min(ll, rl);
-		result = memcmp(lc, rc, min_len);
-		if (result != 0)
-			PG_RETURN_INT32((result < 0) ? -1 : 1);
-		if (ll != rl)
-			PG_RETURN_INT32((ll < rl) ? -1 : 1);
-		/* Core equal: compare space_count (more spaces = larger) */
-		if (lspc != rspc)
-			PG_RETURN_INT32((lspc < rspc) ? -1 : 1);
-		PG_RETURN_INT32(0);
-	}
-	ereport(ERROR,
-		(errcode(ERRCODE_TECC_NO_OPE_CIPHERTEXT),
-		 errmsg("cannot compare encrypted values for ordering: no OPE ciphertext available")));
-	PG_RETURN_INT32(0);
+	return cipherdata_cmp_text(fcinfo);
 }
 
 PG_FUNCTION_INFO_V1(varchar_enc_like);
@@ -1119,45 +1376,15 @@ bpchar_enc_ge(PG_FUNCTION_ARGS)
 /*
  * ReqID:TECC4.0 - bpchar_enc range comparison (ORDER BY, <, >, BETWEEN)
  *
- * BPCHAR ordering rule: ignore trailing spaces.
- *   - 'abc'::bpchar(10) < 'abc   '::bpchar(10) → f (equal, spaces ignored)
- *   - ''::bpchar(10) < '   '::bpchar(10)       → f (equal, both empty)
- *
- * Implementation: strip OPE format_byte+space_count, compare core.
- * When core equal, return 0 (bpchar ignores trailing spaces — no comparison
- * of space_count). This matches PG's BPCHAR ordering semantics.
+ * BPCHAR ordering rule: trailing spaces are ignored.
+ * Semantics and the shared, DEK-checked implementation live in
+ * cipherdata_cmp_bpchar.
  */
 PG_FUNCTION_INFO_V1(bpchar_enc_cmp);
 Datum
 bpchar_enc_cmp(PG_FUNCTION_ARGS)
 {
-	Datum ld = PG_GETARG_DATUM(0), rd = PG_GETARG_DATUM(1);
-	const void *l = PG_DETOAST_DATUM(ld), *r = PG_DETOAST_DATUM(rd);
-	int			result;
-	if (CIPHERDATA_DATUM_OPE_LEN(l) > 0 && CIPHERDATA_DATUM_OPE_LEN(r) > 0)
-	{
-		const unsigned char *lc, *rc;
-		int32 ll, rl;
-		Size	min_len;
-		cipherdata_text_strip_format(
-			CIPHERDATA_DATUM_OPE_PTR(l), CIPHERDATA_DATUM_OPE_LEN(l), &lc, &ll);
-		cipherdata_text_strip_format(
-			CIPHERDATA_DATUM_OPE_PTR(r), CIPHERDATA_DATUM_OPE_LEN(r), &rc, &rl);
-		cipherdata_text_strip_format(
-			CIPHERDATA_DATUM_OPE_PTR(r), CIPHERDATA_DATUM_OPE_LEN(r), &rc, &rl);
-		min_len = Min(ll, rl);
-		result = memcmp(lc, rc, min_len);
-		if (result != 0)
-			PG_RETURN_INT32((result < 0) ? -1 : 1);
-		if (ll != rl)
-			PG_RETURN_INT32((ll < rl) ? -1 : 1);
-		/* Core equal: bpchar ignores trailing spaces */
-		PG_RETURN_INT32(0);
-	}
-	ereport(ERROR,
-		(errcode(ERRCODE_TECC_NO_OPE_CIPHERTEXT),
-		 errmsg("cannot compare encrypted values for ordering: no OPE ciphertext available")));
-	PG_RETURN_INT32(0);
+	return cipherdata_cmp_bpchar(fcinfo);
 }
 
 PG_FUNCTION_INFO_V1(bpchar_enc_like);
@@ -1189,43 +1416,13 @@ bpchar_enc_nlike(PG_FUNCTION_ARGS)
  *   - tx('abc   ') = bp('abc') → f  (B9: tx keeps trailing spaces)
  *
  * text_enc = varchar_enc: explicit operator → text_enc_eq
- * Implementation: strip format+space_count, compare core, then space_count.
+ * Implementation: shared with varchar_enc, see cipherdata_eq_text.
  */
 PG_FUNCTION_INFO_V1(text_enc_eq);
 Datum
 text_enc_eq(PG_FUNCTION_ARGS)
 {
-	Datum ld = PG_GETARG_DATUM(0), rd = PG_GETARG_DATUM(1);
-	const void *l = PG_DETOAST_DATUM(ld), *r = PG_DETOAST_DATUM(rd);
-		if (CIPHERDATA_DATUM_DET_LEN(l) > 0 && CIPHERDATA_DATUM_DET_LEN(r) > 0) {
-		const unsigned char *lc, *rc;
-		int32 ll, rl;
-		uint32 lspc, rspc;
-		cipherdata_text_strip_format_with_space(
-			CIPHERDATA_DATUM_DET_PTR(l), CIPHERDATA_DATUM_DET_LEN(l), &lc, &ll, &lspc);
-		cipherdata_text_strip_format_with_space(
-			CIPHERDATA_DATUM_DET_PTR(r), CIPHERDATA_DATUM_DET_LEN(r), &rc, &rl, &rspc);
-		if (ll != rl || memcmp(lc, rc, ll) != 0)
-			PG_RETURN_BOOL(false);
-		PG_RETURN_BOOL(lspc == rspc);
-	}if (CIPHERDATA_DATUM_OPE_LEN(l) > 0 && CIPHERDATA_DATUM_OPE_LEN(r) > 0) {
-		const unsigned char *lc, *rc;
-		int32 ll, rl;
-		uint32 lspc, rspc;
-		int cmp;
-		cipherdata_text_strip_format_with_space(
-			CIPHERDATA_DATUM_OPE_PTR(l), CIPHERDATA_DATUM_OPE_LEN(l), &lc, &ll, &lspc);
-		cipherdata_text_strip_format_with_space(
-			CIPHERDATA_DATUM_OPE_PTR(r), CIPHERDATA_DATUM_OPE_LEN(r), &rc, &rl, &rspc);
-		cmp = memcmp(lc, rc, Min(ll, rl));
-		if (cmp != 0 || ll != rl)
-			PG_RETURN_BOOL(false);
-		PG_RETURN_BOOL(lspc == rspc);
-	}
-	ereport(ERROR,
-		(errcode(ERRCODE_TECC_NO_DET_CIPHERTEXT),
-		 errmsg("neither DET nor OPE available for equality comparison")));
-	PG_RETURN_BOOL(false);
+	return cipherdata_eq_text(fcinfo);
 }
 
 PG_FUNCTION_INFO_V1(text_enc_ne);
@@ -1277,42 +1474,13 @@ text_enc_ge(PG_FUNCTION_ARGS)
  *   - 'abc'::text < 'abc   '::text → t (spaces make larger)
  *   - ''::text < '   '::text       → t
  *
- * Implementation: strip OPE format_byte+space_count, compare core.
- * When core equal, compare space_count (more spaces = larger).
- * This matches PG's TEXT ordering semantics.
+ * Implementation: shared with varchar_enc, see cipherdata_cmp_text.
  */
 PG_FUNCTION_INFO_V1(text_enc_cmp);
 Datum
 text_enc_cmp(PG_FUNCTION_ARGS)
 {
-	Datum ld = PG_GETARG_DATUM(0), rd = PG_GETARG_DATUM(1);
-	const void *l = PG_DETOAST_DATUM(ld), *r = PG_DETOAST_DATUM(rd);
-	int			result;
-	if (CIPHERDATA_DATUM_OPE_LEN(l) > 0 && CIPHERDATA_DATUM_OPE_LEN(r) > 0)
-	{
-		const unsigned char *lc, *rc;
-		int32 ll, rl;
-		uint32 lspc, rspc;
-		Size	min_len;
-		cipherdata_text_strip_format_with_space(
-			CIPHERDATA_DATUM_OPE_PTR(l), CIPHERDATA_DATUM_OPE_LEN(l), &lc, &ll, &lspc);
-		cipherdata_text_strip_format_with_space(
-			CIPHERDATA_DATUM_OPE_PTR(r), CIPHERDATA_DATUM_OPE_LEN(r), &rc, &rl, &rspc);
-		min_len = Min(ll, rl);
-		result = memcmp(lc, rc, min_len);
-		if (result != 0)
-			PG_RETURN_INT32((result < 0) ? -1 : 1);
-		if (ll != rl)
-			PG_RETURN_INT32((ll < rl) ? -1 : 1);
-		/* Core equal: compare space_count (more spaces = larger) */
-		if (lspc != rspc)
-			PG_RETURN_INT32((lspc < rspc) ? -1 : 1);
-		PG_RETURN_INT32(0);
-	}
-	ereport(ERROR,
-		(errcode(ERRCODE_TECC_NO_OPE_CIPHERTEXT),
-		 errmsg("cannot compare encrypted values for ordering: no OPE ciphertext available")));
-	PG_RETURN_INT32(0);
+	return cipherdata_cmp_text(fcinfo);
 }
 
 PG_FUNCTION_INFO_V1(text_enc_like);
@@ -1327,6 +1495,32 @@ Datum
 text_enc_nlike(PG_FUNCTION_ARGS)
 {
 	return cipherdata_nlike(fcinfo);
+}
+
+/* ReqID:TECC4.0 - LIKE ESCAPE passthrough for encrypted types.
+ * PG parser rewrites `LIKE ... ESCAPE '\'` to `~~ like_escape(pattern, esc)`.
+ * SEARCH ciphertext must NOT be processed by standard like_escape (which
+ * does text-level escape transformation). cipherdata_like's tecc_search_match
+ * already handles \ as escape internally. So this is a pure passthrough. */
+PG_FUNCTION_INFO_V1(varchar_enc_like_escape);
+Datum
+varchar_enc_like_escape(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_DATUM(PG_GETARG_DATUM(0));
+}
+
+PG_FUNCTION_INFO_V1(bpchar_enc_like_escape);
+Datum
+bpchar_enc_like_escape(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_DATUM(PG_GETARG_DATUM(0));
+}
+
+PG_FUNCTION_INFO_V1(text_enc_like_escape);
+Datum
+text_enc_like_escape(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_DATUM(PG_GETARG_DATUM(0));
 }
 
 /* Begin - ReqID:TECC4.0 */
@@ -1450,18 +1644,21 @@ hashtext_enc(PG_FUNCTION_ARGS)
 }
 
 /*
- * equalimage support function for encrypted string types
+ * equalimage support function for encrypted types
  *
- * Encrypted data comparison is always binary (memcmp of ciphertexts),
- * so deduplication is always safe regardless of collation.
+ * ReqID:TECC4.0 - PostgreSQL btree deduplication requires an opclass to
+ * guarantee that keys equal under its comparison semantics can safely share
+ * one physical index key image. TECC encrypted datums do not promise that
+ * image-equivalence contract across encryption formats and metadata, so
+ * report false and keep btree deduplication disabled for TECC opclasses.
  * This function is used as BTEQUALIMAGE_PROC (support function 4)
- * in btree operator families for text_enc, varchar_enc, and bpchar_enc.
+ * in btree operator families for encrypted data types.
  */
 PG_FUNCTION_INFO_V1(tecc_equalimage);
 Datum
 tecc_equalimage(PG_FUNCTION_ARGS)
 {
-	PG_RETURN_BOOL(true);
+	PG_RETURN_BOOL(false);
 }
 
 /* End - ReqID:TECC4.0 */

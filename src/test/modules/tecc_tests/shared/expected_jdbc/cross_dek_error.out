@@ -1,0 +1,51 @@
+NOTICE: key encryption key "cdk_kek_b" does not exist, skipping
+DROP KEK
+NOTICE: key encryption key "cdk_kek_c" does not exist, skipping
+DROP KEK
+NOTICE: data encryption key "cdk_dek_b" does not exist, skipping
+DROP DEK
+NOTICE: data encryption key "cdk_dek_c" does not exist, skipping
+DROP DEK
+CREATE KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+NOTICE: table "cd_t_a" does not exist, skipping
+NOTICE: table "cd_t_b" does not exist, skipping
+NOTICE: table "cd_t_s1" does not exist, skipping
+NOTICE: table "cd_t_s2" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+INSERT 0 2
+INSERT 0 2
+INSERT 0 2
+=== 1 DET eq cross DEK ===
+ERROR: cannot compare encrypted columns with different DEKs: "cd_t_a.v" (DEK sym:cdk_dek_b) and "cd_t_b.v" (DEK sym:cdk_dek_c)
+ERROR: cannot compare encrypted columns with different DEKs: "cd_t_a.v" (DEK sym:cdk_dek_b) and "cd_t_b.v" (DEK sym:cdk_dek_c)
+ERROR: cannot compare encrypted columns with different DEKs: "cd_t_a.v" (DEK sym:cdk_dek_b) and "cd_t_b.v" (DEK sym:cdk_dek_c)
+ERROR: cannot compare encrypted columns with different DEKs: "cd_t_a.v" (DEK sym:cdk_dek_b) and "cd_t_b.v" (DEK sym:cdk_dek_c)
+ERROR: cannot compare encrypted columns with different DEKs: "cd_t_a.v" (DEK sym:cdk_dek_b) and "cd_t_b.v" (DEK sym:cdk_dek_c)
+ERROR: cannot compare encrypted columns with different DEKs: "cd_t_a.v" (DEK sym:cdk_dek_b) and "cd_t_b.v" (DEK sym:cdk_dek_c)
+ERROR: cannot compare encrypted columns with different DEKs: "cd_t_a.v" (DEK sym:cdk_dek_b) and "cd_t_b.v" (DEK sym:cdk_dek_c)
+ERROR: cannot compare encrypted columns with different DEKs: "cd_t_a.v" (DEK sym:cdk_dek_b) and "cd_t_b.v" (DEK sym:cdk_dek_c)
+ERROR: cannot compare encrypted columns with different DEKs: "cd_t_a.v" (DEK sym:cdk_dek_b) and "cd_t_b.v" (DEK sym:cdk_dek_c)
+ERROR: ERROR: cannot compare encrypted values with different DEKs
+1k_same_dek|4
+=== 2 OPE range cross DEK ===
+ERROR: cannot compare encrypted columns with different DEKs: "cd_t_a.s" (DEK sym:cdk_dek_b) and "cd_t_b.s" (DEK sym:cdk_dek_c)
+ERROR: cannot compare encrypted columns with different DEKs: "cd_t_a.s" (DEK sym:cdk_dek_b) and "cd_t_b.s" (DEK sym:cdk_dek_c)
+2c_same_range|6
+=== 3 LIKE col-to-col ===
+ERROR: TECC: SEARCH column requires a string literal as LIKE pattern
+ERROR: cannot compare encrypted columns with different DEKs: "cd_t_s1.name" (DEK sym:cdk_dek_b) and "cd_t_s2.name" (DEK sym:cdk_dek_c)
+3c_like_const|1
+=== 9 CLEANUP ===
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK

@@ -1,0 +1,98 @@
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+CREATE KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+========== 1. INSERT ... SELECT 裸常量写入同态列（缺陷原形） ==========
+INSERT 0 1
+ ?column? | id | a 
+----------+----+---
+ IS-1     |  1 | 2
+(1 row)
+
+========== 2. 多列、省略列清单、列清单换序 ==========
+INSERT 0 1
+ ?column?  | id | a  | m | x  | i2  
+-----------+----+----+---+----+-----
+ IS-2-cols |  2 | 10 | 3 | 13 | 100
+(1 row)
+
+INSERT 0 1
+  ?column?   | id | a  | m | x  | i2  
+-------------+----+----+---+----+-----
+ IS-2-nolist |  3 | 20 | 4 | 23 | 200
+(1 row)
+
+INSERT 0 1
+   ?column?   | id | a  
+--------------+----+----
+ IS-2-reorder |  4 | 50
+(1 row)
+
+========== 3. 回读明文与同态运算 ==========
+ ?column?  | id | a  | m | x  | i2  
+-----------+----+----+---+----+-----
+ IS-3-read |  1 | 2  |   |    | 
+ IS-3-read |  2 | 10 | 3 | 13 | 100
+ IS-3-read |  3 | 20 | 4 | 23 | 200
+ IS-3-read |  4 | 50 |   |    | 
+(4 rows)
+
+ ?column? | a | ?column? | ?column? 
+----------+---+----------+----------
+ IS-3-add | 2 | 7        | 1
+(1 row)
+
+  ?column?   | i2  | ?column? 
+-------------+-----+----------
+ IS-3-i2-add | 100 | 101
+(1 row)
+
+ ?column? | m | ?column? 
+----------+---+----------
+ IS-3-mul | 3 | 12
+(1 row)
+
+   ?column?   | count 
+--------------+-------
+ IS-3-mix-det |     1
+(1 row)
+
+  ?column?   | x  | ?column? 
+-------------+----+----------
+ IS-3-mix-he | 13 | 14
+(1 row)
+
+========== 4. VALUES 与 SELECT 密文互操作 ==========
+INSERT 0 1
+INSERT 0 1
+ ?column? | sum 
+----------+-----
+ IS-4-sum | 72
+(1 row)
+
+========== 5. 清理 ==========
+ ?column? 
+----------
+ IS-END
+(1 row)
+
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+psql:/.../he_insert_select.sql:34: NOTICE:  table "he_is_test" does not exist, skipping
+psql:/.../he_insert_select.sql:35: NOTICE:  data encryption key "he_is_dek_sym" does not exist, skipping
+psql:/.../he_insert_select.sql:36: NOTICE:  data encryption key "he_is_dek_add" does not exist, skipping
+psql:/.../he_insert_select.sql:37: NOTICE:  data encryption key "he_is_dek_mul" does not exist, skipping
+psql:/.../he_insert_select.sql:38: NOTICE:  key encryption key "he_is_kek_asym" does not exist, skipping
+psql:/.../he_insert_select.sql:39: NOTICE:  key encryption key "he_is_kek_sym" does not exist, skipping

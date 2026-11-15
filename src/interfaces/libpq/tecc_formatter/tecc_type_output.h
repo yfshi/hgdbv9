@@ -85,6 +85,42 @@ extern char *tecc_type_output_numeric(const char *data, size_t len,
 extern char *tecc_type_output_text(const char *data, size_t len);
 
 /*
+ * ReqID:TECC4.0 - 按列声明长度（typmod）计算字符型文本的有效长度（Bug 9327）。
+ *
+ * 判据与服务端 varchar_input()/bpchar_input() 一致：按字符计数，超过 N 个字符
+ * 时只有超出部分全是空格才被接受（服务端会截掉）。写入侧据此拒绝/截断后再加密，
+ * 读取侧（tecc_type_output_data）据此定型回显，历史数据同样收敛到服务端语义。
+ *
+ * @param data_type      基础类型 OID（VARCHAR/BPCHAR 之外的类型不做处理）
+ * @param type_mod       列声明的 typmod（< VARHDRSZ 表示未声明长度）
+ * @param text           待判定的文本（不必是 NUL 结尾）
+ * @param text_len       文本字节长度
+ * @param encoding       字符计数所用编码（如 PG_UTF8）
+ * @param effective_len  输出：应采用的长度（未超长时等于 text_len）
+ * @return               false 表示超出部分含非空格字符（写入侧应拒绝；读取侧保持原值）
+ */
+extern bool tecc_char_typmod_effective_len(Oid data_type, int type_mod,
+                                           const char *text, size_t text_len,
+                                           int encoding, size_t *effective_len);
+
+/*
+ * ReqID:TECC4.0 - 显式 cast 语义下的字符型长度定型（Bug 9327，原地截断）。
+ *
+ * 与服务端 varchar()/bpchar() 的显式 cast 分支一致：超过 N 个字符时静默截断，
+ * 超出部分是普通字符也不报错。用于带 typmod 的密态 cast
+ * （'x'::varchar_enc(N) ENCRYPTED WITH (...)）：到服务端已是密文，服务端无从做
+ * 这次截断，必须在前端补上。截断后再交由写入侧按目标列长度做严格校验
+ * （tecc_char_typmod_effective_len）。
+ *
+ * @param declared_len  类型名上声明的长度（语法里的 N），未声明传 -1
+ * @param base_oid      基础类型 OID（VARCHAR/BPCHAR 之外的类型不做处理）
+ * @param text          NUL 结尾的明文缓冲区，原地截断
+ * @param encoding      字符计数所用编码（如 PG_UTF8）
+ */
+extern void tecc_char_cast_len_clip(int declared_len, Oid base_oid,
+                                    char *text, int encoding);
+
+/*
  * tecc_type_input_numeric_from_text - Convert numeric text to NumericData varlena binary
  *
  * Converts a numeric text string (e.g., "50000.00") to PostgreSQL internal

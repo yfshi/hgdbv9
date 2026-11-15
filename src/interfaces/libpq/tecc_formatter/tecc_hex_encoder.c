@@ -70,56 +70,20 @@ tecc_hex_encoder_encode(
  *
  * Converts hexadecimal string to binary data, handling PostgreSQL prefix.
  */
-/* Forward declaration to avoid implicit declaration warning */
-static int hex_char_to_int(char c);
-
 TeccFormatterErrorCode
 tecc_hex_encoder_decode(
     const char *hex_string,
     unsigned char **binary_data,
     size_t *binary_len)
 {
-    const char *hex_start;
-    size_t expected_binary_len;
-    TeccFormatterErrorCode result;
-    size_t i;
+    /* ReqID:TECC4.0 - 复用已 LUT 优化的 tecc_formatter_hex_decode（tecc_formatter.h），
+     * 避免重复实现低效的 if 比较解码；仅保留裸 x 前缀容错
+     * （text parser 将 \x 的反斜杠吃掉），\x 前缀由 tecc_formatter_hex_decode 处理 */
+    if (hex_string != NULL && hex_string[0] == 'x' &&
+        hex_string[1] >= '0' && hex_string[1] <= '9')
+        hex_string++;
 
-    TECC_RETURN_IF_NULL(hex_string, TECC_FORMATTER_ERROR_INVALID_PARAM);
-    TECC_RETURN_IF_NULL(binary_data, TECC_FORMATTER_ERROR_INVALID_PARAM);
-    TECC_RETURN_IF_NULL(binary_len, TECC_FORMATTER_ERROR_INVALID_PARAM);
-
-    /* Strip prefix if present */
-    hex_start = tecc_hex_encoder_strip_prefix(hex_string);
-
-    /* Validate hex string */
-    result = tecc_hex_encoder_validate_string(hex_start, &expected_binary_len);
-    if (result != TECC_FORMATTER_SUCCESS)
-        return result;
-
-    /* Check decoded binary data size */
-    if (expected_binary_len == 0 )
-        return TECC_FORMATTER_ERROR_DATA_TOO_LARGE;
-
-    /* Allocate binary buffer */
-    *binary_data = pg_malloc(expected_binary_len);
-    TECC_RETURN_IF_MEMORY_ERROR(*binary_data, TECC_FORMATTER_ERROR_MEMORY_ALLOC);
-
-    /* Convert hex to binary */
-    for (i = 0; i < expected_binary_len; i++) {
-        int high = hex_char_to_int(hex_start[i * 2]);
-        int low = hex_char_to_int(hex_start[i * 2 + 1]);
-
-        if (high < 0 || low < 0) {
-            pg_free(*binary_data);
-            *binary_data = NULL;
-            return TECC_FORMATTER_ERROR_DATA_FORMAT;
-        }
-
-        (*binary_data)[i] = (high << 4) | low;
-    }
-
-    *binary_len = expected_binary_len;
-    return TECC_FORMATTER_SUCCESS;
+    return tecc_formatter_hex_decode(hex_string, binary_data, binary_len);
 }
 
 /*
@@ -186,19 +150,6 @@ tecc_hex_encoder_strip_prefix(const char *hex_string)
         return hex_string + 2;
 
     return hex_string;
-}
-
-/* Helper function to convert hex character to integer */
-static int
-hex_char_to_int(char c)
-{
-    if (c >= '0' && c <= '9')
-        return c - '0';
-    if (c >= 'a' && c <= 'f')
-        return c - 'a' + 10;
-    if (c >= 'A' && c <= 'F')
-        return c - 'A' + 10;
-    return -1;
 }
 
 /* End - ReqID:TECC4.0 */

@@ -1,0 +1,47 @@
+NOTICE: table "uscast_t" does not exist, skipping
+DROP TABLE
+NOTICE: table "uscast_ins" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "uscast_dek" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "uscast_kek" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+=== USCAST-1 对照：裸常量写入 varchar_enc(5) ===
+abcde|true
+=== USCAST-2 cast(5) 值 10 字符 -> 截断存 abcde（libpq 13.14）===
+UPDATE 1
+abcde|true|false
+=== USCAST-3 cast(20) 值 10 字符 -> 按目标列拒绝、值不变（libpq 13.14b）===
+ERROR: TECC: literal encrypt failed for public.uscast_t.v5: value too long for type character varying(5) (column public.uscast_t.v5)
+abcde|true
+=== USCAST-4 未声明长度的 cast（::varchar_enc）-> 按目标列拒绝 ===
+ERROR: TECC: literal encrypt failed for public.uscast_t.v5: value too long for type character varying(5) (column public.uscast_t.v5)
+abcde
+=== USCAST-5a bpchar_enc(3) 值 5 字符 -> 截断存 abc ===
+UPDATE 1
+abc|true|false
+=== USCAST-5b cast(2) 写 3 个汉字 -> 按字符计截断为 2 个 ===
+UPDATE 1
+中文|true|false
+=== USCAST-6 同句 cast 与裸常量 -> 两者都被加密（libpq 13.14c）===
+UPDATE 1
+vwxyz|true|qwerty|true
+=== USCAST-7 INSERT 侧同形态（回归锚点）===
+CREATE TABLE
+INSERT 0 1
+abcde|true
+=== USCAST-8a WHERE 的密态 cast 与裸常量都要命中（对齐 libpq 13.15）===
+UPDATE 1
+1
+1
+=== USCAST-8b 纯 SELECT 的密态 cast 与列密文等值（对齐 libpq 13.16）===
+true
+=== USCAST-END 清理 ===
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK

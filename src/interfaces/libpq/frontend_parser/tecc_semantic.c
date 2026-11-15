@@ -1,4 +1,4 @@
-﻿/*
+/*
  * TECC前端解析器语义分析器
  * 严格按照详细设计文档第4章要求实现
  * 支持处理器模块的语义检查需求
@@ -10,11 +10,6 @@
  * 4. 性能高效：支持大规模SQL的实时语义检查
  */
 
-#ifdef _MSC_VER
-#define TECC_ATTR_UNUSED
-#else
-#define TECC_ATTR_UNUSED __attribute__((unused))
-#endif
 
 #include "tecc_nodes.h"
 #include "tecc_parser.h"
@@ -299,23 +294,6 @@ static bool is_distinct_allowed_for_encrypted_column(const char *algorithm) {
 
     /* 其他加密类型可能有限制 */
     return false;
-}
-
-/* 从加密类型获取算法名称 */
-TECC_ATTR_UNUSED static const char *get_algorithm_from_encryption_type(int encryption_type) {
-    switch (encryption_type) {
-        case ENCRYPTION_TYPE_RND:
-            return "SM4-RND";  /* 随机加密 */
-        case ENCRYPTION_TYPE_DET:
-            return "DET-SM4";  /* 确定性加密 */
-        case ENCRYPTION_TYPE_OPE:
-            return "SM4-OPE";  /* 顺序保持加密 */
-        case ENCRYPTION_TYPE_SEARCH:
-            return "SEARCH";   /* 搜索加密 */
-        case ENCRYPTION_TYPE_NONE:
-        default:
-            return NULL;       /* 非加密列 */
-    }
 }
 
 /* 检查列是否为加密列并获取加密算法（语义分析器无TeccState，始终返回非加密） */
@@ -1573,22 +1551,4 @@ static bool extract_column_info_from_columnref(const ColumnRef *column_ref,
     }
 
     return true;
-}
-
-/* 简化版本：从表达式节点提取列名（如果可能） */
-TECC_ATTR_UNUSED static const char *extract_column_name_from_expr(Node *expr) {
-    if (!expr) return NULL;
-
-    if (expr->type == FE_T_ColumnRef) {
-        ColumnRef *column_ref = (ColumnRef *)expr;
-        if (column_ref->fields && !list_is_empty(column_ref->fields)) {
-            /* 取最后一个字段作为列名 */
-            Node *last_field = (Node *)list_nth(column_ref->fields, list_length(column_ref->fields) - 1);
-            if (last_field && last_field->type == FE_T_String) {
-                /* 实际需要获取字符串值 */
-                return "column_name"; /* 临时占位符 */
-            }
-        }
-    }
-    return NULL;
 }

@@ -77,7 +77,7 @@ CATALOG_HEADERS := \
 	pg_object.h pg_mfaid.h \
 	pg_resgroup.h pg_resgroupcapability.h \
 	pg_recyclebin.h pg_synonym.h \
-	hg_kek.h hg_dek.h hg_kek_args.h hg_dek_args.h hg_encrypted_columns.h \
+	hg_kek.h hg_dek.h hg_kek_args.h hg_dek_args.h hg_encrypted_column_args.h hg_tecc_ddl.h hg_encrypted_columns.h \
 	pg_role_status.h \
 	pg_ora_part_tables.h pg_ora_tab_partitions.h \
 	pg_access_history.h pg_access_history_last.h \
@@ -96,7 +96,7 @@ POSTGRES_BKI_DATA = $(addprefix $(top_srcdir)/src/include/catalog/,\
 	pg_proc.dat pg_range.dat pg_tablespace.dat \
 	pg_ts_config.dat pg_ts_config_map.dat pg_ts_dict.dat pg_ts_parser.dat \
 	pg_ts_template.dat pg_type.dat pg_resgroupcapability.dat\
-	hg_dek.dat hg_dek_args.dat hg_encrypted_columns.dat hg_kek.dat hg_kek_args.dat \
+	hg_dek.dat hg_dek_args.dat hg_encrypted_column_args.dat hg_encrypted_columns.dat hg_kek.dat hg_kek_args.dat hg_tecc_ddl.dat \
 	)
 
 all: distprep generated-header-symlinks
@@ -154,6 +154,7 @@ install-data: bki-stamp installdirs
 	#END - SQL PARSER  - ReqID:SRS-MISC-MYSQL-FRAME
 	$(INSTALL_DATA) $(srcdir)/system_views.sql '$(DESTDIR)$(datadir)/system_views.sql'
 	$(INSTALL_DATA) $(srcdir)/hg_metadata_views.sql '$(DESTDIR)$(datadir)/hg_metadata_views.sql'
+	$(INSTALL_DATA) $(srcdir)/hg_rotate_funcs.sql '$(DESTDIR)$(datadir)/hg_rotate_funcs.sql'
 	$(INSTALL_DATA) $(srcdir)/information_schema.sql '$(DESTDIR)$(datadir)/information_schema.sql'
 	$(INSTALL_DATA) $(srcdir)/sql_features.txt '$(DESTDIR)$(datadir)/sql_features.txt'
 	$(INSTALL_DATA) $(srcdir)/fix-CVE-2024-4317.sql '$(DESTDIR)$(datadir)/fix-CVE-2024-4317.sql'
@@ -165,6 +166,7 @@ installdirs:
 uninstall-data:
 	# Begin - ReqID:SRS-MISC-MYSQL-FRAME
 	rm -f $(addprefix '$(DESTDIR)$(datadir)'/, postgres.bki postgres_oracle.bki postgres_mysql.bki postgres_all.bki system_constraints.sql system_functions.sql system_views.sql hg_metadata_views.sql information_schema.sql sql_features.txt fix-CVE-2024-4317.sql)
+	rm -f $(addprefix '$(DESTDIR)$(datadir)'/, postgres.bki postgres_oracle.bki postgres_mysql.bki postgres_all.bki system_constraints.sql system_functions.sql system_views.sql hg_metadata_views.sql hg_rotate_funcs.sql information_schema.sql sql_features.txt fix-CVE-2024-4317.sql)
 	# End - ReqID:SRS-MISC-MYSQL-FRAME
 
 # postgres.bki, system_constraints.sql, and the generated headers are

@@ -5,7 +5,7 @@
  *   前端可用的简单哈希表实现，用于TECC缓存模块。
  *   基于开放地址法的线性探测哈希表。
  *
- * Authored by <Claude Code>, 2026-04-16.
+ * Authored by <wanghaoyan>, 2026-04-16.
  *
  * Copyright:
  *   Copyright (c) 2026, HighGo Software Co.,Ltd. All rights reserved.

@@ -1,0 +1,28 @@
+NOTICE: key encryption key "kek_ns" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+=== Setup OK ===
+NOTICE: table "t_base_ns" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+=== 1 Baseline ===
+1a_baseline|1|Alice|10
+1a_baseline|3|Alice|30
+1b_baseline|4|Carol|40
+=== 2 Simple Subquery ===
+2a_star_subquery|1|Alice|10
+2a_star_subquery|2|Bob|20
+2a_star_subquery|3|Alice|30
+2a_star_subquery|4|Carol|40
+2b_subquery_inner_where|1|Alice|10
+2b_subquery_inner_where|3|Alice|30
+=== 3 Nested Subquery WHERE ===
+3b_nested_match|1|Alice|10
+3b_nested_match|3|Alice|30
+=== 4 Cleanup ===
+DROP TABLE
+NOTICE: drop cascades to 2 other objects
+DROP KEK

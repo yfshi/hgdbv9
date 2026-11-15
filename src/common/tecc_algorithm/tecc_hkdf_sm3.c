@@ -22,7 +22,7 @@
 #include "../../include/common/tecc_algorithm/tecc_sm3_internal.h"
 
 /* HKDF-SM3 constants */
-#define SM3_HASH_LEN 32
+//#define SM3_HASH_LEN 32
 #define SM3_BLOCK_SIZE 64
 
 /*

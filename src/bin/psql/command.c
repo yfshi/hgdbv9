@@ -99,6 +99,10 @@ static backslashResult exec_command_echo(PsqlScanState scan_state, bool active_b
 										 const char *cmd);
 static backslashResult exec_command_elif(PsqlScanState scan_state, ConditionalStack cstack,
 										 PQExpBuffer query_buf);
+static backslashResult exec_command_enable_disable(PsqlScanState scan_state, bool active_branch,
+												   const char *cmd);
+static backslashResult exec_command_show_tecc_mode(PsqlScanState scan_state,
+												   bool active_branch);
 static backslashResult exec_command_else(PsqlScanState scan_state, ConditionalStack cstack,
 										 PQExpBuffer query_buf);
 static backslashResult exec_command_endif(PsqlScanState scan_state, ConditionalStack cstack,
@@ -143,6 +147,9 @@ static backslashResult exec_command_setenv(PsqlScanState scan_state, bool active
 										   const char *cmd);
 static backslashResult exec_command_sf_sv(PsqlScanState scan_state, bool active_branch,
 										  const char *cmd, bool is_func);
+static backslashResult exec_command_show_tecc_ddl(PsqlScanState scan_state,
+												  bool active_branch,
+												  const char *cmd);
 static backslashResult exec_command_t(PsqlScanState scan_state, bool active_branch);
 static backslashResult exec_command_T(PsqlScanState scan_state, bool active_branch);
 static backslashResult exec_command_timing(PsqlScanState scan_state, bool active_branch);
@@ -384,6 +391,8 @@ exec_command(const char *cmd,
 		status = exec_command_copyright(scan_state, active_branch);
 	else if (strcmp(cmd, "crosstabview") == 0)
 		status = exec_command_crosstabview(scan_state, active_branch);
+	else if (strcmp(cmd, "enable") == 0 || strcmp(cmd, "disable") == 0)
+		status = exec_command_enable_disable(scan_state, active_branch, cmd);
 	else if (cmd[0] == 'd')
 		status = exec_command_d(scan_state, active_branch, cmd);
 	else if (strcmp(cmd, "e") == 0 || strcmp(cmd, "edit") == 0)
@@ -453,8 +462,13 @@ exec_command(const char *cmd,
 		status = exec_command_set(scan_state, active_branch);
 	else if (strcmp(cmd, "setenv") == 0)
 		status = exec_command_setenv(scan_state, active_branch, cmd);
+	else if (strcmp(cmd, "show") == 0)
+		status = exec_command_show_tecc_mode(scan_state, active_branch);
 	else if (strcmp(cmd, "sf") == 0 || strcmp(cmd, "sf+") == 0)
 		status = exec_command_sf_sv(scan_state, active_branch, cmd, true);
+	else if (strcmp(cmd, "sT") == 0 || strcmp(cmd, "sK") == 0 ||
+			 strcmp(cmd, "sk") == 0)
+		status = exec_command_show_tecc_ddl(scan_state, active_branch, cmd);
 	else if (strcmp(cmd, "sv") == 0 || strcmp(cmd, "sv+") == 0)
 		status = exec_command_sf_sv(scan_state, active_branch, cmd, false);
 	else if (strcmp(cmd, "t") == 0)
@@ -780,7 +794,8 @@ exec_command_d(PsqlScanState scan_state, bool active_branch, const char *cmd)
 	{
 		char	   *pattern;
 		bool		show_verbose,
-					show_system;
+					show_system,
+					tecc_command;
 
 		/* We don't do SQLID reduction on the pattern yet */
 		pattern = psql_scan_slash_option(scan_state,
@@ -788,10 +803,24 @@ exec_command_d(PsqlScanState scan_state, bool active_branch, const char *cmd)
 
 		show_verbose = strchr(cmd, '+') ? true : false;
 		show_system = strchr(cmd, 'S') ? true : false;
+		tecc_command = false;
 		/* BEGIN - SQL PARSER */
 		getDbCompatibleMode(pset.db);
 		/* END - SQL PARSER */
+		tecc_command = false;
+ 
+		if (strcmp(cmd, "ddek") == 0 || strcmp(cmd, "ddek+") == 0)
+		{
+			success = listDeks(pattern, show_verbose);
+			tecc_command = true;
+		}
+		else if (strcmp(cmd, "dkek") == 0 || strcmp(cmd, "dkek+") == 0)
+		{
+			success = listKeks(pattern, show_verbose);
+			tecc_command = true;
+		}
 
+		if (!tecc_command)
 		switch (cmd[1])
 		{
 			case '\0':
@@ -1835,6 +1864,93 @@ exec_command_elif(PsqlScanState scan_state, ConditionalStack cstack,
 }
 
 /*
+ * \enable/\disable -- control psql-side TECC settings
+ */
+static backslashResult
+exec_command_enable_disable(PsqlScanState scan_state, bool active_branch,
+							const char *cmd)
+{
+	bool		success = true;
+
+	if (active_branch)
+	{
+		char	   *name = psql_scan_slash_option(scan_state,
+												  OT_NORMAL, NULL, true);
+		bool		enable = (strcmp(cmd, "enable") == 0);
+
+		if (name == NULL || strcmp(name, "hg_tecc.mode") != 0)
+		{
+			pg_log_error("\\%s: expected \"hg_tecc.mode\"", cmd);
+			success = false;
+		}
+		else if (pset.db == NULL)
+		{
+			pg_log_error("\\%s: not connected to a database", cmd);
+			success = false;
+		}
+		else if (PQteccSetMode(pset.db, enable ? 1 : 0) != 0)
+		{
+			pg_log_error("\\%s: TECC is not enabled for this connection", cmd);
+			success = false;
+		}
+		else if (!pset.quiet)
+		{
+			printf(_("hg_tecc.mode is %s.\n"), enable ? _("enabled") : _("disabled"));
+		}
+
+		free(name);
+	}
+	else
+		ignore_slash_options(scan_state);
+
+	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+}
+
+/*
+ * \show -- show psql-side TECC settings
+ */
+static backslashResult
+exec_command_show_tecc_mode(PsqlScanState scan_state, bool active_branch)
+{
+	bool		success = true;
+
+	if (active_branch)
+	{
+		char	   *name = psql_scan_slash_option(scan_state,
+												  OT_NORMAL, NULL, true);
+		int			enabled = 0;
+
+		/* Begin - ReqID:TECC4.0 - show client-side TECC mode */
+		if (name == NULL || strcmp(name, "hg_tecc.mode") != 0)
+		{
+			pg_log_error("\\show: expected \"hg_tecc.mode\"");
+			success = false;
+		}
+		else if (pset.db == NULL)
+		{
+			pg_log_error("\\show: not connected to a database");
+			success = false;
+		}
+		else if (PQteccGetMode(pset.db, &enabled) != 0)
+		{
+			pg_log_error("\\show: TECC is not enabled for this connection");
+			success = false;
+		}
+		else if (!pset.quiet)
+		{
+			printf(_("hg_tecc.mode is %s.\n"), enabled ? _("enabled") : _("disabled"));
+		}
+		/* End - ReqID:TECC4.0 - show client-side TECC mode */
+
+		free(name);
+	}
+	else
+		ignore_slash_options(scan_state);
+
+	return success ? PSQL_CMD_SKIP_LINE : PSQL_CMD_ERROR;
+}
+
+/*
  * \else -- final alternative in an \if..\endif block
  *
  * Statements within an \else branch will only be executed if
@@ -2588,6 +2704,138 @@ exec_command_sf_sv(PsqlScanState scan_state, bool active_branch,
 		if (obj_desc)
 			free(obj_desc);
 		destroyPQExpBuffer(buf);
+	}
+	else
+		ignore_slash_whole_line(scan_state);
+
+	return status;
+}
+
+/*
+ * \sT/\sK/\sk -- show TECC CREATE TABLE/KEK/DEK statements.
+ */
+static backslashResult
+exec_command_show_tecc_ddl(PsqlScanState scan_state, bool active_branch,
+						   const char *cmd)
+{
+	backslashResult status = PSQL_CMD_SKIP_LINE;
+
+	if (active_branch)
+	{
+		char	   *obj_desc;
+		PQExpBufferData buf;
+		PGresult   *res;
+		FILE	   *output;
+		bool		is_pager;
+		int			i;
+		int			total_lines = 0;
+		const char *p;
+
+		obj_desc = psql_scan_slash_option(scan_state,
+										  OT_WHOLE_LINE, NULL, true);
+		if (!obj_desc)
+		{
+			pg_log_error("\\%s: missing required argument", cmd);
+			return PSQL_CMD_ERROR;
+		}
+
+		initPQExpBuffer(&buf);
+
+		if (strcmp(cmd, "sT") == 0)
+		{
+			appendPQExpBufferStr(&buf, "SELECT pg_catalog.tecc_get_tabledef(");
+			appendStringLiteralConn(&buf, obj_desc, pset.db);
+			appendPQExpBufferStr(&buf, "::pg_catalog.regclass) AS ddl");
+		}
+		else if (strcmp(cmd, "sK") == 0)
+		{
+			appendPQExpBufferStr(&buf, "WITH target(pattern) AS (SELECT ");
+			appendStringLiteralConn(&buf, obj_desc, pset.db);
+			appendPQExpBufferStr(&buf,
+								 "::pg_catalog.text)\n"
+								 "SELECT 'CREATE KEK ' || pg_catalog.format('%I.%I', n.nspname, k.kek_name) ||\n"
+								 "       ' WITH (' ||\n"
+								 "       coalesce(pg_catalog.string_agg(\n"
+								 "         pg_catalog.format('%I = %L', pg_catalog.lower(a.key::pg_catalog.text),\n"
+								 "                           pg_catalog.encode(a.value, 'escape')),\n"
+								 "         ', ' ORDER BY a.key), '') || ');' AS ddl\n"
+								 "FROM pg_catalog.hg_kek k\n"
+								 "  JOIN pg_catalog.pg_namespace n ON n.oid = k.key_namespace\n"
+								 "  LEFT JOIN pg_catalog.hg_kek_args a ON a.kek_id = k.oid\n"
+								 "    AND a.function_name = 'kek_config'\n"
+								 "    AND a.key !~ '^_'\n"
+								 "WHERE pg_catalog.format('%I.%I', n.nspname, k.kek_name) = (SELECT pattern FROM target)\n"
+								 "   OR pg_catalog.quote_ident(k.kek_name) = (SELECT pattern FROM target)\n"
+								 "GROUP BY n.nspname, k.kek_name\n"
+								 "ORDER BY 1");
+		}
+		else
+		{
+			appendPQExpBufferStr(&buf, "WITH target(pattern) AS (SELECT ");
+			appendStringLiteralConn(&buf, obj_desc, pset.db);
+			appendPQExpBufferStr(&buf,
+								 "::pg_catalog.text)\n"
+								 "SELECT 'CREATE DEK ' || pg_catalog.format('%I.%I', n.nspname, d.dek_name) ||\n"
+								 "       ' WITH VALUES(KEK = ' || pg_catalog.format('%I.%I', kn.nspname, k.kek_name) ||\n"
+								 "       coalesce(', ' || pg_catalog.string_agg(\n"
+								 "         pg_catalog.format('%I = %L', pg_catalog.lower(a.key::pg_catalog.text),\n"
+								 "                           pg_catalog.encode(a.value, 'escape')),\n"
+								 "         ', ' ORDER BY a.key), '') || ');' AS ddl\n"
+								 "FROM pg_catalog.hg_dek d\n"
+								 "  JOIN pg_catalog.pg_namespace n ON n.oid = d.key_namespace\n"
+								 "  JOIN pg_catalog.hg_kek k ON k.oid = d.kek_id\n"
+								 "  JOIN pg_catalog.pg_namespace kn ON kn.oid = k.key_namespace\n"
+								 "  LEFT JOIN pg_catalog.hg_dek_args a ON a.dek_id = d.oid\n"
+								 "    AND a.function_name = 'dek_config'\n"
+								 "    AND a.key NOT IN ('encrypted_value', '_tecc_processed')\n"
+								 "WHERE pg_catalog.format('%I.%I', n.nspname, d.dek_name) = (SELECT pattern FROM target)\n"
+								 "   OR pg_catalog.quote_ident(d.dek_name) = (SELECT pattern FROM target)\n"
+								 "GROUP BY n.nspname, d.dek_name, kn.nspname, k.kek_name\n"
+								 "ORDER BY 1");
+		}
+
+		res = PSQLexec(buf.data);
+		termPQExpBuffer(&buf);
+		if (!res)
+		{
+			free(obj_desc);
+			return PSQL_CMD_ERROR;
+		}
+
+		for (i = 0; i < PQntuples(res); i++)
+		{
+			total_lines++;
+			for (p = PQgetvalue(res, i, 0); *p; p++)
+			{
+				if (*p == '\n')
+					total_lines++;
+			}
+		}
+
+		if (pset.queryFout == stdout)
+		{
+			output = PageOutput(total_lines == 0 ? 1 : total_lines,
+								&(pset.popt.topt));
+			is_pager = true;
+		}
+		else
+		{
+			output = pset.queryFout;
+			is_pager = false;
+		}
+
+		for (i = 0; i < PQntuples(res); i++)
+			fprintf(output, "%s\n", PQgetvalue(res, i, 0));
+
+		if (PQntuples(res) == 0)
+			pg_log_error("\\%s: object \"%s\" not found", cmd, obj_desc);
+
+		if (is_pager)
+			ClosePager(output);
+
+		status = PQntuples(res) == 0 ? PSQL_CMD_ERROR : PSQL_CMD_SKIP_LINE;
+		PQclear(res);
+		free(obj_desc);
 	}
 	else
 		ignore_slash_whole_line(scan_state);

@@ -184,7 +184,7 @@ slashUsage(unsigned short int pager)
 	 * Use "psql --help=commands | wc" to count correctly.  It's okay to count
 	 * the USE_READLINE line even in builds without that.
 	 */
-	output = PageOutput(136, pager ? &(pset.popt.topt) : NULL);
+	output = PageOutput(152, pager ? &(pset.popt.topt) : NULL);
 
 	fprintf(output, _("General\n"));
 	fprintf(output, _("  \\copyright             show PostgreSQL usage and distribution terms\n"));
@@ -270,6 +270,8 @@ slashUsage(unsigned short int pager)
 	fprintf(output, _("  \\dFt[+] [PATTERN]      list text search templates\n"));
 	fprintf(output, _("  \\dg[S+] [PATTERN]      list roles\n"));
 	fprintf(output, _("  \\di[S+] [PATTERN]      list indexes\n"));
+	fprintf(output, _("  \\ddek[+]  [PATTERN]      list TECC DEKs\n"));
+	fprintf(output, _("  \\dkek[+]  [PATTERN]      list TECC KEKs\n"));
 	fprintf(output, _("  \\dl                    list large objects, same as \\lo_list\n"));
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	fprintf(output, _("  \\dk[S+] [PATTERN]      list packages\n"));
@@ -295,9 +297,23 @@ slashUsage(unsigned short int pager)
 	fprintf(output, _("  \\dy[+]  [PATTERN]      list event triggers\n"));
 	fprintf(output, _("  \\l[+]   [PATTERN]      list databases\n"));
 	fprintf(output, _("  \\sf[+]  FUNCNAME       show a function's definition\n"));
+	fprintf(output, _("  \\sk    DEKNAME         show CREATE DEK statement\n"));
+	fprintf(output, _("  \\sK    KEKNAME         show CREATE KEK statement\n"));
+	fprintf(output, _("  \\sT    TABLENAME       show CREATE TABLE statement with TECC clauses\n"));
 	fprintf(output, _("  \\sv[+]  VIEWNAME       show a view's definition\n"));
 	fprintf(output, _("  \\z      [PATTERN]      same as \\dp\n"));
 	fprintf(output, _("  \\parser                synchronize psql with the backend parser or display the psql parser\n")); /* BUG#0000064 */
+	fprintf(output, "\n");
+
+	fprintf(output, _("TECC\n"));
+	fprintf(output, _("  Connection parameter: enable_tecc=true|false (env: PGENABLETECC, default: true)\n"));
+	fprintf(output, _("  psql option:          -k on|off controls TECC connection preprocessing\n"));
+	fprintf(output, _("  Session mode:         \\enable hg_tecc.mode / \\disable hg_tecc.mode / \\show hg_tecc.mode\n"));
+	/* Modify - ReqID:TECC4.0 */
+	fprintf(output, _("  Syntax help:          \\h CREATE KEK, \\h ALTER KEK, \\h CREATE DEK, \\h DROP KEK, \\h DROP DEK\n"));
+	fprintf(output, _("  Show DDL:             \\sT table_name, \\sK kek_name, \\sk dek_name\n"));
+	fprintf(output, _("  Show TECC objects:    \\dkek[+] [PATTERN], \\ddek[+] [PATTERN]\n"));
+	fprintf(output, _("  Column clause:        ENCRYPTED WITH (DEK = dek_name [, SUPPORT_ALGO = 'DET|OPE|SEARCH'])\n"));
 	fprintf(output, "\n");
 
 	fprintf(output, _("Formatting\n"));

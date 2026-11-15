@@ -1,0 +1,22 @@
+diff a/src/tools/msvc/Mkvcbuild.pm b/src/tools/msvc/Mkvcbuild.pm	(rejected hunks)
+@@ -170,7 +170,9 @@ sub mkvcbuild
+ 			'tecc_algorithm/tecc_sm4_internal.c',
+ 			'tecc_algorithm/tecc_pattern.c',
+ 			'tecc_algorithm/tecc_algorithm_api.c',
+-			'tecc_algorithm/tecc_byteorder.c');
++			'tecc_algorithm/tecc_byteorder.c',
++			'tecc_algorithm/tecc_ec_elgamal.c',
++			'tecc_algorithm/tecc_elgamal.c');
+ 		my @tecc_key_files = (
+ 			'tecc_key/config.c',
+ 			'tecc_key/high_level_api.c',
+@@ -178,7 +180,8 @@ sub mkvcbuild
+ 			'tecc_key/kms_adapter.c',
+ 			'tecc_key/security.c',
+ 			'tecc_key/server_interface.c',
+-			'tecc_key/utils.c');
++			'tecc_key/utils.c',
++			'tecc_key/tecc_sm2.c');
+ 		push(@pgcommonbkndfiles, @tecc_algorithm_files);
+ 		push(@pgcommonfrontendfiles, @tecc_algorithm_files, @tecc_key_files);
+ 	}

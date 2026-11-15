@@ -637,276 +637,6 @@ tecc_normalize_float8_common(double value,
     return tecc_normalize_numeric_text_common(buffer, strlen(buffer), norm_num);
 }
 
-#if 0
-/*
- * tecc_normalize_int16_common - Normalize int16 to common format
- */
-static int
-tecc_normalize_int16_common(int16 value,
-                            TeccNumericNormalizedCommon *norm_num)
-{
-    int64 abs_value;
-    int digit_count;
-    int64 temp;
-    size_t packed_count;
-    uint16_t packed_digit;
-    int packed_index;
-    int digit_index;
-
-    if (!norm_num)
-        return TECC_NORMALIZATION_ERROR_INVALID_PARAM;
-
-    /* Initialize structure */
-    norm_num->sign = (value >= 0) ? TECC_NUMERIC_SIGN_POSITIVE_COMMON : TECC_NUMERIC_SIGN_NEGATIVE_COMMON;
-    norm_num->weight = 0;
-
-    /* Handle zero */
-    if (value == 0)
-    {
-        norm_num->sign = TECC_NUMERIC_SIGN_ZERO_COMMON;
-        norm_num->ndigits = 0;
-        norm_num->digits = NULL;
-        return TECC_NORMALIZATION_SUCCESS;
-    }
-
-    /* Convert to absolute value */
-    abs_value = (value < 0) ? -(int64)value : (int64)value;
-
-    /* Count digits */
-    digit_count = 0;
-    temp = abs_value;
-    while (temp > 0)
-    {
-        digit_count++;
-        temp /= 10;
-    }
-
-    norm_num->ndigits = digit_count;
-
-    /* Allocate digits array */
-    packed_count = (digit_count + 3) / 4;
-    norm_num->digits = (uint16_t *)pg_malloc(packed_count * sizeof(uint16_t));
-    if (!norm_num->digits)
-        return TECC_NORMALIZATION_ERROR_MEMORY_ALLOC;
-
-    /* Extract digits */
-    temp = abs_value;
-    packed_digit = 0;
-    packed_index = 0;
-    digit_index = 0;
-
-    while (temp > 0)
-    {
-        int digit = temp % 10;
-        temp /= 10;
-
-        /* Pack 4 digits into one uint16 */
-        if (digit_index % 4 == 0 && digit_index > 0)
-        {
-            norm_num->digits[packed_index++] = packed_digit;
-            packed_digit = 0;
-        }
-
-        packed_digit = (packed_digit << 4) | (digit & 0x0F);
-        digit_index++;
-    }
-
-    /* Store last packed digit */
-    if (digit_index > 0)
-    {
-        /* Pad with zeros if needed */
-        int remaining = digit_index % 4;
-        if (remaining > 0)
-        {
-            packed_digit <<= (4 - remaining) * 4;
-        }
-        norm_num->digits[packed_index] = packed_digit;
-    }
-
-    return TECC_NORMALIZATION_SUCCESS;
-}
-#endif
-
-#if 0
-/*
- * tecc_normalize_int32_common - Normalize int32 to common format
- */
-static int
-tecc_normalize_int32_common(int32 value,
-                            TeccNumericNormalizedCommon *norm_num)
-{
-    int64 abs_value;
-    int digit_count;
-    int64 temp;
-    size_t packed_count;
-    uint16_t packed_digit;
-    int packed_index;
-    int digit_index;
-
-    if (!norm_num)
-        return TECC_NORMALIZATION_ERROR_INVALID_PARAM;
-
-    /* Initialize structure */
-    norm_num->sign = (value >= 0) ? TECC_NUMERIC_SIGN_POSITIVE_COMMON : TECC_NUMERIC_SIGN_NEGATIVE_COMMON;
-    norm_num->weight = 0;
-
-    /* Handle zero */
-    if (value == 0)
-    {
-        norm_num->sign = TECC_NUMERIC_SIGN_ZERO_COMMON;
-        norm_num->ndigits = 0;
-        norm_num->digits = NULL;
-        return TECC_NORMALIZATION_SUCCESS;
-    }
-
-    /* Convert to absolute value */
-    abs_value = (value < 0) ? -(int64)value : (int64)value;
-
-    /* Count digits */
-    digit_count = 0;
-    temp = abs_value;
-    while (temp > 0)
-    {
-        digit_count++;
-        temp /= 10;
-    }
-
-    norm_num->ndigits = digit_count;
-
-    /* Allocate digits array */
-    packed_count = (digit_count + 3) / 4;
-    norm_num->digits = (uint16_t *)pg_malloc(packed_count * sizeof(uint16_t));
-    if (!norm_num->digits)
-        return TECC_NORMALIZATION_ERROR_MEMORY_ALLOC;
-
-    /* Extract digits */
-    temp = abs_value;
-    packed_digit = 0;
-    packed_index = 0;
-    digit_index = 0;
-
-    while (temp > 0)
-    {
-        int digit = temp % 10;
-        temp /= 10;
-
-        /* Pack 4 digits into one uint16 */
-        if (digit_index % 4 == 0 && digit_index > 0)
-        {
-            norm_num->digits[packed_index++] = packed_digit;
-            packed_digit = 0;
-        }
-
-        packed_digit = (packed_digit << 4) | (digit & 0x0F);
-        digit_index++;
-    }
-
-    /* Store last packed digit */
-    if (digit_index > 0)
-    {
-        /* Pad with zeros if needed */
-        int remaining = digit_index % 4;
-        if (remaining > 0)
-        {
-            packed_digit <<= (4 - remaining) * 4;
-        }
-        norm_num->digits[packed_index] = packed_digit;
-    }
-
-    return TECC_NORMALIZATION_SUCCESS;
-}
-#endif
-
-#if 0
-/*
- * tecc_normalize_int64_common - Normalize int64 to common format
- */
-static int
-tecc_normalize_int64_common(int64 value,
-                            TeccNumericNormalizedCommon *norm_num)
-{
-    int64 abs_value;
-    int digit_count;
-    int64 temp;
-    size_t packed_count;
-    uint16_t packed_digit;
-    int packed_index;
-    int digit_index;
-
-    if (!norm_num)
-        return TECC_NORMALIZATION_ERROR_INVALID_PARAM;
-
-    /* Initialize structure */
-    norm_num->sign = (value >= 0) ? TECC_NUMERIC_SIGN_POSITIVE_COMMON : TECC_NUMERIC_SIGN_NEGATIVE_COMMON;
-    norm_num->weight = 0;
-
-    /* Handle zero */
-    if (value == 0)
-    {
-        norm_num->sign = TECC_NUMERIC_SIGN_ZERO_COMMON;
-        norm_num->ndigits = 0;
-        norm_num->digits = NULL;
-        return TECC_NORMALIZATION_SUCCESS;
-    }
-
-    /* Convert to absolute value */
-    abs_value = (value < 0) ? -value : value;
-
-    /* Count digits */
-    digit_count = 0;
-    temp = abs_value;
-    while (temp > 0)
-    {
-        digit_count++;
-        temp /= 10;
-    }
-
-    norm_num->ndigits = digit_count;
-
-    /* Allocate digits array */
-    packed_count = (digit_count + 3) / 4;
-    norm_num->digits = (uint16_t *)pg_malloc(packed_count * sizeof(uint16_t));
-    if (!norm_num->digits)
-        return TECC_NORMALIZATION_ERROR_MEMORY_ALLOC;
-
-    /* Extract digits */
-    temp = abs_value;
-    packed_digit = 0;
-    packed_index = 0;
-    digit_index = 0;
-
-    while (temp > 0)
-    {
-        int digit = temp % 10;
-        temp /= 10;
-
-        /* Pack 4 digits into one uint16 */
-        if (digit_index % 4 == 0 && digit_index > 0)
-        {
-            norm_num->digits[packed_index++] = packed_digit;
-            packed_digit = 0;
-        }
-
-        packed_digit = (packed_digit << 4) | (digit & 0x0F);
-        digit_index++;
-    }
-
-    /* Store last packed digit */
-    if (digit_index > 0)
-    {
-        /* Pad with zeros if needed */
-        int remaining = digit_index % 4;
-        if (remaining > 0)
-        {
-            packed_digit <<= (4 - remaining) * 4;
-        }
-        norm_num->digits[packed_index] = packed_digit;
-    }
-
-    return TECC_NORMALIZATION_SUCCESS;
-}
-#endif
-
 /*
  * tecc_normalize_text_with_icu_common - Normalize text with ICU sort key generation
  */
@@ -1211,32 +941,29 @@ tecc_normalize_int8_text_common(const char *int8_text,
 }
 
 /*
- * tecc_normalize_float4_text_common - Normalize float4 text string to common format
+ * detect_float_special_values - Detect NaN/Infinity and handle ERANGE
+ *
+ * Shared by float4 and float8 text normalization.
+ * Returns:
+ *   TECC_NORMALIZATION_SUCCESS if a special value was handled (caller should return)
+ *   TECC_NORMALIZATION_ERROR_* on error (caller should return)
+ *   0 if no special value detected (caller should proceed with normal conversion)
+ *
+ * If return is SUCCESS, norm_num is already filled in.
+ * On error or 0, norm_num is NOT modified.
  */
-int
-tecc_normalize_float4_text_common(const char *float4_text,
-                                  size_t text_len,
-                                  TeccNumericNormalizedCommon *norm_num)
+static int
+detect_float_special_values(const char *text, double double_val,
+                            char *endptr, TeccNumericNormalizedCommon *norm_num)
 {
-    float4 value;
-    char *endptr;
-    double double_val;
-
-    if (!float4_text || !norm_num)
-        return TECC_NORMALIZATION_ERROR_INVALID_PARAM;
-
-    /* Parse float4 text */
-    errno = 0;
-    double_val = strtod(float4_text, &endptr);
-
     /* ReqID:TECC4.0 - NaN/Infinity detection and ERANGE handling
-     * matching PG backend float4in logic. */
+     * matching PG backend float4in/float8in logic. */
 
     /* If strtod parsed nothing, check for NaN/Infinity explicitly */
-    if (endptr == float4_text)
+    if (endptr == text)
     {
-        if (pg_strncasecmp(float4_text, "NaN", 3) == 0 ||
-            pg_strncasecmp(float4_text, "nan", 3) == 0)
+        if (pg_strncasecmp(text, "NaN", 3) == 0 ||
+            pg_strncasecmp(text, "nan", 3) == 0)
         {
             norm_num->sign = TECC_NUMERIC_SIGN_NAN;
             norm_num->weight = 0;
@@ -1246,7 +973,7 @@ tecc_normalize_float4_text_common(const char *float4_text,
         }
         /* Check for optional sign + Infinity/Inf */
         {
-            const char *p = float4_text;
+            const char *p = text;
             int sign = 1;
             if (*p == '-') { sign = -1; p++; }
             else if (*p == '+') { p++; }
@@ -1264,17 +991,12 @@ tecc_normalize_float4_text_common(const char *float4_text,
         return TECC_NORMALIZATION_ERROR_INVALID_TYPE;
     }
 
-    /* ReqID:TECC4.0 - ERANGE: accept gradual underflow (value→0),
-     * reject true overflow (isinf). Matches PG float4in behavior. */
+    /* ERANGE: accept gradual underflow (value→0), reject true overflow */
     if (errno == ERANGE)
     {
         if (double_val == 0.0)
         {
             /* Gradual underflow — accept */
-        }
-        else if (isinf(double_val))
-        {
-            return TECC_NORMALIZATION_ERROR_NUMERIC_OVERFLOW;
         }
         else
         {
@@ -1282,9 +1004,7 @@ tecc_normalize_float4_text_common(const char *float4_text,
         }
     }
 
-    /* If strtod returned NaN/Infinity without ERANGE, this is an explicit
-     * special value input — handle it directly rather than relying on
-     * tecc_normalize_float4_common's "%f" format. */
+    /* If strtod returned NaN/Infinity without ERANGE */
     if (isnan(double_val))
     {
         norm_num->sign = TECC_NUMERIC_SIGN_NAN;
@@ -1302,6 +1022,33 @@ tecc_normalize_float4_text_common(const char *float4_text,
         norm_num->digits = NULL;
         return TECC_NORMALIZATION_SUCCESS;
     }
+
+    return 0;  /* No special value, proceed with normal conversion */
+}
+
+/*
+ * tecc_normalize_float4_text_common - Normalize float4 text string to common format
+ */
+int
+tecc_normalize_float4_text_common(const char *float4_text,
+                                  size_t text_len,
+                                  TeccNumericNormalizedCommon *norm_num)
+{
+    float4 value;
+    char *endptr;
+    double double_val;
+    int spec_result;
+
+    if (!float4_text || !norm_num)
+        return TECC_NORMALIZATION_ERROR_INVALID_PARAM;
+
+    /* Parse float4 text */
+    errno = 0;
+    double_val = strtod(float4_text, &endptr);
+
+    spec_result = detect_float_special_values(float4_text, double_val, endptr, norm_num);
+    if (spec_result != 0)
+        return spec_result;
 
     /* Skip trailing whitespace */
     while (*endptr && isspace((unsigned char)*endptr))
@@ -1332,6 +1079,7 @@ tecc_normalize_float8_text_common(const char *float8_text,
     float8 value;
     char *endptr;
     double double_val;
+    int spec_result;
 
     if (!float8_text || !norm_num)
         return TECC_NORMALIZATION_ERROR_INVALID_PARAM;
@@ -1340,71 +1088,9 @@ tecc_normalize_float8_text_common(const char *float8_text,
     errno = 0;
     double_val = strtod(float8_text, &endptr);
 
-    /* ReqID:TECC4.0 - NaN/Infinity detection and ERANGE handling
-     * matching PG backend float8in logic. */
-    if (endptr == float8_text)
-    {
-        if (pg_strncasecmp(float8_text, "NaN", 3) == 0 ||
-            pg_strncasecmp(float8_text, "nan", 3) == 0)
-        {
-            norm_num->sign = TECC_NUMERIC_SIGN_NAN;
-            norm_num->weight = 0;
-            norm_num->ndigits = 0;
-            norm_num->digits = NULL;
-            return TECC_NORMALIZATION_SUCCESS;
-        }
-        {
-            const char *p = float8_text;
-            int sign = 1;
-            if (*p == '-') { sign = -1; p++; }
-            else if (*p == '+') { p++; }
-            if (pg_strncasecmp(p, "Infinity", 8) == 0 ||
-                pg_strncasecmp(p, "Inf", 3) == 0)
-            {
-                norm_num->sign = (sign < 0) ? TECC_NUMERIC_SIGN_NINF
-                                            : TECC_NUMERIC_SIGN_INF;
-                norm_num->weight = 0;
-                norm_num->ndigits = 0;
-                norm_num->digits = NULL;
-                return TECC_NORMALIZATION_SUCCESS;
-            }
-        }
-        return TECC_NORMALIZATION_ERROR_INVALID_TYPE;
-    }
-
-    if (errno == ERANGE)
-    {
-        if (double_val == 0.0)
-        {
-            /* Gradual underflow — accept */
-        }
-        else if (isinf(double_val))
-        {
-            return TECC_NORMALIZATION_ERROR_NUMERIC_OVERFLOW;
-        }
-        else
-        {
-            return TECC_NORMALIZATION_ERROR_NUMERIC_OVERFLOW;
-        }
-    }
-
-    if (isnan(double_val))
-    {
-        norm_num->sign = TECC_NUMERIC_SIGN_NAN;
-        norm_num->weight = 0;
-        norm_num->ndigits = 0;
-        norm_num->digits = NULL;
-        return TECC_NORMALIZATION_SUCCESS;
-    }
-    if (isinf(double_val))
-    {
-        norm_num->sign = (double_val < 0) ? TECC_NUMERIC_SIGN_NINF
-                                          : TECC_NUMERIC_SIGN_INF;
-        norm_num->weight = 0;
-        norm_num->ndigits = 0;
-        norm_num->digits = NULL;
-        return TECC_NORMALIZATION_SUCCESS;
-    }
+    spec_result = detect_float_special_values(float8_text, double_val, endptr, norm_num);
+    if (spec_result != 0)
+        return spec_result;
 
     /* Skip trailing whitespace */
     while (*endptr && isspace((unsigned char)*endptr))

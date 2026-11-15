@@ -1,0 +1,263 @@
+NOTICE: table "enc_pgfunc_test_det" does not exist, skipping
+DROP TABLE
+NOTICE: table "enc_pgfunc_test_ope" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "enc_pgfunc_dek" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "enc_pgfunc_kek" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+NOTICE: data encryption key "enc_pgfunc_he_mul_dek" does not exist, skipping
+DROP DEK
+NOTICE: data encryption key "enc_pgfunc_he_add_dek" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "enc_pgfunc_he_kek" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+COUNT(*)-OPE|5
+COUNT(*)-DET|5
+COUNT(c_int4)-OPE|4
+COUNT(c_int4)-DET|4
+COUNT(c_text)-OPE|5
+COUNT(c_text)-DET|5
+COUNT(c_numeric)-OPE|4
+COUNT(c_numeric)-DET|4
+COUNT(n_int4)-OPE-plain|4
+COUNT(n_int4)-DET-plain|4
+COUNT(DISTINCT c_int4)-OPE|4
+COUNT(DISTINCT c_int4)-DET|4
+COUNT(DISTINCT c_int2)-OPE|4
+COUNT(DISTINCT c_int2)-DET|4
+COUNT(DISTINCT c_int8)-OPE|5
+COUNT(DISTINCT c_int8)-DET|5
+COUNT(DISTINCT c_float4)-OPE|4
+COUNT(DISTINCT c_float4)-DET|4
+COUNT(DISTINCT c_float8)-OPE|5
+COUNT(DISTINCT c_float8)-DET|5
+COUNT(DISTINCT c_numeric)-OPE|4
+COUNT(DISTINCT c_numeric)-DET|4
+COUNT(DISTINCT c_text)-OPE|5
+COUNT(DISTINCT c_text)-DET|5
+COUNT(DISTINCT c_varchar)-OPE|4
+COUNT(DISTINCT c_varchar)-DET|4
+COUNT(DISTINCT c_bpchar)-OPE|5
+COUNT(DISTINCT c_bpchar)-DET|5
+ERROR: ERROR: function count(int4_enc, text_enc) does not exist
+  Hint: No function matches the given name and argument types. You might need to add explicit type casts.
+  Position: 59
+ERROR: ERROR: function count(int4_enc, text_enc) does not exist
+  Hint: No function matches the given name and argument types. You might need to add explicit type casts.
+  Position: 59
+COUNT(DISTINCT n_int4)-OPE-plain|4
+COUNT(DISTINCT n_text)-DET-plain|5
+MIN(c_int2)-OPE|-50
+MIN(c_int4)-OPE|-1000
+MIN(c_int8)-OPE|-999999999
+MIN(c_float4)-OPE|-1.5
+MIN(c_float8)-OPE|-3.14159
+MIN(c_numeric)-OPE|-500.0
+MIN(c_text)-OPE|
+MIN(c_varchar)-OPE|
+MIN(c_bpchar)-OPE|
+MIN(n_int4)-OPE-plain|-1000
+MIN(n_text)-OPE-plain|
+MAX(c_int2)-OPE|200
+MAX(c_int4)-OPE|9999
+MAX(c_int8)-OPE|1234567890123
+MAX(c_float4)-OPE|99.99
+MAX(c_float8)-OPE|12345.6789
+MAX(c_numeric)-OPE|99999.9999
+MAX(c_text)-OPE|Special: !@#$%^&*()_+-=[]{}|;:''",.<>?/~`
+MAX(c_varchar)-OPE|VARCHAR值
+MAX(c_bpchar)-OPE|BPCHAR值
+MAX(n_int4)-OPE-plain|9999
+MAX(n_text)-OPE-plain|Special: !@#$%^&*()_+-=[]{}|;:'",.<>?/~`
+ERROR: TECC strict: function 'MIN' requires OPE on encrypted column [enc_pgfunc_test_det.c_int2], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'MIN' requires OPE on encrypted column [enc_pgfunc_test_det.c_int4], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'MIN' requires OPE on encrypted column [enc_pgfunc_test_det.c_int8], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'MIN' requires OPE on encrypted column [enc_pgfunc_test_det.c_float4], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'MIN' requires OPE on encrypted column [enc_pgfunc_test_det.c_float8], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'MIN' requires OPE on encrypted column [enc_pgfunc_test_det.c_numeric], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'MIN' requires OPE on encrypted column [enc_pgfunc_test_det.c_text], but column uses DET,SEARCH. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'MIN' requires OPE on encrypted column [enc_pgfunc_test_det.c_varchar], but column uses DET,SEARCH. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'MIN' requires OPE on encrypted column [enc_pgfunc_test_det.c_bpchar], but column uses DET,SEARCH. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'MAX' requires OPE on encrypted column [enc_pgfunc_test_det.c_int2], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'MAX' requires OPE on encrypted column [enc_pgfunc_test_det.c_int4], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'MAX' requires OPE on encrypted column [enc_pgfunc_test_det.c_int8], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'MAX' requires OPE on encrypted column [enc_pgfunc_test_det.c_float4], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'MAX' requires OPE on encrypted column [enc_pgfunc_test_det.c_float8], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'MAX' requires OPE on encrypted column [enc_pgfunc_test_det.c_numeric], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'MAX' requires OPE on encrypted column [enc_pgfunc_test_det.c_text], but column uses DET,SEARCH. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'MAX' requires OPE on encrypted column [enc_pgfunc_test_det.c_varchar], but column uses DET,SEARCH. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'MAX' requires OPE on encrypted column [enc_pgfunc_test_det.c_bpchar], but column uses DET,SEARCH. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_ope.c_int2], but column uses OPE. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_ope.c_int4], but column uses OPE. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_ope.c_int8], but column uses OPE. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_ope.c_float4], but column uses OPE. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_ope.c_float8], but column uses OPE. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_ope.c_numeric], but column uses OPE. Reconfigure the column with the required algorithm or rewrite the SQL.
+SUM(n_int4)-OPE-plain|17887
+SUM(n_numeric)-OPE-plain|99623.4559
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_det.c_int2], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_det.c_int4], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_det.c_int8], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_det.c_float4], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_det.c_float8], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_det.c_numeric], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+SUM(n_int4)-DET-plain|17887
+SUM(n_numeric)-DET-plain|99623.4559
+ERROR: TECC strict: function 'AVG' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_ope.c_int2]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+ERROR: TECC strict: function 'AVG' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_ope.c_int4]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+ERROR: TECC strict: function 'AVG' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_ope.c_int8]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+ERROR: TECC strict: function 'AVG' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_ope.c_float4]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+ERROR: TECC strict: function 'AVG' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_ope.c_float8]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+ERROR: TECC strict: function 'AVG' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_ope.c_numeric]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+AVG(n_int4)-OPE-plain|4471.7500000000000000
+AVG(n_numeric)-OPE-plain|24905.863975000000
+ERROR: TECC strict: function 'AVG' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_det.c_int2]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+ERROR: TECC strict: function 'AVG' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_det.c_int4]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+ERROR: TECC strict: function 'AVG' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_det.c_int8]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+ERROR: TECC strict: function 'AVG' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_det.c_float4]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+ERROR: TECC strict: function 'AVG' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_det.c_float8]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+ERROR: TECC strict: function 'AVG' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_det.c_numeric]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+AVG(n_int4)-DET-plain|4471.7500000000000000
+AVG(n_numeric)-DET-plain|24905.863975000000
+ERROR: TECC strict: function 'string_agg' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_ope.c_text]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+ERROR: TECC strict: function 'string_agg' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_ope.c_varchar]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+ERROR: TECC strict: function 'string_agg' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_ope.c_bpchar]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+ERROR: TECC strict: function 'string_agg' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_ope.c_text]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+string_agg(n_text)-OPE-plain|Hello World,中文字符串🎉,,仅部分列为NULL,Special: !@#$%^&*()_+-=[]{}|;:'",.<>?/~`
+ERROR: TECC strict: function 'string_agg' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_det.c_text]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+ERROR: TECC strict: function 'string_agg' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_det.c_varchar]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+ERROR: TECC strict: function 'string_agg' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_det.c_bpchar]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+string_agg(n_text)-DET-plain|Hello World,中文字符串🎉,,仅部分列为NULL,Special: !@#$%^&*()_+-=[]{}|;:'",.<>?/~`
+array_agg(c_int2)-OPE|{"100","-50","0",NULL,"200"}
+array_agg(c_int4)-OPE|{"9999","-1000","0",NULL,"8888"}
+array_agg(c_text)-OPE|{"Hello World","中文字符串🎉","","仅部分列为NULL","Special: !@#$%^&*()_+-=[]{}|;:''\",.<>?/~`"}
+array_agg(c_text ORDER BY c_text)-OPE|{"","仅部分列为NULL","中文字符串🎉","Hello World","Special: !@#$%^&*()_+-=[]{}|;:''\",.<>?/~`"}
+array_agg(n_int4)-OPE-plain|{9999,-1000,0,NULL,8888}
+array_agg(n_text)-OPE-plain|{"Hello World",中文字符串🎉,"",仅部分列为NULL,"Special: !@#$%^&*()_+-=[]{}|;:'\",.<>?/~`"}
+array_agg(c_int2)-DET|{"100","-50","0",NULL,"200"}
+array_agg(c_int4)-DET|{"9999","-1000","0",NULL,"8888"}
+array_agg(c_text)-DET|{"Hello World","中文字符串🎉","","仅部分列为NULL","Special: !@#$%^&*()_+-=[]{}|;:''\",.<>?/~`"}
+array_agg(n_int4)-DET-plain|{9999,-1000,0,NULL,8888}
+array_agg(n_text)-DET-plain|{"Hello World",中文字符串🎉,"",仅部分列为NULL,"Special: !@#$%^&*()_+-=[]{}|;:'\",.<>?/~`"}
+GROUP BY c_int4-OPE|-1000|1|-50|-999999999
+GROUP BY c_int4-OPE|0|1|0|0
+GROUP BY c_int4-OPE|8888|1|200|999999999999
+GROUP BY c_int4-OPE|9999|1|100|1234567890123
+GROUP BY c_int4-OPE||1||500
+GROUP BY c_text-OPE||1||
+GROUP BY c_text-OPE|仅部分列为NULL|1||有值bpchar
+GROUP BY c_text-OPE|中文字符串🎉|1|Mixed混合|定长char
+GROUP BY c_text-OPE|Hello World|1|VARCHAR值|BPCHAR值
+GROUP BY c_text-OPE|Special: !@#$%^&*()_+-=[]{}|;:''",.<>?/~`|1|varchar special chars|bpchar_special
+ERROR: aggregate function "MIN" inside window function is not supported on encrypted column "c_int4"
+ERROR: aggregate function "MAX" inside window function is not supported on encrypted column "c_int4"
+ERROR: aggregate function "COUNT" inside window function is not supported on encrypted column "c_int4"
+array_agg() OVER-OPE|1|Hello World|{"9999"}
+array_agg() OVER-OPE|2|中文字符串🎉|{"-1000"}
+array_agg() OVER-OPE|3||{"0"}
+array_agg() OVER-OPE|4|仅部分列为NULL|{NULL}
+array_agg() OVER-OPE|5|Special: !@#$%^&*()_+-=[]{}|;:''",.<>?/~`|{"8888"}
+ERROR: aggregate function "COUNT" inside window function is not supported on encrypted column "c_int4"
+ERROR: ERROR: cannot compare encrypted values for ordering: no OPE ciphertext available
+ERROR: aggregate function "MIN" inside window function is not supported on encrypted column "c_int4"
+ERROR: aggregate function "MAX" inside window function is not supported on encrypted column "c_int4"
+ERROR: aggregate function "SUM" inside window function is not supported on encrypted column "c_int4"
+ERROR: aggregate function "SUM" inside window function is not supported on encrypted column "c_int4"
+ERROR: aggregate function "AVG" inside window function is not supported on encrypted column "c_int4"
+ERROR: aggregate function "AVG" inside window function is not supported on encrypted column "c_int4"
+HAVING MIN-OPE|-1000|1|-50
+ERROR: TECC strict: function 'MIN' requires OPE on encrypted column [enc_pgfunc_test_det.c_int2], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_ope.c_int8], but column uses OPE. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_det.c_int8], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: ERROR: operator does not exist: bigint > text_enc
+  Hint: No operator matches the given name and argument types. You might need to add explicit type casts.
+  Position: 171
+ERROR: TECC strict: encrypted rewrite failed: null.enc_pgfunc_test_det.c_text
+ERROR: TECC strict: function 'array_length' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_ope.c_int4]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+ERROR: TECC strict: function 'array_length' is not in the encryption-safe whitelist but references encrypted column [enc_pgfunc_test_det.c_int4]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+COUNT(DISTINCT CASE)-OPE|2
+ERROR: TECC strict: encrypted rewrite failed: null.enc_pgfunc_test_det.c_int4
+COALESCE+MIN-OPE|-1000
+ERROR: TECC strict: function 'MIN' requires OPE on encrypted column [enc_pgfunc_test_det.c_int4], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+GREATEST+array_agg-OPE|9999
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_ope.c_int4], but column uses OPE. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_det.c_int4], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+Subquery COUNT-OPE|-1000|1
+Subquery COUNT-OPE|0|1
+Subquery COUNT-OPE|8888|1
+Subquery COUNT-OPE|9999|1
+Subquery COUNT-OPE||1
+Subquery MIN-OPE||0
+Subquery MIN-OPE|仅部分列为NULL|
+Subquery MIN-OPE|中文字符串🎉|-1000
+Subquery MIN-OPE|Hello World|9999
+Subquery MIN-OPE|Special: !@#$%^&*()_+-=[]{}|;:''",.<>?/~`|8888
+ERROR: TECC strict: function 'MIN' requires OPE on encrypted column [enc_pgfunc_test_det.c_int4], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+Subquery array_agg-OPE||{"\\x被隐藏的HEX输出"}
+Subquery array_agg-OPE|仅部分列为NULL|{NULL}
+Subquery array_agg-OPE|中文字符串🎉|{"\\x被隐藏的HEX输出"}
+Subquery array_agg-OPE|Hello World|{"\\x被隐藏的HEX输出"}
+Subquery array_agg-OPE|Special: !@#$%^&*()_+-=[]{}|;:''",.<>?/~`|{"\\x被隐藏的HEX输出"}
+ERROR: ERROR: cannot compare encrypted values for ordering: no OPE ciphertext available
+COUNT(c_int4)-he-add|4
+COUNT(m_int4)-he-mul|4
+COUNT(c_int2)-he-add|4
+COUNT(m_int8)-he-mul|4
+COUNT(n_int4)-HE-plain|4
+ERROR: Cannot use encrypted column in COUNT(DISTINCT) without DET or OPE: enc_pgfunc_test_he.c_int4 (only DET/OPE ciphertext is deterministic and supports deduplication)
+ERROR: Cannot use encrypted column in COUNT(DISTINCT) without DET or OPE: enc_pgfunc_test_he.m_int4 (only DET/OPE ciphertext is deterministic and supports deduplication)
+COUNT(DISTINCT n_int4)-HE-plain|4
+SUM(c_int2)-he-add|12
+SUM(c_int4)-he-add|750
+SUM(c_int8)-he-add|7500
+SUM(n_int4)-HE-plain|750
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_he.m_int2], but column uses he-mul. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_he.m_int4], but column uses he-mul. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_he.m_int8], but column uses he-mul. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_he.m_int4], but column uses he-mul. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_he.m_int2], but column uses he-mul. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_he.m_int8], but column uses he-mul. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_det.c_int4], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'SUM' requires HE-ADD on encrypted column [enc_pgfunc_test_ope.c_int4], but column uses OPE. Reconfigure the column with the required algorithm or rewrite the SQL.
+Bug9253-sum-he-add-i2-ok|12
+Bug9253-sum-he-add-i4-ok|750
+Bug9253-sum-he-add-i8-ok|7500
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+DROP DEK
+DROP DEK
+DROP KEK
+WARNING: Encrypted column [enc_pgfunc_test_det.c_text] in ORDER BY without OPE: ordering by ciphertext bytes, semantic order may differ from plaintext order.
+WARNING: Encrypted column [enc_pgfunc_test_det.c_int4] in ORDER BY without OPE: ordering by ciphertext bytes, semantic order may differ from plaintext order.
+WARNING: Encrypted column [enc_pgfunc_test_det.c_int4] in ORDER BY without OPE: ordering by ciphertext bytes, semantic order may differ from plaintext order.
+WARNING: Encrypted column [enc_pgfunc_test_det.c_int4] in ORDER BY without OPE: ordering by ciphertext bytes, semantic order may differ from plaintext order.
+WARNING: Encrypted column [enc_pgfunc_test_det.c_text] in ORDER BY without OPE: ordering by ciphertext bytes, semantic order may differ from plaintext order.
+WARNING: Encrypted column [enc_pgfunc_test_det.c_text] in ORDER BY without OPE: ordering by ciphertext bytes, semantic order may differ from plaintext order.
+WARNING: Encrypted column [enc_pgfunc_test_det.c_text] in ORDER BY without OPE: ordering by ciphertext bytes, semantic order may differ from plaintext order.

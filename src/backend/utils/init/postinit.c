@@ -34,6 +34,10 @@
 #include "catalog/pg_database.h"
 #include "catalog/pg_db_role_setting.h"
 #include "catalog/pg_tablespace.h"
+#include "commands/tecc_dist_bootstrap.h"
+#include "commands/tecc_dist_guard.h"
+#include "commands/tecc_key_propagation.h"
+#include "commands/tecc_shard_ddl.h"
 #include "libpq/auth.h"
 #include "libpq/libpq-be.h"
 #include "mb/pg_wchar.h"
@@ -62,10 +66,12 @@
 #include "utils/ps_status.h"
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
+#include "utils/tecc_conn_type.h"
 #include "utils/timeout.h"
 /* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 #include "utils/resgroup.h"
 #include "utils/resource_manager.h"
+#include "utils/tecc_global_mark.h"
 /* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 static HeapTuple GetDatabaseTuple(const char *dbname);
@@ -599,6 +605,68 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 	elog(DEBUG3, "InitPostgres");
 
 	/*
+	 * ReqID:TECC4.0 - Register the hg_tecc.* GUCs.
+	 *
+	 * This must happen before the role/database settings and the startup
+	 * packet are applied, so that "hg_tecc.conn_type" from the startup packet
+	 * and "hg_tecc.strict_metadata" from PGOPTIONS / SET / ALTER ROLE|DATABASE
+	 * SET land on defined variables.  Without a definition PostgreSQL keeps
+	 * the value as a placeholder: SHOW reports it back, but the C variable
+	 * behind it stays at its default and nothing takes effect.
+	 */
+	tecc_init_conn_type();
+
+	/*
+	 * ReqID:TECC4.0 - Install the shard DDL clause-rebuild hook.
+	 *
+	 * Distributed plugins (Citus / hgdde) rebuild the worker-side CREATE TABLE /
+	 * ALTER TABLE ADD COLUMN text from the tuple descriptor, which never stores
+	 * the ENCRYPTED WITH clause.  The hook puts the clause back into the parse
+	 * tree from the local catalogs, for shard tables only, right before the
+	 * standard path validates it.  On a single-node database (no pg_dist_shard)
+	 * it costs one strrchr per utility statement.  Must chain to the hook that
+	 * is already installed (Citus installs one during shared_preload_libraries).
+	 */
+	tecc_install_shard_ddl_hooks();
+
+	/*
+	 * ReqID:TECC4.0 - Install the KEK/DEK propagation hook.
+	 *
+	 * KEK/DEK metadata lives in each node's own catalogs, so a key created on the
+	 * coordinator has to be replayed on every worker -- otherwise the worker cannot
+	 * record an encrypted column and shard DDL for encrypted tables fails there.
+	 * The hook runs in the postprocess stage (local command already succeeded) and
+	 * ships the *processed* statement text through the plugin's SQL-level
+	 * run_command_on_workers(), so the workers land exactly the same key material.
+	 * No-op on a single-node database (the function does not resolve there).
+	 */
+	tecc_install_key_propagation_hooks();
+
+	/*
+	 * ReqID:TECC4.0 - Install the "catch up after a topology change" hooks.
+	 *
+	 * Adding a node or distributing a table makes the coordinator hold objects the
+	 * target node does not have yet: KEK/DEK (key material only exists in the
+	 * hg_tecc_ddl recipe) and table/column labels (only in pg_seclabel).  Both are
+	 * replayed right after the triggering statement succeeded, through SQL-level
+	 * run_command_on_workers(); the plugin therefore does not need to know them.
+	 */
+	tecc_install_dist_bootstrap_hooks();
+
+	/*
+	 * ReqID:TECC4.0 - Install the distribution-column guard.
+	 *
+	 * Distributed plugins hash the distribution column on the coordinator to
+	 * pick a shard, assuming plaintext; TECC only offers ciphertext comparison,
+	 * so an encrypted column there means "table can be created, but shard
+	 * pruning is wrong" -- far worse than an error.  The plugin does not guard
+	 * against it, and the API is a plain function call (invisible to the
+	 * utility hook), hence post_parse_analyze_hook.  No-op when the plugin is
+	 * absent: the function OIDs simply do not resolve.
+	 */
+	tecc_install_dist_guard_hooks();
+
+	/*
 	 * Add my PGPROC struct to the ProcArray.
 	 *
 	 * Once I have done this, I am visible to other backends!
@@ -1099,6 +1167,10 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 
 	/* Initialize this backend's session state. */
 	InitializeSession();
+
+	/* Begin - ReqID:TECC4.0 - cross-backend metadata mark callbacks */
+	tecc_init_global_mark();
+	/* End - ReqID:TECC4.0 */
 	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 	/*
 	 * Initialize resource manager.

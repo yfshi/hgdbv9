@@ -550,6 +550,37 @@ List *tecc_parser_parse_list(const char *query_string);
  */
 void tecc_parser_free_tree_list(List *parse_tree);
 
+/* ==================== Scanner GUC Context ==================== */
+
+/*
+ * tecc_parser_set_standard_conforming_strings - Set the standard_conforming_strings
+ * value for the scanner. Must be called before parsing when the value may differ
+ * from the default (on).
+ *
+ * Reads from the TECC cache (loaded during tecc_state_init); thread-local so
+ * safe for concurrent connections.
+ */
+void tecc_parser_set_standard_conforming_strings(bool scs);
+
+/*
+ * tecc_parser_set_backslash_quote - Set the backslash_quote mode for the scanner.
+ * Values: 's' (safe_encoding), 'o' (on), 'f' (off). Default 's'.
+ */
+void tecc_parser_set_backslash_quote(int bq);
+
+/*
+ * tecc_parser_get_standard_conforming_strings - Get current scs value.
+ * Used by the flex scanner to decide string scanning mode.
+ * Returns true (on) if no state has been set.
+ */
+bool tecc_parser_get_standard_conforming_strings(void);
+
+/*
+ * tecc_parser_get_backslash_quote - Get current backslash_quote mode.
+ * Returns 's' (safe_encoding) if no state has been set.
+ */
+int tecc_parser_get_backslash_quote(void);
+
 /* ==================== 全局变量声明 ==================== */
 
 /*

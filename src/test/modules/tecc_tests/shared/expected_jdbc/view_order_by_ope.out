@@ -1,0 +1,43 @@
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 3
+ERROR: View definition ORDER BY requires OPE (order-preserving encryption) on encrypted column t_vobo.col_det, but the column has no OPE support (ordering by ciphertext does not match plaintext order); add 'ope' to the column's SUPPORT_ALGO, or remove the ORDER BY from the view definition.
+CREATE VIEW
+1|Alice
+2|Bob
+3|Carol
+DROP VIEW
+CREATE VIEW
+1|Alice
+2|Bob
+3|Carol
+DROP VIEW
+CREATE VIEW
+1|Alice
+2|Bob
+3|Carol
+DROP VIEW
+CREATE VIEW
+DROP VIEW
+CREATE VIEW
+DROP VIEW
+ERROR: ERROR: cannot compare encrypted values for ordering: no OPE ciphertext available
+ERROR: ERROR: cannot compare encrypted values for ordering: no OPE ciphertext available
+NOTICE: materialized view "mv_vobo_det" does not exist, skipping
+DROP MATERIALIZED
+NOTICE: view "v_vobo_det" does not exist, skipping
+DROP VIEW
+NOTICE: view "v_vobo_ope" does not exist, skipping
+DROP VIEW
+NOTICE: view "v_vobo_plain" does not exist, skipping
+DROP VIEW
+NOTICE: view "v_vobo_nosort" does not exist, skipping
+DROP VIEW
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+WARNING: Encrypted column [t_vobo.col_det] in ORDER BY without OPE: ordering by ciphertext bytes, semantic order may differ from plaintext order.
+WARNING: Encrypted column [t_vobo.col_det] in ORDER BY without OPE: ordering by ciphertext bytes, semantic order may differ from plaintext order.

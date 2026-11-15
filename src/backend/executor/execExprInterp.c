@@ -4639,6 +4639,40 @@ ExecEvalAggOrderedTransDatum(ExprState *state, ExprEvalStep *op,
 	AggStatePerTrans pertrans = op->d.agg_trans.pertrans;
 	int			setno = op->d.agg_trans.setno;
 
+	/* Begin - ReqID:TECC4.0 */
+	/*
+	 * Hash-based DISTINCT dedup path: accumulate the value into a
+	 * TupleHashTable keyed by the DISTINCT column.  Duplicates are dropped
+	 * by the hash table, and the transition function is run once per
+	 * distinct value in process_ordered_aggregate_single().
+	 *
+	 * The table is per tuple group (AggStatePerGroupData.distinctHashtable),
+	 * not per grouping set: in AGG_HASHED/AGG_MIXED all groups' input is
+	 * consumed before any group is finalized, so a per-set table would mix
+	 * values from different groups.  It was built for this group by
+	 * initialize_aggregate() (called from initialize_hash_entry()).
+	 */
+	if (pertrans->use_hash_distinct)
+	{
+		AggState   *aggstate = castNode(AggState, state->parent);
+		AggStatePerGroup pergroupstate =
+			&aggstate->all_pergroups[op->d.agg_trans.setoff][op->d.agg_trans.transno];
+		TupleHashTable hashtable = pergroupstate->distinctHashtable;
+		TupleTableSlot *slot = pertrans->sortslot;
+		bool		isnew;
+
+		Assert(hashtable != NULL);
+
+		ExecClearTuple(slot);
+		slot->tts_values[0] = *op->resvalue;
+		slot->tts_isnull[0] = *op->resnull;
+		ExecStoreVirtualTuple(slot);
+
+		(void) LookupTupleHashEntry(hashtable, slot, &isnew, NULL);
+		return;
+	}
+	/* End - ReqID:TECC4.0 */
+
 	tuplesort_putdatum(pertrans->sortstates[setno],
 					   *op->resvalue, *op->resnull);
 }

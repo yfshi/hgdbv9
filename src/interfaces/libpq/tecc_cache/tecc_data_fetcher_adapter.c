@@ -1,4 +1,4 @@
-﻿/* Begin - ReqID:TECC4.0 */
+/* Begin - ReqID:TECC4.0 */
 /*
  * File: tecc_data_fetcher_adapter.c
  * Abstract:
@@ -80,6 +80,10 @@ static TeccFetcherErrorCode fetch_kek_by_name(const TeccState *state,
                                              const char *key_name,
                                              const char *key_namespace,
                                              PGconn *ext_conn,
+                                             TeccKekCacheItem **result);
+/* ReqID:TECC4.0 - Bug 9256: 按OID取KEK（跨 schema 绑定的无歧义入口） */
+static TeccFetcherErrorCode fetch_kek_by_oid(const TeccState *state,
+                                             Oid kek_oid,
                                              TeccKekCacheItem **result);
 static TeccFetcherErrorCode fetch_kek_batch(const TeccState *state,
                                            const char *namespace_filter,
@@ -165,6 +169,62 @@ static int tecc_fetch_kek_metadata_for_cache(const TeccState *state,
     if (*kek_item != NULL) {
         TECC_LOG(TECC_LOG_DEBUG1, "fetch_kek_by_name: After conversion, (*kek_item)->kek_oid = %u", (*kek_item)->kek_oid);
     }
+
+    /* 释放数据获取器分配的内存 */
+    tecc_free_kek_metadata(kek_metadata);
+
+    if (*kek_item == NULL)
+    {
+        return TECC_CACHE_ERROR_CONVERSION;
+    }
+
+    return TECC_CACHE_OK;
+}
+
+/*
+ * tecc_fetch_kek_metadata_for_cache_by_oid - 按OID为缓存模块获取KEK元数据
+ *
+ * ReqID:TECC4.0 - Bug 9256
+ * DEK 目录里记录的是 kek_id(OID)，KEK 可位于任意 schema。按名字 + search_path
+ * 解析时，KEK 不在 search_path 上就永远找不到；OID 则与之无关。
+ *
+ * 参数:
+ *   state - TECC状态结构，包含连接和上下文信息
+ *   kek_oid - KEK对象标识符
+ *   kek_item - 返回的KEK缓存项指针
+ *
+ * 返回:
+ *   0表示成功，非0表示错误码
+ */
+static int tecc_fetch_kek_metadata_for_cache_by_oid(const TeccState *state,
+                                          Oid kek_oid,
+                                          TeccKekCacheItem **kek_item)
+{
+    TeccKekMetadata *kek_metadata = NULL;
+    TeccFetcherErrorCode fetcher_error;
+
+    /* 参数检查 */
+    if (state == NULL || kek_item == NULL)
+    {
+        return TECC_CACHE_ERROR_INVALID_PARAM;
+    }
+
+    *kek_item = NULL;
+
+    /* 调用数据获取器按OID获取KEK元数据 */
+    fetcher_error = tecc_fetch_kek_metadata_by_oid(state, kek_oid, &kek_metadata);
+    if (fetcher_error != TECC_FETCHER_OK)
+    {
+        return convert_fetcher_error_to_cache_error(fetcher_error);
+    }
+
+    if (kek_metadata == NULL)
+    {
+        return TECC_CACHE_ERROR_NOT_FOUND;
+    }
+
+    /* 转换数据结构 */
+    *kek_item = convert_kek_metadata_to_cache_item(state, kek_metadata);
 
     /* 释放数据获取器分配的内存 */
     tecc_free_kek_metadata(kek_metadata);
@@ -565,6 +625,46 @@ static int tecc_fetch_all_columns_for_table_for_cache(const TeccState *state,
 }
 
 /*
+ * classify_empty_column_result - 区分"表存在但无加密列"与"表不存在"
+ *
+ * 两者都查不到加密列元数据。前者应回 TECC_CACHE_ERROR_NOT_FOUND，允许缓存层
+ * 固化负缓存哨兵；后者必须回 TECC_CACHE_ERROR_RELATION_NOT_FOUND，缓存层不得
+ * 固化任何负缓存 —— 否则本会话后续按名查找都会短路成"该列无需加密"，该表
+ * DML 会以明文外发（CREATE TABLE 处理 DEFAULT 值时表尚未创建，即属此类）。
+ *
+ * 存在性探测本身失败时按"表存在"处理（回 NOT_FOUND），保持原有语义不回退。
+ */
+static int
+classify_empty_column_result(const TeccState *state,
+                             const char *database_name,
+                             const char *schema_name,
+                             const char *table_name)
+{
+    TeccFetcherErrorCode probe_error;
+    bool relation_exists = true;
+
+    probe_error = tecc_fetch_relation_exists(state, database_name,
+                                             schema_name, table_name,
+                                             &relation_exists);
+    if (probe_error == TECC_FETCHER_OK && !relation_exists)
+    {
+        TECC_LOG(TECC_LOG_DEBUG1,
+                 "关系不存在，不固化负缓存: database=%s, schema=%s, table=%s",
+                 database_name, schema_name, table_name);
+        return TECC_CACHE_ERROR_RELATION_NOT_FOUND;
+    }
+
+    if (probe_error != TECC_FETCHER_OK)
+    {
+        TECC_LOG(TECC_LOG_DEBUG1,
+                 "关系存在性探测失败(%d)，按'表存在但无加密列'处理: %s.%s.%s",
+                 (int) probe_error, database_name, schema_name, table_name);
+    }
+
+    return TECC_CACHE_ERROR_NOT_FOUND;
+}
+
+/*
  * tecc_fetch_all_columns_for_table_by_name_for_cache - 为缓存模块按名称获取表中所有加密列元数据
  *
  * 参数:
@@ -616,10 +716,19 @@ tecc_fetch_all_columns_for_table_by_name_for_cache(const TeccState *state,
                                                        &column_list);
     TECC_LOG(TECC_LOG_DEBUG1, "DEBUG LOOP: tecc_fetch_columns_by_table_by_name returned: fetcher_error=%d, column_list=%p",
             fetcher_error, column_list);
-    if (fetcher_error != TECC_FETCHER_OK || column_list == NULL)
+    if (fetcher_error != TECC_FETCHER_OK)
     {
         TECC_LOG(TECC_LOG_DEBUG1, "DEBUG LOOP: tecc_fetch_columns_by_table_by_name failed, returning error");
         return convert_fetcher_error_to_cache_error(fetcher_error);
+    }
+    if (column_list == NULL)
+    {
+        /* ReqID:TECC4.0 - fetcher 成功但 column_list 为 NULL：表示"空结果"（无加密列），
+         * 而非"失败"。但"空结果"可能是两件事：表存在但无加密列，或表压根不存在
+         * （如 CREATE TABLE 处理 DEFAULT 值时按名回溯元数据，此时表尚未创建）。
+         * 两者必须区分：只有前者能被缓存层固化为负缓存哨兵。 */
+        return classify_empty_column_result(state, database_name,
+                                            schema_name, table_name);
     }
 
     /* 获取列表长度 */
@@ -627,7 +736,8 @@ tecc_fetch_all_columns_for_table_by_name_for_cache(const TeccState *state,
     if (*count <= 0)
     {
         list_free(column_list);
-        return TECC_CACHE_ERROR_NOT_FOUND;
+        return classify_empty_column_result(state, database_name,
+                                            schema_name, table_name);
     }
 
     /* 分配缓存项数组 */
@@ -911,8 +1021,10 @@ convert_kek_metadata_to_cache_item(const TeccState *state, const void *kek_metad
                     {
                         cache_item->kms_type = 1;
                     }
-                    else if (strcmp(arg->value, "hsmkms") == 0)
+                    else if (strcmp(arg->value, "tzwykms") == 0 ||
+                             strcmp(arg->value, "hsmkms") == 0)
                     {
+                        /* tzwykms is the V4.0.1+ name; hsmkms is the V4.0 alias */
                         cache_item->kms_type = 2;
                     }
                     else if (strcmp(arg->value, "cloudkms") == 0)
@@ -1257,6 +1369,12 @@ convert_column_metadata_to_cache_item(const TeccState *state, const void *column
         cache_item->dek_name = NULL;
     }
 
+    /* ReqID:TECC4.0 - 一列多 DEK：复制 HE 加法/乘法 DEK 名（纯 HE 列 dek_name 为 NULL） */
+    if (column_metadata->he_add_dek != NULL)
+        cache_item->he_add_dek_name = pg_strdup(column_metadata->he_add_dek);
+    if (column_metadata->he_mul_dek != NULL)
+        cache_item->he_mul_dek_name = pg_strdup(column_metadata->he_mul_dek);
+
     /* 从元数据复制表名 */
     cache_item->table_name = column_metadata->table_name
         ? pg_strdup(column_metadata->table_name) : NULL;
@@ -1264,10 +1382,10 @@ convert_column_metadata_to_cache_item(const TeccState *state, const void *column
     cache_item->has_dek_permission = column_metadata->has_dek_permission;
     cache_item->dek_permission_checked = true;
 
-    cache_item->schema_oid = 0;  /* TODO: 需要从其他途径获取模式OID */
-    cache_item->schema_name = NULL;  /* TODO: 需要从其他途径获取模式名称 */
-    cache_item->database_oid = 0;  /* TODO: 需要从其他途径获取数据库OID */
-    cache_item->database_name = NULL;  /* TODO: 需要从其他途径获取数据库名称 */
+    cache_item->schema_oid = 0;  /* 懒加载：通过 pg_namespace 查询补填 */
+    cache_item->schema_name = NULL;
+    cache_item->database_oid = 0;  /* 懒加载：通过 pg_database 查询补填 */
+    cache_item->database_name = NULL;
     cache_item->hit_times = 0;  /* 初始命中次数 */
 
     /* 添加调试日志 */
@@ -1494,6 +1612,23 @@ tecc_fetch_guc_params_for_cache(const TeccState *state,
         manager->guc_params.role = pg_strdup("postgres");
     }
 
+    /* ReqID:TECC4.0 - search_path 主连接校准：
+     * 此处查询走数据获取器池连接，其 search_path 可能与主连接不一致
+     * （主连接已 SET search_path，而池连接为默认值）。后端已为
+     * search_path 加 GUC_REPORT，主连接 ParameterStatus 是权威值，
+     * 优先采用，避免重载把缓存打回池连接默认值。 */
+    if (state->conn != NULL)
+    {
+        const char *live_sp = PQparameterStatus(state->conn, "search_path");
+
+        if (live_sp != NULL && live_sp[0] != '\0')
+        {
+            if (manager->guc_params.search_path != NULL)
+                pg_free(manager->guc_params.search_path);
+            manager->guc_params.search_path = pg_strdup(live_sp);
+        }
+    }
+
     /* 检查内存分配是否成功 */
     if (manager->guc_params.search_path == NULL ||
         manager->guc_params.sql_compatibility == NULL ||
@@ -1525,9 +1660,6 @@ tecc_fetch_guc_params_for_cache(const TeccState *state,
  *
  * 返回:
  *   0表示成功，非0表示错误码
- *
- * 实现说明:
- *   TODO: 实现批量KEK查询接口
  */
 
 static int tecc_fetch_kek_list_for_cache(const TeccState *state,
@@ -1624,9 +1756,6 @@ static int tecc_fetch_kek_list_for_cache(const TeccState *state,
  *
  * 返回:
  *   0表示成功，非0表示错误码
- *
- * 实现说明:
- *   TODO: 实现批量DEK查询接口
  */
 
 static int tecc_fetch_dek_list_for_cache(const TeccState *state,
@@ -1853,9 +1982,11 @@ tecc_fetch_kek_for_cache(const TeccState *state,
                                 query->params.by_name.namespace,
                                 query->external_conn, result);
     } else if (query->flags & TECC_QUERY_BY_OID) {
-        /* 按OID查询 - 数据获取器目前不支持，返回错误 */
-        /* TODO: 未来可以添加按OID查询的支持 */
-        return TECC_FETCHER_ERROR_UNSUPPORTED;
+        /* 按OID查询 */
+        if (count != NULL) {
+            *count = 1;
+        }
+        return fetch_kek_by_oid(state, query->params.by_oid.oid, result);
     } else {
         /* 无效的查询类型 */
         return TECC_FETCHER_ERROR_INVALID_PARAM;
@@ -2037,6 +2168,24 @@ fetch_kek_by_name(const TeccState *state,
     cache_error = tecc_fetch_kek_metadata_for_cache(state, key_name, key_namespace, ext_conn, result);
 
     TECC_LOG(TECC_LOG_DEBUG1, "fetch_kek_by_name: tecc_fetch_kek_metadata_for_cache returned cache_error: %d, result=%p",
+             cache_error, result ? *result : NULL);
+
+    return (cache_error == TECC_CACHE_OK) ? TECC_FETCHER_OK : TECC_FETCHER_ERROR_INTERNAL;
+}
+
+/* ReqID:TECC4.0 - Bug 9256: 按OID取KEK */
+static TeccFetcherErrorCode
+fetch_kek_by_oid(const TeccState *state,
+                 Oid kek_oid,
+                 TeccKekCacheItem **result)
+{
+    int cache_error;
+
+    TECC_LOG(TECC_LOG_DEBUG1, "fetch_kek_by_oid: Starting to fetch KEK by OID %u", kek_oid);
+
+    cache_error = tecc_fetch_kek_metadata_for_cache_by_oid(state, kek_oid, result);
+
+    TECC_LOG(TECC_LOG_DEBUG1, "fetch_kek_by_oid: tecc_fetch_kek_metadata_for_cache_by_oid returned cache_error: %d, result=%p",
              cache_error, result ? *result : NULL);
 
     return (cache_error == TECC_CACHE_OK) ? TECC_FETCHER_OK : TECC_FETCHER_ERROR_INTERNAL;

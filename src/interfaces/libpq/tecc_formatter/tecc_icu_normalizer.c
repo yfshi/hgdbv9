@@ -25,15 +25,6 @@
 #include <unicode/uversion.h>
 #include <unicode/unorm2.h>
 
-/* ICU collator cache */
-typedef struct IcuCollatorCache
-{
-    Oid collation_oid;
-    UCollator *collator;
-    struct IcuCollatorCache *next;
-} IcuCollatorCache;
-
-static IcuCollatorCache *icu_collator_cache = NULL;
 static bool icu_initialized = false;
 
 /*
@@ -54,30 +45,6 @@ tecc_icu_normalizer_init(void)
 
     icu_initialized = true;
     return TECC_FORMATTER_SUCCESS;
-}
-
-/*
- * tecc_icu_normalizer_cleanup - Cleanup ICU normalizer
- */
-void
-tecc_icu_normalizer_cleanup(void)
-{
-    /* Free all cached collators */
-    IcuCollatorCache *cache = icu_collator_cache;
-    while (cache) {
-        IcuCollatorCache *next = cache->next;
-        if (cache->collator)
-            ucol_close(cache->collator);
-        pg_free(cache);
-        cache = next;
-    }
-    icu_collator_cache = NULL;
-
-    /* Cleanup ICU library */
-    if (icu_initialized) {
-        u_cleanup();
-        icu_initialized = false;
-    }
 }
 
 /*

@@ -244,16 +244,16 @@ INSERT 0 1
 2
 3
 (3 rows)
+2|20
+(1 row)
 1|10
 1|30
-2|20
 3|15
-(4 rows)
+(3 rows)
 1|30
-2|20
 3|15
 1|10
-(4 rows)
+(3 rows)
 DROP TABLE
 === 6 SubLink Subquery ===
 (1 row)
@@ -668,6 +668,10 @@ INSERT 0 1
 (2 rows)
 100
 (1 row)
+0
+200
+300
+(3 rows)
 2
 3
 (2 rows)
@@ -675,6 +679,27 @@ low
 mid
 high
 (3 rows)
+hello
+nobody
+nobody
+(3 rows)
+0
+200
+300
+(3 rows)
+100
+0
+300
+(3 rows)
+100
+(3 rows)
+CREATE TABLE
+INSERT 0 3
+10
+99
+99
+(3 rows)
+DROP TABLE
 1
 (1 row)
 UPDATE 1
@@ -689,6 +714,11 @@ p0_ARRAY_handler_via_FuncCall
 3
 1
 (3 rows)
+2
+3
+1
+(3 rows)
+(0 rows)
 2
 3
 1
@@ -802,15 +832,74 @@ DROP KEK
 DROP TABLE
 DROP TABLE
 DROP TABLE
+=== 31 Schema-qualified DEK name ===
+(1 row)
+CREATE SCHEMA
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+31b_bare
+(1 row)
+31b_meta
+(1 row)
+DROP TABLE
+CREATE TABLE
+31c_string
+(1 row)
+DROP TABLE
+DROP DEK
+DROP KEK
+DROP SCHEMA
 === Cleanup ===
 (1 row)
+DROP KEK
+hg_dek
+hg_dek_args
+hg_kek
+hg_kek_args
+(4 rows)
+CREATE KEK
+km_grammar_kek
+(1 row)
+KEY_PATH
+KEY_STORE
+(2 rows)
+CREATE DEK
+km_grammar_dek|km_grammar_kek
+(1 row)
+CREATE DEK
+2
+(1 row)
+km_grammar_kek
+km_grammar_kek
+km_grammar_kek
+(3 rows)
+DROP DEK
+DROP DEK
+DROP KEK
+0
+(1 row)
+CREATE KEK
+CREATE DEK
+DROP KEK
+0
+(1 row)
+0
+(1 row)
+CREATE KEK
+CREATE KEK
+DROP KEK
+DROP KEK
+DROP DEK
+DROP KEK
+DROP KEK
 DROP KEK
 NOTICE: key encryption key "kek_grammar" does not exist, skipping
 NOTICE: table "test_cte_t" does not exist, skipping
 NOTICE: table "test_cte_graph" does not exist, skipping
 NOTICE: table "test_cs_t" does not exist, skipping
 NOTICE: table "test_cs_t2" does not exist, skipping
-psql:/.../grammar.sql:332: TECC query preprocessing failed: TECC processor detected encrypted columns but failed to produce rewritten query
 psql:/.../grammar.sql:337: TECC query preprocessing failed: TECC processor detected encrypted columns but failed to produce rewritten query
 NOTICE: table "test_sub" does not exist, skipping
 NOTICE: table "test_aggwin" does not exist, skipping
@@ -824,15 +913,15 @@ LINE 1: SELECT name COLLATE "C" FROM test_collate WHERE id = 1;
 ^
 HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
 ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
-LINE 1: SELECT id FROM test_collate WHERE name COLLATE "C" = '310000...
+LINE 1: SELECT id FROM test_collate WHERE name COLLATE "C" = 'HEX_STR...
 ^
 HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
 ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
-LINE 1: SELECT id FROM test_collate WHERE (name COLLATE "C") = '3100...
+LINE 1: SELECT id FROM test_collate WHERE (name COLLATE "C") = 'HEX_STR...
 ^
 HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
 ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
-LINE 1: SELECT id FROM test_collate WHERE name COLLATE "C" LIKE '240...
+LINE 1: SELECT id FROM test_collate WHERE name COLLATE "C" LIKE 'HEX_STR...
 ^
 HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
 ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
@@ -840,11 +929,11 @@ LINE 1: SELECT name COLLATE "C", val FROM test_collate WHERE id < 3;
 ^
 HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
 ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
-LINE 2: WHERE name COLLATE "C" LIKE '2400000000000100a5c395ed0000000...
+LINE 2: WHERE name COLLATE "C" LIKE 'HEX_STR...
 ^
 HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
 ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
-LINE 1: SELECT id FROM test_collate WHERE name COLLATE "C" != '31000...
+LINE 1: SELECT id FROM test_collate WHERE name COLLATE "C" != 'HEX_STR...
 ^
 HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
 NOTICE: table "test_def1" does not exist, skipping
@@ -858,31 +947,23 @@ NOTICE: table "test_var1" does not exist, skipping
 NOTICE: function test_variadic_sum(int4[]) does not exist, skipping
 NOTICE: table "test_wg1" does not exist, skipping
 NOTICE: table "test_wg3" does not exist, skipping
-psql:/.../grammar.sql:843: TECC result processing error: Batch decrypt: item 0 has no RND data
-ERROR: function pg_catalog.like_escape(text_enc, unknown) does not exist
-LINE 1: SELECT id FROM test_p0_expr WHERE name LIKE '2f0000000000010...
-^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-ERROR: function pg_catalog.like_escape(text_enc, unknown) does not exist
-LINE 1: SELECT id FROM test_p0_expr WHERE name NOT LIKE '24000000000...
-^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+psql:/.../grammar.sql:853: TECC query preprocessing failed: case does not support this argument combination: the branch constant type cannot be encrypted like encrypted column val; unify branches to encrypted columns or plain constants matching the column's original type
 ERROR: operator does not exist: text_enc ~~* text_enc
-LINE 1: SELECT id FROM test_p0_expr WHERE name ILIKE '24000000000001...
+LINE 1: SELECT id FROM test_p0_expr WHERE name ILIKE 'HEX_STR...
 ^
 HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 ERROR: operator does not exist: text_enc !~~* text_enc
-LINE 1: SELECT id FROM test_p0_expr WHERE name NOT ILIKE '2400000000...
+LINE 1: SELECT id FROM test_p0_expr WHERE name NOT ILIKE 'HEX_STR...
 ^
 HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
-ERROR: function pg_catalog.like_escape(text_enc, unknown) does not exist
-LINE 1: SELECT id FROM test_p0_expr WHERE name ILIKE '31000000000001...
+ERROR: operator does not exist: text_enc ~~* text_enc
+LINE 1: SELECT id FROM test_p0_expr WHERE name ILIKE 'HEX_STR...
 ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
-ERROR: function pg_catalog.like_escape(text_enc, unknown) does not exist
-LINE 1: SELECT id FROM test_p0_expr WHERE name NOT ILIKE '2400000000...
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ERROR: operator does not exist: text_enc !~~* text_enc
+LINE 1: SELECT id FROM test_p0_expr WHERE name NOT ILIKE 'HEX_STR...
 ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 NOTICE: table "tb_alter_test" does not exist, skipping
 NOTICE: table "tb_alter_test2" does not exist, skipping
 NOTICE: table "tb_sec_test" does not exist, skipping
@@ -901,20 +982,17 @@ NOTICE: table "test_kw_case3" does not exist, skipping
 NOTICE: table "test_kw_case" does not exist, skipping
 NOTICE: table "test_kw_case2" does not exist, skipping
 NOTICE: table "test_kw_case3" does not exist, skipping
-NOTICE: drop cascades to data encryption key dek_grammar
-=== 31 Schema-qualified DEK name ===
-CREATE SCHEMA
 NOTICE: key encryption key "kek_grammar_schema" does not exist, skipping
-DROP KEK
-CREATE KEK
-CREATE DEK
-CREATE TABLE
-31b_bare
-31b_meta
-DROP TABLE
-CREATE TABLE
-31c_string
-DROP TABLE
-DROP DEK
-DROP KEK
-DROP SCHEMA
+NOTICE: drop cascades to data encryption key dek_grammar
+ERROR: cannot drop key encryption key "km_grammar_kek" because other objects depend on it
+HINT:  Use DROP KEK ... CASCADE to drop the dependent objects too.
+NOTICE: drop cascades to data encryption key km_cascade_dek
+ERROR: KEK "km_dup_kek" already exists
+NOTICE: KEK "km_dup_kek" already exists, skipping
+NOTICE: key encryption key "km_nonexistent" does not exist, skipping
+NOTICE: data encryption key "km_nonexistent" does not exist, skipping
+[TIMESTAMP] [ERROR] [tecc_key/key_manager.c key_manager_get_kek_info] KEK 'nonexistent_kek' not found in cache and direct database query is not allowed
+TECC ERROR: KEK 'nonexistent_kek' cache miss, cannot encrypt DEK
+NOTICE: key encryption key "km_grammar_kek" does not exist, skipping
+NOTICE: key encryption key "km_cascade_kek" does not exist, skipping
+NOTICE: key encryption key "km_dup_kek" does not exist, skipping

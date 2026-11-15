@@ -1,0 +1,230 @@
+NOTICE: key encryption key "kek_bpchar_cmp" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+=== Setup OK ===
+=== 1 ORDER BY + 范围查询 ===
+NOTICE: table "tecc_bpchar_cmp" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 9
+1a_bpchar_asc|6|测试
+1a_bpchar_asc|7|测试a
+1a_bpchar_asc|8|王五
+1a_bpchar_asc|1|apple
+1a_bpchar_asc|2|Apple
+1a_bpchar_asc|3|APPLE
+1a_bpchar_asc|4|banana
+1a_bpchar_asc|5|cherry
+1a_bpchar_asc|9|
+1b_text_asc|6|测试
+1b_text_asc|7|测试a
+1b_text_asc|8|王五
+1b_text_asc|1|apple
+1b_text_asc|2|Apple
+1b_text_asc|3|APPLE
+1b_text_asc|4|banana
+1b_text_asc|5|cherry
+1b_text_asc|9|
+1c_varchar_asc|6|测试
+1c_varchar_asc|7|测试a
+1c_varchar_asc|8|王五
+1c_varchar_asc|1|apple
+1c_varchar_asc|2|Apple
+1c_varchar_asc|3|APPLE
+1c_varchar_asc|4|banana
+1c_varchar_asc|5|cherry
+1c_varchar_asc|9|
+1d_bpchar_gt_banana|5|cherry
+1e_bpchar_ge_banana|4|banana
+1e_bpchar_ge_banana|5|cherry
+1f_bpchar_lt_cherry|6|测试
+1f_bpchar_lt_cherry|7|测试a
+1f_bpchar_lt_cherry|8|王五
+1f_bpchar_lt_cherry|1|apple
+1f_bpchar_lt_cherry|2|Apple
+1f_bpchar_lt_cherry|3|APPLE
+1f_bpchar_lt_cherry|4|banana
+1g_bpchar_le_cherry|6|测试
+1g_bpchar_le_cherry|7|测试a
+1g_bpchar_le_cherry|8|王五
+1g_bpchar_le_cherry|1|apple
+1g_bpchar_le_cherry|2|Apple
+1g_bpchar_le_cherry|3|APPLE
+1g_bpchar_le_cherry|4|banana
+1g_bpchar_le_cherry|5|cherry
+1i_bpchar_between|1|apple
+1i_bpchar_between|2|Apple
+1i_bpchar_between|3|APPLE
+1i_bpchar_between|4|banana
+1i_bpchar_between|5|cherry
+=== 2 中文字符比较 ===
+2a_bpchar_gt_test|7|测试a
+2a_bpchar_gt_test|8|王五
+2a_bpchar_gt_test|1|apple
+2a_bpchar_gt_test|2|Apple
+2a_bpchar_gt_test|3|APPLE
+2a_bpchar_gt_test|4|banana
+2a_bpchar_gt_test|5|cherry
+2b_bpchar_ge_test|6|测试
+2b_bpchar_ge_test|7|测试a
+2b_bpchar_ge_test|8|王五
+2b_bpchar_ge_test|1|apple
+2b_bpchar_ge_test|2|Apple
+2b_bpchar_ge_test|3|APPLE
+2b_bpchar_ge_test|4|banana
+2b_bpchar_ge_test|5|cherry
+2d_bpchar_le_test|6|测试
+=== 3 跨类型一致性 ===
+3a_text_gt_banana|5|cherry
+3b_varchar_gt_banana|5|cherry
+3c_text_gt_test|7|测试a
+3c_text_gt_test|8|王五
+3c_text_gt_test|1|apple
+3c_text_gt_test|2|Apple
+3c_text_gt_test|3|APPLE
+3c_text_gt_test|4|banana
+3c_text_gt_test|5|cherry
+3d_varchar_gt_test|7|测试a
+3d_varchar_gt_test|8|王五
+3d_varchar_gt_test|1|apple
+3d_varchar_gt_test|2|Apple
+3d_varchar_gt_test|3|APPLE
+3d_varchar_gt_test|4|banana
+3d_varchar_gt_test|5|cherry
+=== 4 尾部空格处理 ===
+NOTICE: table "tecc_bpchar_pad" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 6
+4a_bpchar_eq_abc|1|abc       
+4a_bpchar_eq_abc|2|abc       
+4a_bpchar_eq_abc|3|abc       
+4b_bpchar_eq_abc_pad|1|abc       
+4b_bpchar_eq_abc_pad|2|abc       
+4b_bpchar_eq_abc_pad|3|abc       
+4c_bpchar_gt_abc|4|test      
+4c_bpchar_gt_abc|5|test      
+4d_bpchar_ge_abc|1|abc       
+4d_bpchar_ge_abc|2|abc       
+4d_bpchar_ge_abc|3|abc       
+4d_bpchar_ge_abc|4|test      
+4d_bpchar_ge_abc|5|test      
+4e_text_eq_abc|1|abc
+4f_varchar_eq_abc|1|abc
+4g_text_gt_abc|2|abc  
+4g_text_gt_abc|3|abc    
+4g_text_gt_abc|4|test
+4g_text_gt_abc|5|test 
+4h_varchar_gt_abc|2|abc  
+4h_varchar_gt_abc|3|abc    
+4h_varchar_gt_abc|4|test
+4h_varchar_gt_abc|5|test 
+4i_bpchar_vs_text|1|1
+4j_bpchar_vs_varchar|1|1
+4j_bpchar_vs_varchar|1|2
+4j_bpchar_vs_varchar|1|3
+=== 5 多数据范围验证 ===
+NOTICE: table "tecc_bpchar_full" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 16
+5a_bpchar_order_asc|15|
+5a_bpchar_order_asc|11|_start              
+5a_bpchar_order_asc|12|测试              
+5a_bpchar_order_asc|1|王五              
+5a_bpchar_order_asc|3|周八              
+5a_bpchar_order_asc|6|alice               
+5a_bpchar_order_asc|2|Charlie             
+5a_bpchar_order_asc|4|Eve                 
+5a_bpchar_order_asc|7|Eve2                
+5a_bpchar_order_asc|9|foo_bar             
+5a_bpchar_order_asc|14|mixCase             
+5a_bpchar_order_asc|10|pct_sign            
+5a_bpchar_order_asc|5|test                
+5a_bpchar_order_asc|8|TEST                
+5a_bpchar_order_asc|13|test123             
+5a_bpchar_order_asc|16|
+5b_text_order_asc|15|
+5b_text_order_asc|11|_start
+5b_text_order_asc|12|测试
+5b_text_order_asc|1|王五
+5b_text_order_asc|3|周八
+5b_text_order_asc|6|alice
+5b_text_order_asc|2|Charlie
+5b_text_order_asc|4|Eve
+5b_text_order_asc|7|Eve2
+5b_text_order_asc|9|foo_bar
+5b_text_order_asc|14|mixCase
+5b_text_order_asc|10|pct_sign
+5b_text_order_asc|5|test
+5b_text_order_asc|8|TEST
+5b_text_order_asc|13|test123
+5b_text_order_asc|16|
+5c_varchar_order_asc|15|
+5c_varchar_order_asc|11|_start
+5c_varchar_order_asc|12|测试
+5c_varchar_order_asc|1|王五
+5c_varchar_order_asc|3|周八
+5c_varchar_order_asc|6|alice
+5c_varchar_order_asc|2|Charlie
+5c_varchar_order_asc|4|Eve
+5c_varchar_order_asc|7|Eve2
+5c_varchar_order_asc|9|foo_bar
+5c_varchar_order_asc|14|mixCase
+5c_varchar_order_asc|10|pct_sign
+5c_varchar_order_asc|5|test
+5c_varchar_order_asc|8|TEST
+5c_varchar_order_asc|13|test123
+5c_varchar_order_asc|16|
+5d_bpchar_gt_test|1|王五              
+5d_bpchar_gt_test|2|Charlie             
+5d_bpchar_gt_test|3|周八              
+5d_bpchar_gt_test|4|Eve                 
+5d_bpchar_gt_test|5|test                
+5d_bpchar_gt_test|6|alice               
+5d_bpchar_gt_test|7|Eve2                
+5d_bpchar_gt_test|8|TEST                
+5d_bpchar_gt_test|9|foo_bar             
+5d_bpchar_gt_test|10|pct_sign            
+5d_bpchar_gt_test|13|test123             
+5d_bpchar_gt_test|14|mixCase             
+5e_text_gt_test|1|王五
+5e_text_gt_test|2|Charlie
+5e_text_gt_test|3|周八
+5e_text_gt_test|4|Eve
+5e_text_gt_test|5|test
+5e_text_gt_test|6|alice
+5e_text_gt_test|7|Eve2
+5e_text_gt_test|8|TEST
+5e_text_gt_test|9|foo_bar
+5e_text_gt_test|10|pct_sign
+5e_text_gt_test|13|test123
+5e_text_gt_test|14|mixCase
+5f_varchar_gt_test|1|王五
+5f_varchar_gt_test|2|Charlie
+5f_varchar_gt_test|3|周八
+5f_varchar_gt_test|4|Eve
+5f_varchar_gt_test|5|test
+5f_varchar_gt_test|6|alice
+5f_varchar_gt_test|7|Eve2
+5f_varchar_gt_test|8|TEST
+5f_varchar_gt_test|9|foo_bar
+5f_varchar_gt_test|10|pct_sign
+5f_varchar_gt_test|13|test123
+5f_varchar_gt_test|14|mixCase
+5g_bpchar_lt_test|11|_start              
+5g_bpchar_lt_test|15|
+5h_text_lt_test|11|_start
+5h_text_lt_test|15|
+5i_varchar_lt_test|11|_start
+5i_varchar_lt_test|15|
+5j_bpchar_banana_cherry|2|Charlie             
+5k_text_banana_cherry|2|Charlie
+5l_varchar_banana_cherry|2|Charlie
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+=== Cleanup OK ===

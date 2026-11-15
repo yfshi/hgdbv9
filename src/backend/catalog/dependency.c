@@ -51,6 +51,7 @@
 #include "catalog/pg_publication_rel.h"
 #include "catalog/pg_rewrite.h"
 #include "catalog/hg_encrypted_columns.h"
+#include "catalog/hg_encrypted_column_args.h"
 #include "catalog/hg_kek_args.h"
 #include "catalog/hg_dek_args.h"
 #include "catalog/hg_kek.h"
@@ -237,7 +238,8 @@ static const Oid object_classes[] = {
 	HgDekRelationId,			/* OCLASS_DEK */
 	HgEncryptedColumnsRelationId,	/* OCLASS_ENCRYPTED_COLUMN */
 	HgKekArgsRelationId,		/* OCLASS_KEK_ARGS */
-	HgDekArgsRelationId			/* OCLASS_DEK_ARGS */
+	HgDekArgsRelationId,			/* OCLASS_DEK_ARGS */
+        HgEncryptedColumnArgsRelationId,   /* OCLASS_ENCRYPTED_COLUMN_ARGS */
 	/* End - ReqID:TECC4.0 */
 };
 
@@ -2044,6 +2046,34 @@ doDeletion(const ObjectAddress *object, int flags)
 			DropObjectById(object);
 			break;
 
+		case OCLASS_ENCRYPTED_COLUMN_ARGS:
+		{
+			Relation	rel;
+			SysScanDesc scan;
+			ScanKeyData skey[1];
+			HeapTuple	tup;
+
+			rel = table_open(HgEncryptedColumnArgsRelationId, RowExclusiveLock);
+
+			ScanKeyInit(&skey[0],
+						Anum_hg_encrypted_column_args_oid,
+						BTEqualStrategyNumber, F_OIDEQ,
+						ObjectIdGetDatum(object->objectId));
+
+			scan = systable_beginscan(rel, HgEncryptedColumnArgsOidIndexId, true,
+									  NULL, 1, skey);
+			tup = systable_getnext(scan);
+			if (!HeapTupleIsValid(tup))
+				elog(ERROR, "could not find tuple for encrypted column args %u",
+					 object->objectId);
+
+			CatalogTupleDelete(rel, &tup->t_self);
+			systable_endscan(scan);
+			table_close(rel, RowExclusiveLock);
+			break;
+		}
+			break;
+
 			/*
 			 * These global object types are not supported here.
 			 */
@@ -3726,6 +3756,9 @@ getObjectClass(const ObjectAddress *object)
 
 		case HgDekArgsRelationId:
 			return OCLASS_DEK_ARGS;
+
+	case HgEncryptedColumnArgsRelationId:
+		return OCLASS_ENCRYPTED_COLUMN_ARGS;
 	}
 
 	/* shouldn't get here */

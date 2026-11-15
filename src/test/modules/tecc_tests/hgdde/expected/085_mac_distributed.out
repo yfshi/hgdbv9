@@ -1,0 +1,44 @@
+=== 10.0 前置：每个节点都打开了总开关（行级规则由钩子提供，受 global_on 管辖）===
+1|on/on/off/off|t
+=== 10.1 角色 + 用户标记（角色必须 LOGIN：Citus 要以该角色身份连 worker 取分片）===
+
+
+=== 10.2 用户标记在全部节点一致（T4.2：走标准 SQL 路径，由 Citus 自己转发角色标记）===
+1|s10:c1.c2|t
+=== 10.3 建表分发 + 表标记 + 列标记 + 行级规则 ===
+
+
+
+
+=== 10.4 表/列标记在协调节点 + 全部 worker 上逐字一致（T4.3 护栏）===
+1|0=s7:c1,2=s9:c2|t
+0=s7:c1,2=s9:c2
+=== 10.5 每个分片的形态：RLS/FORCE + 2 个隐藏列 + 3 个索引 + 1 条恒真占位策略 ===
+8|1|true/true cols=2 idx=3 pol=1 names=hg_sysmac_row_all
+=== 10.6 造数据（超级用户绕过策略，显式写行标记）===
+=== 10.7 行级 SELECT：分片上的过滤与《标记比较规则》一致 ===
+u10(s10:c1,c2)|1,2,4,5,7
+u5(s5:c1,c2)|2,5,7
+superuser(bypass)|1,2,3,4,5,6,7,8
+=== 10.8 行级 UPDATE / DELETE：等号语义（只有 level = 我 且 cats = 我 的行被改到）===
+u10 update
+u5 delete
+1|a
+3|c
+=== 10.9 行级 INSERT：默认取插入者标记；伪造标记被 worker 拒绝（报错带占位策略名）；表级标记支配插入者（V9-DD-1.2）===
+200|5|{1,2}
+0
+=== 10.10 加入一个待加入的新节点（该实例此前根本没有这张表）===
+t
+t
+t
+=== 10.11 新节点也拿到 表/列标记；分片形态仍是 RLS + 隐藏列 + 占位策略（T4.4 核心护栏）===
+1|t|true/true cols=2 pol=1 labels=0=s7:c1,2=s9:c2
+=== 10.12 新节点能承载 MAC 分片：同构表的 8 个分片铺满全部 worker 且形态一致 ===
+
+
+8|t
+t
+8|1|true/true cols=2 pol=1
+u10 on t2|1
+psql:/.../085_mac_distributed.sql:186: ERROR:  new row violates row-level security policy "hg_sysmac_row_insert" for table "ddb_mac_t_910003"

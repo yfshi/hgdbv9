@@ -52,9 +52,6 @@ extern int tecc_det_sm4_decrypt(const unsigned char *key, size_t key_len,
 /* 数据格式验证接口 */
 extern int tecc_det_sm4_validate_format(const unsigned char *ciphertext, size_t cipher_len);
 
-/* 获取DET-SM4数据格式大小 */
-extern size_t tecc_det_sm4_get_format_size(size_t plain_len);
-
 /* 清除敏感数据 */
 extern void tecc_det_sm4_clear_memory(void *data, size_t len);
 

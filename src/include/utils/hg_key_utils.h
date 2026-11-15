@@ -33,4 +33,16 @@ extern bool dek_exists(Oid dekid);
 /* Key validation */
 extern bool is_valid_dek(Oid dekid);
 
+/* Begin - ReqID:TECC4.0 */
+/* Retrieve DEK argument value from hg_dek_args by (dek_id, key) */
+extern char *get_dek_arg_value(Oid dek_id, const char *arg_key);
+/* Retrieve DEK distributed identity (hg_dek.column_key_distributed_id) */
+extern Oid get_dek_dist_id(Oid dek_id);
+/* Find an encrypted column binding this DEK as its homomorphic key
+ * (hg_encrypted_column_args he_add_dek/he_mul_dek entry).  All out
+ * parameters may be NULL. */
+extern bool find_he_dek_bound_column(Oid dek_dist_id, Oid *table_oid,
+									 char **column_name, const char **arg_key);
+/* End - ReqID:TECC4.0 */
+
 #endif	/* HG_KEY_UTILS_H */

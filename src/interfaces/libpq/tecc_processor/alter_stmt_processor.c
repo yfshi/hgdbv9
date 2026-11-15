@@ -43,7 +43,7 @@ tecc_alter_stmt_processor_run(const AlterTableStmt *alter_stmt,
 {
     ListCell *lc;
     bool has_attach = false;
-    char *parent_schema;
+    const char *parent_schema;
     char *parent_table;
 
     if (alter_stmt == NULL || statement_data == NULL)
@@ -54,8 +54,10 @@ tecc_alter_stmt_processor_run(const AlterTableStmt *alter_stmt,
         return TECC_ALTER_PROCESSOR_ERROR;
 
     parent_table = alter_stmt->relation->relname;
-    parent_schema = alter_stmt->relation->schemaname ?
-                    alter_stmt->relation->schemaname : "public";
+    /* ReqID:TECC4.0 - 未限定表名按 search_path 解析真实 schema（同 stmt_load_table_metadata） */
+    parent_schema = tecc_stmt_resolve_table_schema(statement_data,
+                                                   alter_stmt->relation->schemaname,
+                                                   alter_stmt->relation->relname);
 
     /* Scan cmds for AT_AttachPartition */
     foreach(lc, alter_stmt->cmds)

@@ -97,6 +97,16 @@ static size_t tecc_unescape_c_string(char *str, size_t len) {
     return dst - str;
 }
 
+/* Begin - ReqID:TECC4.0 - Literal buffer for GUC-aware string scanning */
+#define TECC_LITERAL_BUF_SIZE 65536
+static char tecc_lit_buf[TECC_LITERAL_BUF_SIZE];
+static int  tecc_lit_len = 0;
+static int  tecc_str_start_off = 0;  /* byte offset of opening quote */
+
+/* GUC getter from tecc_parser.c */
+extern bool tecc_parser_get_standard_conforming_strings(void);
+/* End - ReqID:TECC4.0 - Literal buffer */
+
 %}
 
 %option nounput
@@ -104,7 +114,10 @@ static size_t tecc_unescape_c_string(char *str, size_t len) {
 %option header-file="tecc_scanner.h"
 %option prefix="tecc_"
 
-%x XC
+/* Begin - ReqID:TECC4.0 - XQ/XE start conditions for GUC-aware string scanning.
+ * XQ: standard_conforming_strings=on  (backslash is literal, ' ends string)
+ * XE: standard_conforming_strings=off (\' is a quote escape, \\ is backslash escape) */
+%x XC XQ XE
 
 DIGIT    [0-9]
 LETTER   [a-zA-Z_\200-\377]
@@ -112,7 +125,7 @@ IDENT    {LETTER}({LETTER}|{DIGIT}|[$])*
 INTEGER  {DIGIT}+
 FLOAT    {DIGIT}+\.{DIGIT}*
 REAL     ({DIGIT}+[Ee][-+]?{DIGIT}+|{DIGIT}+\.{DIGIT}*[Ee][-+]?{DIGIT}+|{DIGIT}*\.{DIGIT}+[Ee][-+]?{DIGIT}+)
-STRING   (\'([^\']|\'\')*\')
+/* STRING pattern removed — replaced by XQ/XE start-condition rules below */
 QUOTED_IDENT \"([^\"]|\"\")*\"
 ECONST   [Ee]\'(\\.|[^\'\\])*\'
 WS       [ \t\r\n]
@@ -159,6 +172,9 @@ WS       [ \t\r\n]
 (?i:DEK)      { return TECC_TOK_DEK; }
 (?i:TABLE)    { return TECC_TOK_TABLE; }
 (?i:VIEW)     { return TECC_TOK_VIEW; }
+(?i:MATERIALIZED) { return TECC_TOK_MATERIALIZED; }
+(?i:REPLACE)  { return TECC_TOK_REPLACE; }
+(?i:REFRESH)  { return TECC_TOK_REFRESH; }
 (?i:INDEX)    { return TECC_TOK_INDEX; }
 (?i:WITH)     { return TECC_TOK_WITH; }
 (?i:RECURSIVE) { return TECC_TOK_RECURSIVE; }
@@ -166,6 +182,29 @@ WS       [ \t\r\n]
 (?i:WHERE)    { return TECC_TOK_WHERE; }
 (?i:FROM)     { return TECC_TOK_FROM; }
 (?i:SET)      { return TECC_TOK_SET; }
+(?i:LOCAL)         { return TECC_TOK_LOCAL; }
+(?i:SESSION)       { return TECC_TOK_SESSION; }
+(?i:TRANSACTION)   { return TECC_TOK_TRANSACTION; }
+(?i:CHARACTERISTICS) { return TECC_TOK_CHARACTERISTICS; }
+(?i:CATALOG)       { return TECC_TOK_CATALOG_P; }
+(?i:NAMES)         { return TECC_TOK_NAMES; }
+(?i:ROLE)          { return TECC_TOK_ROLE; }
+(?i:AUTHORIZATION) { return TECC_TOK_AUTHORIZATION; }
+(?i:XML)           { return TECC_TOK_XML_P; }
+(?i:OPTION)        { return TECC_TOK_OPTION; }
+(?i:DOCUMENT)      { return TECC_TOK_DOCUMENT; }
+(?i:CONTENT)       { return TECC_TOK_CONTENT; }
+(?i:SNAPSHOT)      { return TECC_TOK_SNAPSHOT; }
+(?i:ISOLATION)     { return TECC_TOK_ISOLATION; }
+(?i:LEVEL)         { return TECC_TOK_LEVEL; }
+(?i:READ)          { return TECC_TOK_READ; }
+(?i:UNCOMMITTED)   { return TECC_TOK_UNCOMMITTED; }
+(?i:COMMITTED)     { return TECC_TOK_COMMITTED; }
+(?i:REPEATABLE)    { return TECC_TOK_REPEATABLE; }
+(?i:SERIALIZABLE)  { return TECC_TOK_SERIALIZABLE; }
+(?i:ONLY)          { return TECC_TOK_ONLY; }
+(?i:WRITE)         { return TECC_TOK_WRITE; }
+(?i:CURRENT)       { return TECC_TOK_CURRENT_P; }
 (?i:INTO)     { return TECC_TOK_INTO; }
 (?i:VALUES)   { return TECC_TOK_VALUES; }
 (?i:AND)      { return TECC_TOK_AND; }
@@ -216,6 +255,7 @@ WS       [ \t\r\n]
 (?i:IF)    { return TECC_TOK_IF_P; }
 (?i:PREPARE)  { return TECC_TOK_PREPARE; }
 (?i:EXECUTE)  { return TECC_TOK_EXECUTE; }
+(?i:DEALLOCATE) { return TECC_TOK_DEALLOCATE; }
 (?i:DECLARE)  { return TECC_TOK_DECLARE; }
 (?i:CURSOR)   { return TECC_TOK_CURSOR; }
 (?i:FOR)      { return TECC_TOK_FOR; }
@@ -417,20 +457,104 @@ WS       [ \t\r\n]
     return TECC_TOK_FLOAT;
 }
 
-{STRING}   {
-    char *str;
-    size_t len;
+"\'"    {
+    /* Opening single quote — enter appropriate string scanning mode */
+    tecc_str_start_off = yytext - tecc_buffer_start;
+    tecc_lit_len = 0;
+    if (tecc_parser_get_standard_conforming_strings())
+        BEGIN(XQ);
+    else
+        BEGIN(XE);
+}
 
-    SET_TOKEN_LOCATION();
-    /* Remove quotes */
-    str = yytext;
-    len = strlen(str);
-    if (len >= 2) {
-        str[len-1] = '\0';
-        tecc_lval.str = strdup(str+1);
-    } else {
-        tecc_lval.str = strdup("");
+<XQ>"\'\'"   {
+    /* Doubled quote in standard conforming mode → literal '' */
+    if (tecc_lit_len + 2 < TECC_LITERAL_BUF_SIZE) {
+        tecc_lit_buf[tecc_lit_len++] = '\'';
+        tecc_lit_buf[tecc_lit_len++] = '\'';
     }
+}
+<XQ>[^']+    {
+    /* Non-quote characters */
+    int n = yyleng;
+    if (tecc_lit_len + n >= TECC_LITERAL_BUF_SIZE)
+        n = TECC_LITERAL_BUF_SIZE - 1 - tecc_lit_len;
+    if (n > 0) {
+        memcpy(tecc_lit_buf + tecc_lit_len, yytext, n);
+        tecc_lit_len += n;
+    }
+}
+<XQ>"\'"    {
+    /* Closing quote in standard conforming mode */
+    BEGIN(INITIAL);
+    tecc_lit_buf[tecc_lit_len] = '\0';
+    tecc_lval.str = strdup(tecc_lit_buf);
+    /* Restore token location to the opening quote; last_column = full match
+     * length (content + 2 quotes), matching old STRING regex behavior */
+    tecc_lloc.first_line = tecc_str_start_off;
+    tecc_lloc.last_column = tecc_lit_len + 2;
+    return TECC_TOK_STRING;
+}
+
+<XE>"\'\'"   {
+    /* Doubled quote in escape-aware mode → literal '' */
+    if (tecc_lit_len + 2 < TECC_LITERAL_BUF_SIZE) {
+        tecc_lit_buf[tecc_lit_len++] = '\'';
+        tecc_lit_buf[tecc_lit_len++] = '\'';
+    }
+}
+<XE>"\\'"    {
+    /* Escaped quote in escape-aware mode → literal ' */
+    if (tecc_lit_len + 1 < TECC_LITERAL_BUF_SIZE)
+        tecc_lit_buf[tecc_lit_len++] = '\'';
+}
+<XE>"\\\\"   {
+    /* Escaped backslash in escape-aware mode → literal \ */
+    if (tecc_lit_len + 1 < TECC_LITERAL_BUF_SIZE)
+        tecc_lit_buf[tecc_lit_len++] = '\\';
+}
+<XE>"\\"[^'\\\n]  {
+    /* Other backslash sequence → keep as-is (backslash + char) */
+    if (tecc_lit_len + 2 < TECC_LITERAL_BUF_SIZE) {
+        tecc_lit_buf[tecc_lit_len++] = '\\';
+        tecc_lit_buf[tecc_lit_len++] = yytext[1];
+    }
+}
+<XE>[^'\\]+  {
+    /* Non-quote, non-backslash characters */
+    int n = yyleng;
+    if (tecc_lit_len + n >= TECC_LITERAL_BUF_SIZE)
+        n = TECC_LITERAL_BUF_SIZE - 1 - tecc_lit_len;
+    if (n > 0) {
+        memcpy(tecc_lit_buf + tecc_lit_len, yytext, n);
+        tecc_lit_len += n;
+    }
+}
+<XE>"\'"    {
+    /* Closing quote in escape-aware mode (unescaped ' ends the string) */
+    BEGIN(INITIAL);
+    tecc_lit_buf[tecc_lit_len] = '\0';
+    tecc_lval.str = strdup(tecc_lit_buf);
+    tecc_lloc.first_line = tecc_str_start_off;
+    tecc_lloc.last_column = tecc_lit_len + 2;
+    return TECC_TOK_STRING;
+}
+<XQ><<EOF>>  {
+    /* Unterminated string in standard conforming mode */
+    BEGIN(INITIAL);
+    tecc_lit_buf[tecc_lit_len] = '\0';
+    tecc_lval.str = strdup(tecc_lit_buf);
+    tecc_lloc.first_line = tecc_str_start_off;
+    tecc_lloc.last_column = tecc_lit_len + 2;
+    return TECC_TOK_STRING;
+}
+<XE><<EOF>>  {
+    /* Unterminated string in escape-aware mode */
+    BEGIN(INITIAL);
+    tecc_lit_buf[tecc_lit_len] = '\0';
+    tecc_lval.str = strdup(tecc_lit_buf);
+    tecc_lloc.first_line = tecc_str_start_off;
+    tecc_lloc.last_column = tecc_lit_len + 2;
     return TECC_TOK_STRING;
 }
 
@@ -471,3 +595,4 @@ int tecc_wrap(void) {
 }
 
 /* tecc_yyerror is defined in tecc_grammar.y */
+

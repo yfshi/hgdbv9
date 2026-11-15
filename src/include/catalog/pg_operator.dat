@@ -1,21 +1,137 @@
-#----------------------------------------------------------------------
-#
-# pg_operator.dat
-#    Initial contents of the pg_operator system catalog.
-#
-# Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
-# Portions Copyright (c) 1994, Regents of the University of California
-#
-# src/include/catalog/pg_operator.dat
-#
-#----------------------------------------------------------------------
 
-[
+# ReqID:TECC4.0 - Homomorphic encryption operators
 
-# Note: every entry in pg_operator.dat is expected to have a 'descr' comment.
-# If the operator is a deprecated equivalent of some other entry, be sure
-# to comment it as such so that initdb doesn't think it's a preferred name
-# for the underlying function.
+# int4_enc HE operators
+{ oid => '50273', oprname => '+', oprleft => 'int4_enc', oprright => 'int4_enc',
+  oprresult => 'int4_enc', oprcode => 'int4_enc_he_add' },
+{ oid => '50274', oprname => '-', oprleft => 'int4_enc', oprright => 'int4_enc',
+  oprresult => 'int4_enc', oprcode => 'int4_enc_he_sub' },
+{ oid => '50275', oprname => '*', oprleft => 'int4_enc', oprright => 'int4_enc',
+  oprresult => 'int4_enc', oprcode => 'int4_enc_he_mul' },
+{ oid => '50276', oprname => '*', oprleft => 'int4_enc', oprright => 'int4',
+  oprresult => 'int4_enc', oprcode => 'int4_enc_he_mul_scalar' },
+
+# int8_enc HE operators
+{ oid => '50277', oprname => '+', oprleft => 'int8_enc', oprright => 'int8_enc',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_he_add' },
+{ oid => '50278', oprname => '-', oprleft => 'int8_enc', oprright => 'int8_enc',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_he_sub' },
+{ oid => '50279', oprname => '*', oprleft => 'int8_enc', oprright => 'int8_enc',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_he_mul' },
+{ oid => '50280', oprname => '*', oprleft => 'int8_enc', oprright => 'int8',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_he_mul_scalar' },
+
+# int2_enc HE operators
+{ oid => '50281', oprname => '+', oprleft => 'int2_enc', oprright => 'int2_enc',
+  oprresult => 'int4_enc', oprcode => 'int2_enc_he_add' },
+{ oid => '50282', oprname => '-', oprleft => 'int2_enc', oprright => 'int2_enc',
+  oprresult => 'int4_enc', oprcode => 'int2_enc_he_sub' },
+{ oid => '50283', oprname => '*', oprleft => 'int2_enc', oprright => 'int2_enc',
+  oprresult => 'int4_enc', oprcode => 'int2_enc_he_mul' },
+{ oid => '50284', oprname => '*', oprleft => 'int2_enc', oprright => 'int2',
+  oprresult => 'int4_enc', oprcode => 'int2_enc_he_mul_scalar' },
+
+# ReqID:TECC4.0 - P2-4: HE scalar +/- operators and left-constant mirrors
+{ oid => '50312', oprname => '+', oprleft => 'int4_enc', oprright => 'int4',
+  oprresult => 'int4_enc', oprcode => 'int4_enc_he_add_scalar' },
+{ oid => '50313', oprname => '-', oprleft => 'int4_enc', oprright => 'int4',
+  oprresult => 'int4_enc', oprcode => 'int4_enc_he_sub_scalar' },
+{ oid => '50314', oprname => '+', oprleft => 'int4', oprright => 'int4_enc',
+  oprresult => 'int4_enc', oprcode => 'int4_he_add_scalar' },
+{ oid => '50315', oprname => '*', oprleft => 'int4', oprright => 'int4_enc',
+  oprresult => 'int4_enc', oprcode => 'int4_he_mul_scalar' },
+{ oid => '50316', oprname => '+', oprleft => 'int8_enc', oprright => 'int8',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_he_add_scalar' },
+{ oid => '50317', oprname => '-', oprleft => 'int8_enc', oprright => 'int8',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_he_sub_scalar' },
+{ oid => '50318', oprname => '+', oprleft => 'int8', oprright => 'int8_enc',
+  oprresult => 'int8_enc', oprcode => 'int8_he_add_scalar' },
+{ oid => '50319', oprname => '*', oprleft => 'int8', oprright => 'int8_enc',
+  oprresult => 'int8_enc', oprcode => 'int8_he_mul_scalar' },
+{ oid => '50320', oprname => '+', oprleft => 'int2_enc', oprright => 'int2',
+  oprresult => 'int4_enc', oprcode => 'int2_enc_he_add_scalar' },
+{ oid => '50321', oprname => '-', oprleft => 'int2_enc', oprright => 'int2',
+  oprresult => 'int4_enc', oprcode => 'int2_enc_he_sub_scalar' },
+{ oid => '50322', oprname => '+', oprleft => 'int2', oprright => 'int2_enc',
+  oprresult => 'int4_enc', oprcode => 'int2_he_add_scalar' },
+{ oid => '50323', oprname => '*', oprleft => 'int2', oprright => 'int2_enc',
+  oprresult => 'int4_enc', oprcode => 'int2_he_mul_scalar' },
+
+
+# ReqID:TECC4.0 - int2_enc scalar operators with int4 (PG type promotion)
+{ oid => '50440', oprname => '+', oprleft => 'int2_enc', oprright => 'int4',
+  oprresult => 'int4_enc', oprcode => 'int2_enc_he_add_scalar4' },
+{ oid => '50441', oprname => '-', oprleft => 'int2_enc', oprright => 'int4',
+  oprresult => 'int4_enc', oprcode => 'int2_enc_he_sub_scalar4' },
+{ oid => '50442', oprname => '*', oprleft => 'int2_enc', oprright => 'int4',
+  oprresult => 'int4_enc', oprcode => 'int2_enc_he_mul_scalar4' },
+{ oid => '50443', oprname => '+', oprleft => 'int4', oprright => 'int2_enc',
+  oprresult => 'int4_enc', oprcode => 'int4_he_add_scalar2e' },
+{ oid => '50444', oprname => '-', oprleft => 'int4', oprright => 'int2_enc',
+  oprresult => 'int4_enc', oprcode => 'int4_he_sub_scalar2e' },
+{ oid => '50445', oprname => '*', oprleft => 'int4', oprright => 'int2_enc',
+  oprresult => 'int4_enc', oprcode => 'int4_he_mul_scalar2e' },
+
+# ReqID:TECC4.0 - Cross-type HE operators (result type = wider type)
+# int2_enc × int4_enc
+{ oid => '50339', oprname => '+', oprleft => 'int2_enc', oprright => 'int4_enc',
+  oprresult => 'int4_enc', oprcode => 'int4_enc_he_add_int2' },
+{ oid => '50340', oprname => '-', oprleft => 'int2_enc', oprright => 'int4_enc',
+  oprresult => 'int4_enc', oprcode => 'int4_enc_he_sub_int2' },
+{ oid => '50341', oprname => '*', oprleft => 'int2_enc', oprright => 'int4_enc',
+  oprresult => 'int4_enc', oprcode => 'int4_enc_he_mul_int2' },
+{ oid => '50342', oprname => '+', oprleft => 'int4_enc', oprright => 'int2_enc',
+  oprresult => 'int4_enc', oprcode => 'int4_enc_he_add_int2' },
+{ oid => '50343', oprname => '-', oprleft => 'int4_enc', oprright => 'int2_enc',
+  oprresult => 'int4_enc', oprcode => 'int4_enc_he_sub_int2' },
+{ oid => '50344', oprname => '*', oprleft => 'int4_enc', oprright => 'int2_enc',
+  oprresult => 'int4_enc', oprcode => 'int4_enc_he_mul_int2' },
+# int2_enc × int8_enc
+{ oid => '50345', oprname => '+', oprleft => 'int2_enc', oprright => 'int8_enc',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_he_add_int2' },
+{ oid => '50346', oprname => '-', oprleft => 'int2_enc', oprright => 'int8_enc',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_he_sub_int2' },
+{ oid => '50347', oprname => '*', oprleft => 'int2_enc', oprright => 'int8_enc',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_he_mul_int2' },
+{ oid => '50348', oprname => '+', oprleft => 'int8_enc', oprright => 'int2_enc',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_he_add_int2' },
+{ oid => '50349', oprname => '-', oprleft => 'int8_enc', oprright => 'int2_enc',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_he_sub_int2' },
+{ oid => '50350', oprname => '*', oprleft => 'int8_enc', oprright => 'int2_enc',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_he_mul_int2' },
+# int4_enc × int8_enc
+{ oid => '50351', oprname => '+', oprleft => 'int4_enc', oprright => 'int8_enc',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_he_add_int4' },
+{ oid => '50352', oprname => '-', oprleft => 'int4_enc', oprright => 'int8_enc',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_he_sub_int4' },
+{ oid => '50353', oprname => '*', oprleft => 'int4_enc', oprright => 'int8_enc',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_he_mul_int4' },
+{ oid => '50354', oprname => '+', oprleft => 'int8_enc', oprright => 'int4_enc',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_he_add_int4' },
+{ oid => '50355', oprname => '-', oprleft => 'int8_enc', oprright => 'int4_enc',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_he_sub_int4' },
+{ oid => '50356', oprname => '*', oprleft => 'int8_enc', oprright => 'int4_enc',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_he_mul_int4' },
+{ oid => '50406', oprname => '^', oprleft => 'int2_enc', oprright => 'int8',
+  oprresult => 'int8_enc', oprcode => 'int2_enc_pow' },
+{ oid => '50407', oprname => '^', oprleft => 'int4_enc', oprright => 'int8',
+  oprresult => 'int8_enc', oprcode => 'int4_enc_pow' },
+{ oid => '50408', oprname => '^', oprleft => 'int8_enc', oprright => 'int8',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_pow' },
+
+# ReqID:TECC4.0 - Unary negation and left-constant subtraction mirrors
+{ oid => '50426', oprname => '-', oprkind => 'l', oprleft => '0', oprright => 'int2_enc',
+  oprresult => 'int4_enc', oprcode => 'int2_enc_he_neg' },
+{ oid => '50427', oprname => '-', oprkind => 'l', oprleft => '0', oprright => 'int4_enc',
+  oprresult => 'int4_enc', oprcode => 'int4_enc_he_neg' },
+{ oid => '50428', oprname => '-', oprkind => 'l', oprleft => '0', oprright => 'int8_enc',
+  oprresult => 'int8_enc', oprcode => 'int8_enc_he_neg' },
+{ oid => '50429', oprname => '-', oprleft => 'int2', oprright => 'int2_enc',
+  oprresult => 'int4_enc', oprcode => 'int2_he_sub_scalar' },
+{ oid => '50430', oprname => '-', oprleft => 'int4', oprright => 'int4_enc',
+  oprresult => 'int4_enc', oprcode => 'int4_he_sub_scalar' },
+{ oid => '50431', oprname => '-', oprleft => 'int8', oprright => 'int8_enc',
+  oprresult => 'int8_enc', oprcode => 'int8_he_sub_scalar' },
 
 { oid => '15', descr => 'equal',
   oprname => '=', oprcanmerge => 't', oprcanhash => 't', oprleft => 'int4',

@@ -1,0 +1,24 @@
+NOTICE: key encryption key "kek_etl" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+=== Setup OK ===
+NOTICE: table "t_etl" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+=== 1 Top-level empty target list ===
+1a_empty_tlist_count|2
+1b_empty_tlist_nomatch_count|1
+1c_empty_tlist_ope_count|3
+=== 2 Empty target list in subquery ===
+2a_subquery_empty_tlist_count|2
+2b_subquery_where_count|2
+=== 3 Projection control ===
+3a_projection|2|1
+3b_projection|4|Carol|40
+=== 4 Cleanup ===
+DROP TABLE
+NOTICE: drop cascades to 2 other objects
+DROP KEK

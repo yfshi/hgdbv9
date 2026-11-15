@@ -21,6 +21,7 @@
 #include "tecc_formatter_internal.h"
 #include "tecc_data_validator.h"
 #include "common/shortest_dec.h"
+#include "mb/pg_wchar.h"   /* ReqID:TECC4.0 - pg_encoding_mblen（字符长度/typmod 判定） */
 
 #include <stdio.h>
 #include <string.h>
@@ -814,6 +815,174 @@ tecc_type_output_float8(const char *data, size_t len)
 /* ==================== text/varchar/bpchar output ==================== */
 
 /*
+ * ReqID:TECC4.0 - 按列声明长度（typmod）计算字符型文本的有效长度（Bug 9327）。
+ *
+ * 普通 varchar(N)/char(N) 列的长度约束由服务端输入函数（varchar_input/
+ * bpchar_input）实现；密态列的值到服务端时已是密文，服务端无从判断明文长度，
+ * 因此写入校验与读取定型都必须在前端做，依据列元数据里记录的 typmod（写入侧
+ * 在加密前调用，读取侧在二进制转文本之后调用 —— 两侧共用本函数，判据一致）。
+ *
+ * 判据与服务端完全一致（src/backend/utils/adt/varchar.c）：按【字符】计数（多
+ * 字节字符按一个字符算），超过 N 个字符时，只有第 N 个字符之后的字符全是空格
+ * 才被服务端接受 —— 服务端会把它们截掉（varchar）/截掉后补齐（bpchar）再存。
+ *
+ * 返回 true  —— *effective_len 是应采用的长度：非字符型、未声明长度或未超长时
+ *               等于 text_len；超长且超出部分全是空格时是前 N 个字符的字节长度，
+ *               调用方应据此截断，从而与服务端实际存储的值一致。
+ * 返回 false —— 超出部分含非空格字符。写入侧据此拒绝（服务端行为）；读取侧据
+ *               此保持原值不动 —— 历史数据（旧版本写入、或未经本校验的写入路径）
+ *               里可能真的存着这种值，静默截断等于丢数据。
+ */
+static bool
+tecc_char_typmod_clip_len(Oid data_type, int type_mod,
+                          const char *text, size_t text_len,
+                          int encoding, bool strict, size_t *effective_len)
+{
+    int32       maxlen;
+    size_t      mbmaxlen;
+    size_t      pos;
+    int32       nchars;
+    size_t      i;
+
+    if (effective_len != NULL)
+        *effective_len = text_len;
+
+    if (data_type != TECC_OUTPUT_VARCHAROID && data_type != TECC_OUTPUT_BPCHAROID)
+        return true;
+
+    /* typmod < VARHDRSZ 表示未声明长度限制 */
+    if (type_mod < (int) sizeof(int32))
+        return true;
+
+    maxlen = (int32) type_mod - (int32) sizeof(int32);
+    if (maxlen < 0 || text_len <= (size_t) maxlen)
+        return true;
+
+    /* 求前 maxlen 个字符占用的字节数，不切开多字节字符 */
+    pos = 0;
+    nchars = 0;
+    while (pos < text_len && nchars < maxlen)
+    {
+        int mblen = pg_encoding_mblen(encoding, text + pos);
+
+        if (mblen <= 0)
+            mblen = 1;
+        if (pos + (size_t) mblen > text_len)
+            break;
+        pos += (size_t) mblen;
+        nchars++;
+    }
+    mbmaxlen = pos;
+
+    /* 非严格模式即显式 cast 的语义：超出部分直接截掉，不再看其内容 */
+    if (!strict)
+    {
+        if (effective_len != NULL)
+            *effective_len = mbmaxlen;
+        return true;
+    }
+
+    /* 第 maxlen 个字符之后还有非空格字符 —— 与服务端一样不接受 */
+    for (i = mbmaxlen; i < text_len; i++)
+    {
+        if (text[i] != ' ')
+            return false;
+    }
+
+    if (effective_len != NULL)
+        *effective_len = mbmaxlen;
+    return true;
+}
+
+bool
+tecc_char_typmod_effective_len(Oid data_type, int type_mod,
+                               const char *text, size_t text_len,
+                               int encoding, size_t *effective_len)
+{
+    return tecc_char_typmod_clip_len(data_type, type_mod, text, text_len,
+                                     encoding, true, effective_len);
+}
+
+/*
+ * ReqID:TECC4.0 - Bug 9327 显式 cast 的长度定型（原地静默截断）。
+ *
+ * 原生 PG 对显式 cast（'x'::varchar(N)）是【静默截断】：超出部分是普通字符也照
+ * 截、不报错（见 varchar()/bpchar() 的 isExplicit 分支）；只有赋值转换与字面量
+ * 输入（varchar_input/bpchar_input）才在超出部分含非空格时报错。带 typmod 的密态
+ * cast（'x'::varchar_enc(N) ENCRYPTED WITH (...)）到服务端时已是密文，服务端无从
+ * 做这次截断，必须在前端补上，否则写入的值会长于 cast 声明的 N。
+ *
+ * declared_len 是类型名上写的那个数（语法里的 N，未声明时为 -1）；服务端 atttypmod
+ * 是 N + VARHDRSZ，仅字符型基础类型做换算 —— 数值型的 typmod 在语法里被简化为只
+ * 保留第一个数，还原不出 numeric 的编码，故不做处理。
+ *
+ * text 为 NUL 结尾缓冲区，原地改写；只可能变短，调用方无需提供容量。
+ */
+void
+tecc_char_cast_len_clip(int declared_len, Oid base_oid,
+                        char *text, int encoding)
+{
+    int32       type_mod;
+    size_t      len;
+    size_t      effective_len = 0;
+
+    if (text == NULL)
+        return;
+
+    if (base_oid != TECC_OUTPUT_VARCHAROID && base_oid != TECC_OUTPUT_BPCHAROID)
+        return;
+
+    if (declared_len < 0)
+        return;
+
+    type_mod = (int32) declared_len + (int32) sizeof(int32);
+
+    len = strlen(text);
+    if (len == 0)
+        return;
+
+    if (tecc_char_typmod_clip_len(base_oid, type_mod, text, len, encoding,
+                                  false, &effective_len)
+        && effective_len < len)
+        text[effective_len] = '\0';
+}
+
+/*
+ * tecc_type_output_char - varchar/bpchar 输出：按列声明长度定型（Bug 9327）
+ *
+ * 先按密文格式取出文本，再按 typmod 定型：超出部分是空格时截断（服务端存储时
+ * 也是这么做的），含非空格字符时保持原值（历史数据可能没经过写入校验）。
+ * 修复写入侧之后新写入的值本身就在声明长度内，此处对它们是无操作。
+ *
+ * 与数值类型对称：tecc_type_output_numeric 也是按 typmod 定型（按 scale 取整）。
+ *
+ * 编码：前端文本管线按 UTF-8 处理（ICU 归一化同样假设 UTF-8），此处按 PG_UTF8
+ * 计数；即使编码判断有偏差，最坏也只是少截一次尾部空格，不会丢非空格数据。
+ *
+ * Output: pg_malloc'd null-terminated string
+ */
+static char *
+tecc_type_output_char(Oid type_oid, const char *data, size_t len, int type_mod)
+{
+    char       *result;
+    size_t      effective_len = 0;
+    size_t      result_len;
+
+    result = tecc_type_output_text(data, len);
+    if (result == NULL)
+        return NULL;
+
+    result_len = strlen(result);
+    if (tecc_char_typmod_effective_len(type_oid, type_mod,
+                                       result, result_len, PG_UTF8,
+                                       &effective_len)
+        && effective_len < result_len)
+        result[effective_len] = '\0';
+
+    return result;
+}
+
+/*
  * tecc_type_output_text - Convert text/bpchar/varchar binary to C string
  *
  * Two formats are supported (chosen at encryption time per algorithm):
@@ -1127,6 +1296,9 @@ tecc_type_output_data(Oid type_oid, int type_mod,
 
         case TECC_OUTPUT_VARCHAROID:
         case TECC_OUTPUT_BPCHAROID:
+            return tecc_type_output_char(type_oid, binary_data, binary_len,
+                                         type_mod);
+
         case TECC_OUTPUT_TEXTOID:
             return tecc_type_output_text(binary_data, binary_len);
 

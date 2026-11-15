@@ -53,8 +53,14 @@ typedef enum {
     TECC_CACHE_ERROR_UNSUPPORTED = 23,    /* 不支持的操作 */
     /* Begin - ReqID:TECC4.0 - 添加安全性和完整性错误码 */
     TECC_CACHE_ERROR_SECURITY = 24,       /* 安全性错误（如HMAC密钥生成失败） */
-    TECC_CACHE_ERROR_INTEGRITY = 25       /* 数据完整性错误（如HMAC签名验证失败） */
+    TECC_CACHE_ERROR_INTEGRITY = 25,      /* 数据完整性错误（如HMAC签名验证失败） */
     /* End - ReqID:TECC4.0 - 添加安全性和完整性错误码 */
+    /* Begin - ReqID:TECC4.0 - 区分"关系不存在"与"关系存在但无加密列"。
+     * 两者都查不到加密列元数据，但负缓存语义完全不同：只有后者可以固化
+     * "该表无加密列"的哨兵，前者若被固化成哨兵会让本会话后续所有按名
+     * 查找都短路成"无需加密"，导致该表 DML 明文外发。 */
+    TECC_CACHE_ERROR_RELATION_NOT_FOUND = 26
+    /* End - ReqID:TECC4.0 */
 } TeccCacheErrorCode;
 
 /* ==================== 简化的适配器接口定义 ==================== */

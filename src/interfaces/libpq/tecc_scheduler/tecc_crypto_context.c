@@ -184,6 +184,40 @@ tecc_destroy_crypto_context(TeccCryptoContext *context)
         pg_free(context->search_ciphertext);
     }
 
+    /* ReqID:TECC4.0 - Clear HE ciphertext */
+    if (context->he_add_ciphertext)
+    {
+        memset(context->he_add_ciphertext, 0, context->he_add_cipher_len);
+        pg_free(context->he_add_ciphertext);
+    }
+    if (context->he_mul_ciphertext)
+    {
+        memset(context->he_mul_ciphertext, 0, context->he_mul_cipher_len);
+        pg_free(context->he_mul_ciphertext);
+    }
+
+    /* ReqID:TECC4.0 - Clear HE key material */
+    if (context->he_ec_pubkey_hex)
+    {
+        memset(context->he_ec_pubkey_hex, 0, strlen(context->he_ec_pubkey_hex));
+        pg_free(context->he_ec_pubkey_hex);
+    }
+    if (context->he_ec_privkey_hex)
+    {
+        memset(context->he_ec_privkey_hex, 0, strlen(context->he_ec_privkey_hex));
+        pg_free(context->he_ec_privkey_hex);
+    }
+    if (context->he_eg_pubkey_hex)
+    {
+        memset(context->he_eg_pubkey_hex, 0, strlen(context->he_eg_pubkey_hex));
+        pg_free(context->he_eg_pubkey_hex);
+    }
+    if (context->he_eg_privkey_hex)
+    {
+        memset(context->he_eg_privkey_hex, 0, strlen(context->he_eg_privkey_hex));
+        pg_free(context->he_eg_privkey_hex);
+    }
+
     /* Clear work buffer */
     if (context->work_buffer)
     {
@@ -225,6 +259,11 @@ tecc_crypto_context_reset(TeccCryptoContext *context)
     context->ope_cipher_len = 0;
     context->search_ciphertext = NULL;
     context->search_cipher_len = 0;
+    /* ReqID:TECC4.0 - Reset HE ciphertext pointers */
+    context->he_add_ciphertext = NULL;
+    context->he_add_cipher_len = 0;
+    context->he_mul_ciphertext = NULL;
+    context->he_mul_cipher_len = 0;
     context->plaintext = NULL;
     context->plaintext_len = 0;
     context->cipherdata = NULL;
@@ -254,6 +293,14 @@ tecc_crypto_context_reset(TeccCryptoContext *context)
     /* Reset HSM fields (should already be NULL for software path) */
     context->hsm_adapter = NULL;
     context->hsm_device = NULL;
+    /* ReqID:TECC4.0 - hsm_kms_type 必须一并清零。它是"本上下文当前是否走 HSM"
+     * 的判据（scheduler 批量解密按它决定是否走逐项 HSM 解密），但 HSM 初始化
+     * 只在拿得到列元数据时才执行（见 batch decrypt 里 col_meta != NULL 的
+     * 守卫）。若只清 adapter/device 而留下 hsm_kms_type，则元数据缺失的那次
+     * 解密会带着"要 HSM"的标记进入 HSM 分支、再因 adapter 为 NULL 报
+     * "HSM not available"，掩盖真实原因；同一个共享上下文还可能把软件加密列
+     * 误带进 HSM 分支。 */
+    context->hsm_kms_type = 0;
 
     /* Clear name fields */
     context->table_name[0] = '\0';

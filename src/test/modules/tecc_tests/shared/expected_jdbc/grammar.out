@@ -1,0 +1,767 @@
+NOTICE: key encryption key "kek_grammar" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+=== 1 Basic DML ===
+1a_basic_SELECT|1
+CREATE TABLE
+INSERT 0 1
+1b_INSERT|1|test_filter
+UPDATE 1
+1c_UPDATE|1|updated
+DELETE 1
+1d_DELETE|0
+DROP TABLE
+1e_DROP_OK|1
+=== 2 Comments ===
+2a_block_comment_before|1
+2b_block_comment_after|1
+2c_line_comment|1
+Result  (cost=0.00..0.01 rows=1 width=36)
+EXPLAIN SELECT
+2e_WITH|1
+WITH CTE2E
+=== 3 WITH CTE ===
+NOTICE: table "test_cte_t" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+cte1_basic|2|20
+cte1_basic|3|30
+cte1_basic|4|40
+WITH CTE1
+cte2_alias|2|20
+cte2_alias|3|30
+cte2_alias|4|40
+WITH CTE2(X,
+cte3_order|4|40
+cte3_order|3|30
+cte3_order|2|20
+cte3_order|1|10
+WITH CTE3
+cte4_where|3|c
+cte4_where|4|d
+WITH CTE4
+cte5_multi|20|20
+WITH CTE5A
+cte6_three|6
+WITH A
+cte7_chain|2|40
+cte7_chain|3|60
+cte7_chain|4|80
+WITH BASE
+cte8_both|999|1|10
+cte8_both|999|2|20
+cte8_both|999|3|30
+cte8_both|999|4|40
+WITH CTE8
+CREATE TABLE
+WITH INS_CTE
+cte9_ins|3|30
+cte9_ins|4|40
+CREATE TABLE
+INSERT 0 3
+WITH UPD_CTE
+cte10_upd|3|0
+cte10_upd|1|10
+cte10_upd|2|20
+CREATE TABLE
+INSERT 0 4
+WITH DEL_CTE
+cte11_del|1|10
+cte11_del|2|20
+cte12_union|1|10|low
+cte12_union|2|20|high
+cte12_union|3|30|high
+cte12_union|4|40|high
+WITH LOW
+cte13_sub|2|20
+cte13_sub|3|30
+cte13_sub|4|40
+WITH CTE13
+cte14_agg|4|100
+WITH CTE14
+cte15_selfjoin|10|20
+cte15_selfjoin|20|30
+cte15_selfjoin|30|40
+WITH CTE15
+WITH EMPTY_CTE
+cte17_distinct|10
+cte17_distinct|20
+cte17_distinct|30
+cte17_distinct|40
+WITH CTE17
+cte18_func|A|100
+cte18_func|B|200
+cte18_func|C|300
+cte18_func|D|400
+WITH CTE18
+cte19_recursive|1
+cte19_recursive|2
+cte19_recursive|3
+WITH RECURSIVE
+cte20_rec_star|999|1|10
+cte20_rec_star|999|3|20
+cte20_rec_star|999|5|40
+WITH RECURSIVE
+NOTICE: table "test_cte_graph" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+cte21_graph|1|2
+cte21_graph|1|5
+cte21_graph|2|3
+cte21_graph|3|4
+WITH RECURSIVE
+cte22_multi_rec|1|10
+cte22_multi_rec|1|9
+cte22_multi_rec|1|8
+cte22_multi_rec|2|10
+cte22_multi_rec|2|9
+cte22_multi_rec|2|8
+WITH RECURSIVE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+=== 4 Constant+Star ===
+NOTICE: table "test_cs_t" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 2
+cs1_const_star|1|2|3
+cs1_const_star|4|5|6
+1|2|3|cs2_star_const
+4|5|6|cs2_star_const
+cs3a|42|cs3b|1|2|3
+cs3a|42|cs3b|4|5|6
+cs4_before|1|2|3|cs4_after
+cs4_before|4|5|6|cs4_after
+1|2|3|cs5
+4|5|6|cs5
+cs6_ctrl|1|2|3
+cs6_ctrl|4|5|6
+cs7|1|2|3
+cs7|4|5|6
+cs8|4|5|6
+cs8|1|2|3
+cs9|1|2
+cs9|4|5
+cs10|10|20
+cs10|30|40
+cs11|4|5|6
+cs12|4|5|6
+cs12|1|2|3
+NOTICE: table "test_cs_t2" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 2
+cs13|1|2|3
+cs13|4|5|6
+cs14|4|5
+WITH CS_CTE
+Seq Scan on test_cs_t  (cost=0.00..30.40 rows=2040 width=44)
+EXPLAIN SELECT
+cs16a|1|2|3
+cs16b|4|5|6
+|cs17_str|1|2|3
+|cs17_str|4|5|6
+DROP TABLE
+DROP TABLE
+=== 5 DML Complete ===
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+1|10
+2|20
+3|15
+1|10
+2|20
+1|30
+3|15
+1|10
+2|20
+1|30
+3|15
+1|10
+2|20
+1|30
+3|15
+1|10
+2|20
+1|30
+3|15
+1|10
+2|20
+1|30
+3|15
+1|10
+3|15
+2|20
+1|30
+1|10
+3|15
+2|20
+1|30
+1
+2
+3
+WITH RECURSIVE
+2|20
+WITH DEL
+5|50
+WITH INS
+1|10
+1|30
+3|15
+5|50
+5|50
+1|30
+3|15
+1|10
+DROP TABLE
+=== 6 SubLink Subquery ===
+NOTICE: table "test_sub" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+6_1_scalar|3|30
+6_2_exists|1|10
+6_2_exists|2|20
+6_2_exists|3|30
+6_3_in|2|20
+6_3_in|3|30
+6_4_not_in|1|10
+6_4_not_in|2|20
+6_5_eq_any|2|20
+6_5_eq_any|3|30
+6_7_scalar_select|1|30
+DROP TABLE
+=== 7 Aggregate & Window ===
+NOTICE: table "test_aggwin" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+7_1_distinct|3
+7_2_all|3
+7_3_filter|2
+7_4_sum_filter|60
+7_5_over_part|1|10|1
+7_5_over_part|2|20|2
+7_5_over_part|3|30|1
+7_5_over_part|4||2
+7_6_over_ord|1|1
+7_6_over_ord|2|2
+7_6_over_ord|3|3
+7_6_over_ord|4|4
+7_7_over_empty|1|4
+7_7_over_empty|2|4
+7_7_over_empty|3|4
+7_7_over_empty|4|4
+7_8_window|1|10|30
+7_8_window|2|20|30
+7_8_window|3|30|30
+7_8_window|4||30
+7_9_multiwin|1|1|30
+7_9_multiwin|2|2|30
+7_9_multiwin|3|3|30
+7_9_multiwin|4|4|30
+7_10_distinct_filter|2
+7_11_multi|1|1|30
+7_11_multi|2|2|30
+7_11_multi|3|3|30
+7_11_multi|4|4|30
+7_12_ref|4|1
+7_12_ref|3|2
+7_12_ref|2|3
+7_12_ref|1|4
+DROP TABLE
+=== 8 CTAS ===
+CREATE TABLE
+hello
+text_enc
+DROP TABLE
+NOTICE: table "test_ctas_t1" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+PREPARE P_CTAS8A
+CREATE TABLE
+1|Alice
+2|Bob
+DELETE 2
+INSERT 0 1
+INSERT 0 1
+PREPARE P_CTAS8B
+CREATE TABLE
+3|Charlie
+4|Diana
+NOTICE: relation "test_ctas_result2" already exists, skipping
+CREATE TABLE
+3|Charlie
+4|Diana
+CREATE TABLE
+3|Charlie
+4|Diana
+DEALLOCATE ALL
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+=== 9 AT TIME ZONE ===
+2024-01-01 18:00:00.0
+true
+0
+NOTICE: table "test_tz" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+1|100|hello
+2|200|world
+1
+1|1
+2|1
+2
+INSERT 0 1
+1
+DROP TABLE
+=== 10 BETWEEN SYMMETRIC ===
+NOTICE: table "test_sym1" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+2|15
+2|15
+1|5
+3|25
+4|35
+1|5
+3|25
+4|35
+2|15
+2|15
+3|25
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+1|100
+2|200
+3|300
+1|100
+2|200
+3|300
+2|60
+1|100
+3|300
+DROP TABLE
+NOTICE: table "test_sym3" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+UPDATE 2
+1|5
+2|99
+3|99
+4|20
+DROP TABLE
+=== 11 IS TRUE/FALSE/UNKNOWN ===
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+1
+2
+2
+1
+2
+1
+1|true
+2|false
+1
+DROP TABLE
+=== 12 COLLATE Expression ===
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm. HINT: Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm. HINT: Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm. HINT: Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+ERROR: ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
+  Hint: Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+  Position: 40
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm. HINT: Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm. HINT: Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm. HINT: Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+DROP TABLE
+=== 13 DEFAULT Keyword ===
+NOTICE: table "test_def1" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+1|default_name
+1|hello
+1|named_only
+1|test
+UPDATE 4
+UPDATE 0
+1|default_name
+1|default_name
+1|default_name
+1|default_name
+NOTICE: table "test_def2" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+1|100|hello|default_note
+1|200|world|default_note
+1|300|test|default_note
+UPDATE 1
+UPDATE 1
+1|300|test|default_note
+1|100|hello|default_note
+1|200|world|default_note
+1
+1
+DROP TABLE
+DROP TABLE
+=== 14 Power Operator ^ ===
+NOTICE: table "test_pow1" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+8
+1|2|4
+2|3|9
+3|4|16
+32
+4096
+3|4
+1|12
+2|36
+3|80
+UPDATE 1
+1|4
+2|3
+3|4
+DROP TABLE
+NOTICE: table "test_pow2" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+1|10
+2|20
+3|30
+1
+2
+3
+2|20
+DROP TABLE
+=== 15 Indirection ===
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+1|hello
+2|foo
+3|baz
+1|100|{hello,world}
+1|{hello,world}
+1|{hello}
+1|{hello,world}
+3|300
+1|hello
+2|200|{foo,bar}
+DROP TABLE
+=== 16 SIMILAR TO ===
+NOTICE: table "test_sim1" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+1|hello world
+2|test_abc
+1|hello world
+2|test_abc
+1|hello world
+2|test_abc
+3|xyz
+3|xyz
+1|hello world|true
+2|test_abc|false
+3|xyz|false
+2|test_abc
+3|xyz
+DROP TABLE
+CREATE TABLE
+INSERT 0 2
+1|hello
+1|hello
+DROP TABLE
+=== 17 VARIADIC / WITHIN GROUP ===
+NOTICE: table "test_var1" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+NOTICE: function test_variadic_sum(int4[]) does not exist, skipping
+DROP FUNCTION
+CREATE FUNCTION
+6
+60
+[1, 2, 3]
+1|10
+2|20
+3|30
+DROP FUNCTION
+DROP TABLE
+NOTICE: table "test_wg1" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 5
+30
+30
+10
+3
+DROP TABLE
+NOTICE: table "test_wg3" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+CREATE FUNCTION
+6|20
+DROP FUNCTION
+DROP TABLE
+=== 18 P0 Expression Coverage ===
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+1
+2
+3
+2
+3
+100
+0
+200
+300
+2
+3
+low
+mid
+high
+ERROR: case does not support this argument combination: the branch constant type cannot be encrypted like encrypted column val; unify branches to encrypted columns or plain constants matching the column's original type
+hello
+nobody
+nobody
+0
+200
+300
+100
+0
+300
+100
+CREATE TABLE
+INSERT 0 3
+10
+99
+99
+DROP TABLE
+1
+UPDATE 1
+1|row_update_ok
+UPDATE 1
+p0_CollateClause_handler_present
+p0_ARRAY_handler_via_FuncCall
+2
+3
+1
+2
+3
+1
+2
+3
+1
+2
+3
+1
+2
+3
+1
+2
+3
+1
+false
+false
+false
+1
+2
+3
+DROP TABLE
+=== 19 ALTER TABLE Restrictions ===
+NOTICE: table "tb_alter_test" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 1
+19a_add_enc_col_insert
+NOTICE: table "tb_alter_test2" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 1
+19b_add_enc_col_zh
+NOTICE: table "tb_sec_test" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+ERROR: ERROR: column "col_text" cannot be cast automatically to type text
+  Hint: You might need to specify "USING col_text::text".
+19c_enc_to_plain_rejected
+ERROR: ERROR: cannot alter type of a column
+  Detail: DEPENDENCY depends on column "col_text"
+19d_alter_no_encrypted_with_rejected
+ERROR: ERROR: cannot alter type of a column
+  Detail: ENCRYPTED WITH clause is not allowed in ALTER COLUMN TYPE. Column "col_text" is encrypted and cannot be altered.
+19e_alter_dek_rejected
+NOTICE: table "tb_collate_test" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+ERROR: Cannot change collation of encrypted column: tb_collate_test.col_text. Encrypted columns with OPE algorithm have immutable collation semantics.
+19f_alter_collation_check
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+=== 20 Keyword Case Sensitivity ===
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+20a_lowercase|1|100
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+20b_humpcase|1|200
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+20c_cascade_lower|1|300
+DROP TABLE
+DROP DEK
+DROP KEK
+NOTICE: table "test_kw_case" does not exist, skipping
+DROP TABLE
+NOTICE: table "test_kw_case2" does not exist, skipping
+DROP TABLE
+NOTICE: table "test_kw_case3" does not exist, skipping
+DROP TABLE
+=== 30 Keyword Case Sensitivity ===
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+30a_lowercase|1|100
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+30b_humpcase|1|200
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+30c_cascade_lower|1|300
+DROP TABLE
+DROP DEK
+DROP KEK
+NOTICE: table "test_kw_case" does not exist, skipping
+DROP TABLE
+NOTICE: table "test_kw_case2" does not exist, skipping
+DROP TABLE
+NOTICE: table "test_kw_case3" does not exist, skipping
+DROP TABLE
+=== 31 Schema-qualified DEK name ===
+CREATE SCHEMA
+NOTICE: key encryption key "kek_grammar_schema" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+31b_bare
+31b_meta
+DROP TABLE
+CREATE TABLE
+31c_string
+DROP TABLE
+DROP DEK
+DROP KEK
+DROP SCHEMA
+=== Cleanup ===
+NOTICE: drop cascades to data encryption key dek_grammar
+DROP KEK
+hg_dek
+hg_dek_args
+hg_kek
+hg_kek_args
+CREATE KEK
+km_grammar_kek
+KEY_PATH
+KEY_STORE
+CREATE DEK
+km_grammar_dek|km_grammar_kek
+CREATE DEK
+2
+km_grammar_kek
+km_grammar_kek
+km_grammar_kek
+ERROR: ERROR: cannot drop key encryption key "km_grammar_kek" because other objects depend on it
+  Hint: Use DROP KEK ... CASCADE to drop the dependent objects too.
+DROP DEK
+DROP DEK
+DROP KEK
+0
+CREATE KEK
+CREATE DEK
+NOTICE: drop cascades to data encryption key km_cascade_dek
+DROP KEK
+0
+0
+CREATE KEK
+ERROR: ERROR: KEK "km_dup_kek" already exists
+NOTICE: KEK "km_dup_kek" already exists, skipping
+CREATE KEK
+DROP KEK
+NOTICE: key encryption key "km_nonexistent" does not exist, skipping
+DROP KEK
+NOTICE: data encryption key "km_nonexistent" does not exist, skipping
+DROP DEK
+ERROR: ERROR: TECC CREATE DEK 'km_bad_dek': referenced KEK 'nonexistent_kek' does not exist in key manager. Please execute CREATE KEK nonexistent_kek ... first and ensure KEK status is active before retrying.
+NOTICE: key encryption key "km_grammar_kek" does not exist, skipping
+DROP KEK
+NOTICE: key encryption key "km_cascade_kek" does not exist, skipping
+DROP KEK
+NOTICE: key encryption key "km_dup_kek" does not exist, skipping
+DROP KEK

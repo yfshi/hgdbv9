@@ -1,0 +1,44 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+========== A. 不存在的列（应报列不存在） ==========
+========== B. 真实普通列（应报 enc/plain 混用） ==========
+========== C. 既有语义对照 ==========
+MC-C3|100000
+========== 清理 ==========
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../scalar_func_missing_col.sql:22: NOTICE:  table "enc_pgfunc_mc" does not exist, skipping
+psql:/.../scalar_func_missing_col.sql:23: NOTICE:  data encryption key "enc_pgfunc_mc_dek" does not exist, skipping
+psql:/.../scalar_func_missing_col.sql:24: NOTICE:  key encryption key "enc_pgfunc_mc_kek" does not exist, skipping
+psql:/.../scalar_func_missing_col.sql:41: ERROR:  column "no_such_col" does not exist
+LINE 1: SELECT 'MC-A1', GREATEST(c_int4, no_such_col) FROM enc_pgfun...
+                                         ^
+psql:/.../scalar_func_missing_col.sql:44: ERROR:  column enc_pgfunc_mc.no_such_col does not exist
+LINE 1: SELECT 'MC-A2', GREATEST(enc_pgfunc_mc.c_int4, enc_pgfunc_mc...
+                                                       ^
+psql:/.../scalar_func_missing_col.sql:47: ERROR:  column "no_such_col" does not exist
+LINE 1: SELECT 'MC-A3', GREATEST(no_such_col, c_int4) FROM enc_pgfun...
+                                 ^
+psql:/.../scalar_func_missing_col.sql:50: ERROR:  column "no_such_col" does not exist
+LINE 1: SELECT 'MC-A4', GREATEST(c_text, no_such_col) FROM enc_pgfun...
+                                         ^
+psql:/.../scalar_func_missing_col.sql:53: ERROR:  column "no_such_col" does not exist
+LINE 1: SELECT 'MC-A5', LEAST(c_int4, no_such_col) FROM enc_pgfunc_m...
+                                      ^
+psql:/.../scalar_func_missing_col.sql:56: ERROR:  column t.no_such_col does not exist
+LINE 1: SELECT 'MC-A6', GREATEST(t.c_int4, t.no_such_col) FROM enc_p...
+                                           ^
+psql:/.../scalar_func_missing_col.sql:60: TECC query preprocessing failed: GREATEST does not support this argument combination: encrypted columns and plain columns cannot be mixed
+psql:/.../scalar_func_missing_col.sql:61: TECC query preprocessing failed: LEAST does not support this argument combination: encrypted columns and plain columns cannot be mixed
+psql:/.../scalar_func_missing_col.sql:66: ERROR:  column "no_such_col" does not exist
+LINE 1: SELECT 'MC-C1', GREATEST(n_int4, no_such_col) FROM enc_pgfun...
+                                         ^
+psql:/.../scalar_func_missing_col.sql:68: ERROR:  relation "no_such_table_mc" does not exist
+LINE 1: ...ELECT 'MC-C2', GREATEST(c_int4, no_such_col) FROM no_such_ta...
+                                                             ^

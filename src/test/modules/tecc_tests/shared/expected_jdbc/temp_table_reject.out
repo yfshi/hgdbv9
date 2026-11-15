@@ -1,0 +1,19 @@
+NOTICE: key encryption key "kek_pub" does not exist, skipping
+DROP KEK
+NOTICE: data encryption key "dek_pub" does not exist, skipping
+DROP DEK
+CREATE KEK
+CREATE DEK
+ERROR: CREATE TEMP TABLE with encrypted columns is not supported: temporary table 't1' declares encrypted column type(s). Encrypted columns in temporary tables cannot be resolved across sessions (temporary table OIDs are session-private, causing orphaned hg_encrypted_columns entries).
+CREATE TEMP
+CREATE TABLE
+CREATE TEMP
+INSERT 0 1
+1|10
+DROP TABLE
+INSERT 0 1
+2|20
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK

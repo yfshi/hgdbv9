@@ -1,0 +1,21 @@
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+CREATE KEK
+not_persisted|0
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+1|alice
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+psql:/.../dek_pubfile_gate.sql:16: NOTICE:  table "t_pubg" does not exist, skipping
+psql:/.../dek_pubfile_gate.sql:17: NOTICE:  data encryption key "dek_pubg_sym" does not exist, skipping
+psql:/.../dek_pubfile_gate.sql:18: NOTICE:  data encryption key "dek_pubg_add" does not exist, skipping
+psql:/.../dek_pubfile_gate.sql:19: NOTICE:  key encryption key "kek_pubg" does not exist, skipping
+psql:/.../dek_pubfile_gate.sql:34: TECC query preprocessing failed: KEK 'kek_pubg' public key file is unavailable (localkms: KEKDIR/kek_pubg.pub missing), cannot create DEK
+psql:/.../dek_pubfile_gate.sql:36: TECC query preprocessing failed: KEK 'kek_pubg' public key file is unavailable (localkms: KEKDIR/kek_pubg.pub missing), cannot create DEK

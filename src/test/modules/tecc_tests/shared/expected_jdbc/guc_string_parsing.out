@@ -1,0 +1,112 @@
+NOTICE: table "t_scs" does not exist, skipping
+DROP TABLE
+NOTICE: table "t_scs_search" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "dek_scs" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "kek_scs" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+1|hello
+2|it''s on mode
+3|backslash\is\literal
+SET
+INSERT 0 1
+INSERT 0 1
+RESET
+1|hello
+2|it''s on mode
+3|backslash\is\literal
+4|scs off basic
+5|it''s off mode
+SET
+INSERT 0 1
+INSERT 0 1
+RESET
+1|hello
+2|it''s on mode
+3|backslash\is\literal
+4|scs off basic
+5|it''s off mode
+6|path\C:ile
+7|escaped\double
+SET
+SET BACKSLASH_QUOTE
+INSERT 0 1
+RESET BACKSLASH_QUOTE
+SET BACKSLASH_QUOTE
+INSERT 0 1
+RESET BACKSLASH_QUOTE
+RESET
+1|hello
+2|it''s on mode
+3|backslash\is\literal
+4|scs off basic
+5|it''s off mode
+6|path\C:ile
+7|escaped\double
+8|bq_on_test
+9|bq_safe_test
+SET
+INSERT 0 1
+RESET
+INSERT 0 1
+SET
+INSERT 0 1
+RESET
+1|hello
+2|it''s on mode
+3|backslash\is\literal
+4|scs off basic
+5|it''s off mode
+6|path\C:ile
+7|escaped\double
+8|bq_on_test
+9|bq_safe_test
+10|off mode 1
+11|on mode between
+12|off mode 2
+SET
+INSERT 0 1
+INSERT 0 1
+RESET
+42
+typecast_off
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+1|default_val
+2|default_val
+SET
+PREPARE P_SCS_EXEC
+EXECUTE
+DEALLOCATE P_SCS_EXEC
+PREPARE P_SCS_SEL
+exec_off_val
+EXECUTE
+DEALLOCATE P_SCS_SEL
+RESET
+SET
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+roundtrip_a
+1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+alpha_001
+alpha_002
+1
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK

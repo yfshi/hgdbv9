@@ -33,6 +33,8 @@ DROP TABLE
 CREATE TABLE
 INSERT 0 1
 INSERT 0 1
+1	Alice
+2	Bob
 DROP TABLE
 DROP TABLE
 DROP DEK
@@ -41,4 +43,3 @@ psql:/.../copy_test.sql:5: NOTICE:  table "test_copy_enc" does not exist, skippi
 psql:/.../copy_test.sql:6: NOTICE:  data encryption key "dek_copy_enc" does not exist, skipping
 psql:/.../copy_test.sql:7: NOTICE:  key encryption key "kek_copy_enc" does not exist, skipping
 psql:/.../copy_test.sql:42: NOTICE:  table "test_cp_select" does not exist, skipping
-psql:/.../copy_test.sql:51: TECC query preprocessing failed: \copy (SELECT ...) TO STDOUT not supported in TECC mode: subquery COPY TO cannot be decrypted. Use \copy table TO instead.

@@ -1,0 +1,80 @@
+<!--
+doc/src/sgml/ref/create_kek.sgml
+-->
+
+<refentry id="sql-createkek">
+ <indexterm zone="sql-createkek">
+  <primary>CREATE KEK</primary>
+ </indexterm>
+
+ <refmeta>
+  <refentrytitle>CREATE KEK</refentrytitle>
+  <manvolnum>7</manvolnum>
+  <refmiscinfo>SQL - Language Statements</refmiscinfo>
+ </refmeta>
+
+ <refnamediv>
+  <refname>CREATE KEK</refname>
+  <refpurpose>define a TECC key-encryption key</refpurpose>
+ </refnamediv>
+
+ <refsynopsisdiv>
+<synopsis>
+CREATE KEK [ IF NOT EXISTS ] <replaceable class="parameter">kek_name</replaceable>
+    WITH ( <replaceable class="parameter">option</replaceable> = <replaceable class="parameter">value</replaceable> [, ...] )
+</synopsis>
+ </refsynopsisdiv>
+
+ <refsect1>
+  <title>Description</title>
+  <para>
+   <command>CREATE KEK</command> creates a TECC key-encryption key.  The
+   command must be executed with TECC encryption mode enabled, for example by
+   starting <application>psql</application> with <option>-k on</option>.
+  </para>
+ </refsect1>
+
+ <refsect1>
+  <title>Parameters</title>
+  <variablelist>
+   <varlistentry>
+    <term><replaceable class="parameter">kek_name</replaceable></term>
+    <listitem>
+     <para>The name, optionally schema-qualified, of the KEK to create.</para>
+    </listitem>
+   </varlistentry>
+   <varlistentry>
+    <term><literal>KEY_STORE</literal></term>
+    <listitem>
+     <para>The key-store provider, for example <literal>localkms</literal>,
+     <literal>hsmkms</literal>, or <literal>swxakms</literal>.</para>
+    </listitem>
+   </varlistentry>
+   <varlistentry>
+    <term><literal>KEY_PATH</literal></term>
+    <listitem>
+     <para>The provider-specific location or identifier for the key.</para>
+    </listitem>
+   </varlistentry>
+   <varlistentry>
+    <term><literal>ALGORITHM</literal></term>
+    <listitem>
+     <para>Optional key algorithm metadata.</para>
+    </listitem>
+   </varlistentry>
+   <varlistentry>
+    <term><literal>KEY_LENGTH</literal></term>
+    <listitem>
+     <para>Optional key length metadata.</para>
+    </listitem>
+   </varlistentry>
+  </variablelist>
+ </refsect1>
+
+ <refsect1>
+  <title>Examples</title>
+<programlisting>
+CREATE KEK kek1 WITH (KEY_STORE = localkms, KEY_PATH = '/tmp/kek1.key');
+</programlisting>
+ </refsect1>
+</refentry>

@@ -58,8 +58,72 @@ get_encrypted_column_encryption_type(Oid table_oid, int16 column_attnum,
 		return true;	/* column is encrypted */
 	}
 
+	/*
+	 * ReqID:TECC4.0 - 列声明成加密类型、却没有元数据行时，原实现按"非加密列"
+	 * 放行：会在没有 OPE/DET 段的密文上建出永远查不中的 btree/hash 索引，
+	 * 且不报错。按 hg_tecc.strict_metadata 处理。
+	 */
+	tecc_report_missing_column_metadata(table_oid, column_attnum,
+										get_atttype(table_oid, column_attnum),
+										"An index on it would never match a query, "
+										"because the ciphertext has no comparable "
+										"segment for the index method.");
+
 	*encryption_type = 0;
 	return false;		/* column not in hg_encrypted_columns */
+}
+
+/*
+ * tecc_get_column_encryption_info
+ *		Return planner-facing encryption metadata for a table column.
+ *
+ * Non-encrypted columns are not errors: callers get is_encrypted=false,
+ * encryption_type=0 and dek_oid=InvalidOid.  This lets the optimizer reuse a
+ * single helper for ordinary and encrypted columns.
+ */
+bool
+tecc_get_column_encryption_info(Oid table_oid, int16 attnum,
+								bool *is_encrypted,
+								uint32 *encryption_type,
+								Oid *dek_oid)
+{
+	HeapTuple	tuple;
+
+	if (is_encrypted != NULL)
+		*is_encrypted = false;
+	if (encryption_type != NULL)
+		*encryption_type = 0;
+	if (dek_oid != NULL)
+		*dek_oid = InvalidOid;
+
+	tuple = SearchSysCache2(HGENCRYPTEDCOLUMNSTABLEATTNUM,
+							ObjectIdGetDatum(table_oid),
+							Int16GetDatum(attnum));
+	if (!HeapTupleIsValid(tuple))
+	{
+		/*
+		 * ReqID:TECC4.0 - 列声明成加密类型、却没有元数据行时，原实现让调用者
+		 * 拿到 is_encrypted=false：规划器/ANALYZE/聚合/集合操作就按普通列处理
+		 * （用错算子、选错统计口径、剪枝决策失真），全程不报错。按
+		 * hg_tecc.strict_metadata 处理。
+		 */
+		tecc_report_missing_column_metadata(table_oid, attnum,
+										   get_atttype(table_oid, attnum),
+										   "It would be treated as a plain column "
+										   "for comparison, aggregation, statistics "
+										   "and shard pruning.");
+		return false;
+	}
+
+	if (is_encrypted != NULL)
+		*is_encrypted = true;
+	if (encryption_type != NULL)
+		*encryption_type = ((Form_hg_encrypted_columns) GETSTRUCT(tuple))->encryption_type;
+	if (dek_oid != NULL)
+		*dek_oid = ((Form_hg_encrypted_columns) GETSTRUCT(tuple))->column_key_id;
+
+	ReleaseSysCache(tuple);
+	return true;
 }
 
 /*
@@ -146,19 +210,44 @@ check_index_support_for_encrypted_column(Oid table_oid, int16 column_attnum,
 bool
 tecc_column_supports_ordering(Oid table_oid, int16 attnum)
 {
-	HeapTuple	tuple;
 	uint32		enc_type;
+	bool		is_encrypted;
 
-	tuple = SearchSysCache2(HGENCRYPTEDCOLUMNSTABLEATTNUM,
-							ObjectIdGetDatum(table_oid),
-							Int16GetDatum(attnum));
-	if (!HeapTupleIsValid(tuple))
+	tecc_get_column_encryption_info(table_oid, attnum, &is_encrypted,
+									&enc_type, NULL);
+	if (!is_encrypted)
 		return true;	/* not an encrypted column */
 
-	enc_type = ((Form_hg_encrypted_columns) GETSTRUCT(tuple))->encryption_type;
-	ReleaseSysCache(tuple);
-
 	return (enc_type & HG_ENCRYPTION_TYPE_OPE) != 0;
+}
+
+/*
+ * tecc_column_supports_equality - check whether a column supports equality
+ *		comparison via DET or OPE encryption.
+ *
+ * Returns true if the column is NOT encrypted (not found in
+ * hg_encrypted_columns), or if it has DET or OPE encryption enabled.
+ * Returns false only for encrypted columns with neither DET nor OPE
+ * (RND-only, SEARCH-only): their ciphertext has no comparable segment, so
+ * any equality operator would raise an error.
+ *
+ * This is used by std_typanalyze to drop eqopr for such columns, falling
+ * back to compute_trivial_stats (NULL/non-NULL only), which avoids
+ * "neither DET nor OPE available for equality comparison" during
+ * autovacuum analyze.
+ */
+bool
+tecc_column_supports_equality(Oid table_oid, int16 attnum)
+{
+	uint32		enc_type;
+	bool		is_encrypted;
+
+	tecc_get_column_encryption_info(table_oid, attnum, &is_encrypted,
+									&enc_type, NULL);
+	if (!is_encrypted)
+		return true;	/* not an encrypted column */
+
+	return (enc_type & (HG_ENCRYPTION_TYPE_DET | HG_ENCRYPTION_TYPE_OPE)) != 0;
 }
 
 /* End - ReqID:TECC4.0 */

@@ -1,4 +1,4 @@
-﻿/*
+/*
  * TECC前端解析器核心接口实现
  * 严格按照详细设计文档第4章要求实现
  * 确保与处理器模块的接口完全兼容
@@ -16,6 +16,7 @@
 #include <ctype.h>
 #include <time.h>
 #include <sys/time.h>
+#include <pthread.h>
 
 /* 线程局部存储宏定义
  * 在支持__thread的编译器（GCC/Clang）中使用__thread
@@ -120,6 +121,48 @@ const char *tecc_buffer_start = NULL;
 TECC_THREAD_LOCAL const char *tecc_buffer_start = NULL;
 #endif
 
+/* Begin - ReqID:TECC4.0 - Scanner GUC context for string literal parsing.
+ * Thread-local booleans set by the integration layer before each parse call.
+ * The scanner reads these to decide how to handle backslash-quote sequences
+ * in regular (non-E) string literals.
+ *
+ * Cache timing: set from tecc_cache_get_guc_param() in fe-tecc-integration.c
+ * just before tecc_processor_run_pre_query().  The cache is loaded during
+ * tecc_state_init() (before any query parsing), and refreshed on each
+ * ParameterStatus message — so the scanner always sees the latest value. */
+#ifdef _MSC_VER
+bool tecc_scn_scs = true;          /* standard_conforming_strings default: on */
+int  tecc_scn_bq  = 's';           /* backslash_quote default: safe_encoding */
+#else
+TECC_THREAD_LOCAL bool tecc_scn_scs = true;
+TECC_THREAD_LOCAL int  tecc_scn_bq  = 's';
+#endif
+
+void
+tecc_parser_set_standard_conforming_strings(bool scs)
+{
+    tecc_scn_scs = scs;
+}
+
+void
+tecc_parser_set_backslash_quote(int bq)
+{
+    tecc_scn_bq = bq;
+}
+
+bool
+tecc_parser_get_standard_conforming_strings(void)
+{
+    return tecc_scn_scs;
+}
+
+int
+tecc_parser_get_backslash_quote(void)
+{
+    return tecc_scn_bq;
+}
+/* End - ReqID:TECC4.0 - Scanner GUC context */
+
 static bool setup_parser_input(const char *query_string) {
     /* ReqID:TECC4.0 - Fix C90 mixed declaration warning */
     size_t slen;
@@ -163,11 +206,21 @@ static bool setup_parser_input(const char *query_string) {
 }
 
 
+/* ReqID:TECC4.0 - 解析器全局状态互斥锁。flex/bison 生成的 yyin/yyout/
+ * yylineno/yytext/yylval/yylloc 及 tecc_parsetree/tecc_lineno 等均为进程级
+ * 全局变量，非线程安全；多线程 libpq 客户端并发解析 SQL 时会产生数据竞争。
+ * 完整线程局部化需 flex reentrant + bison pure 改造（改动大），当前以互斥锁
+ * 串行化解析入口兜底，确保线程安全。 */
+static pthread_mutex_t g_parser_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static List *call_bison_parser(const char *query_string) {
     /* 调用Bison解析器 */
     extern int tecc_lineno;
     int parse_result;
-    List *parse_tree;
+    List *parse_tree = NULL;
+
+    /* 串行化解析器全局状态访问 */
+    pthread_mutex_lock(&g_parser_mutex);
 
     /* 在开始新解析之前，确保全局状态被清理 */
     if (tecc_parsetree) {
@@ -179,7 +232,7 @@ static List *call_bison_parser(const char *query_string) {
     tecc_lineno = 1;
 
     if (!setup_parser_input(query_string)) {
-        return NULL;
+        goto cleanup;
     }
 
     /* 调用Bison解析器 */
@@ -188,7 +241,7 @@ static List *call_bison_parser(const char *query_string) {
     if (parse_result != 0) {
         /* 解析失败 */
         /* 解析失败时，Bison会清理所有语义值，我们不需要调用reset_tecc_parsetree() */
-        return NULL;
+        goto cleanup;
     }
 
     /* 解析成功，获取解析树 */
@@ -200,24 +253,10 @@ static List *call_bison_parser(const char *query_string) {
         tecc_parsetree = NIL;
     }
 
+cleanup:
+    pthread_mutex_unlock(&g_parser_mutex);
     return parse_tree;
 }
-
-#if 0
-static Node *convert_list_to_node(List *parse_list) {
-    /* 将List*解析树转换为Node* */
-    if (!parse_list || parse_list->length == 0) {
-        return NULL;
-    }
-
-    /* 对于简单的存根实现，我们假设列表的第一个元素就是语句节点 */
-    if (parse_list->head && parse_list->head->data.ptr_value) {
-        return (Node *)parse_list->head->data.ptr_value;
-    }
-
-    return NULL;
-}
-#endif
 
 /* 获取当前时间（纳秒） */
 static uint64_t get_current_time_ns(void) {
@@ -253,25 +292,6 @@ static void update_statistics(size_t parse_time_ms, size_t memory_used_kb,
         state->statistics.peak_memory = memory_used_bytes;
     }
 }
-
-/* 创建位置信息 - 暂时未使用 */
-#if 0
-static LocationInfo *create_location_info(int start, int end,
-                                         int start_line, int start_col,
-                                         int end_line, int end_col) {
-    LocationInfo *loc = (LocationInfo *)tecc_palloc(sizeof(LocationInfo));
-    if (!loc) return NULL;
-
-    loc->start_location = start;
-    loc->end_location = end;
-    loc->start_line = start_line;
-    loc->start_column = start_col;
-    loc->end_line = end_line;
-    loc->end_column = end_col;
-
-    return loc;
-}
-#endif
 
 /* 创建错误信息 */
 static ParserError *create_parser_error(int error_code, const char *message,
@@ -1056,73 +1076,6 @@ get_tecc_parsetree(void)
  * freeNode - 释放节点（在tecc_nodes.c中实现）
  * 这里不再重复定义，直接使用tecc_nodes.c中的实现
  */
-
-/*
- * repg_malloc - PostgreSQL风格的内存分配
- */
-#if 0
-static void *
-repg_malloc(size_t size)
-{
-    /* 使用tecc_palloc进行内存分配 */
-    return tecc_palloc(size);
-}
-#endif
-
-
-/*
- * tecc_copy_state_add_error - 添加COPY状态错误（存根实现）
- */
-#if 0
-static void
-tecc_copy_state_add_error(void *copy_state, const char *error_msg)
-{
-    /* TODO: Implement copy state error addition */
-    (void)copy_state;
-    (void)error_msg;
-}
-#endif
-
-#if 0
-/*
- * tecc_processor_debug - 处理器调试函数（存根实现）
- */
-static void
-tecc_processor_debug(const char *msg)
-{
-    /* TODO: Implement processor debug */
-    (void)msg;
-}
-#endif
-
-#if 0
-/*
- * tecc_execute_query - 执行查询（存根实现）
- */
-static int
-tecc_execute_query(const char *query)
-{
-    /* TODO: Implement query execution */
-    (void)query;
-    return 0;
-}
-#endif
-
-#if 0
-/*
- * tecc_unified_decrypt_hex_with_conn - 使用连接统一解密十六进制（存根实现）
- */
-static int
-tecc_unified_decrypt_hex_with_conn(void *conn, const char *hex_ciphertext,
-                                   char **plaintext)
-{
-    /* TODO: Implement unified decryption with connection */
-    (void)conn;
-    (void)hex_ciphertext;
-    (void)plaintext;
-    return -1;
-}
-#endif
 
 /* ==================== 参数映射函数实现 ==================== */
 

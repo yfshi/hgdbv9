@@ -23,11 +23,8 @@ OBJS = \
     tecc_normalizer.o \
     tecc_text_normalizer.o \
     tecc_data_validator.o \
-    tecc_cipherdata.o \
     tecc_type_converter.o \
-    tecc_format_validator.o \
     tecc_hex_encoder.o \
-    tecc_encoder_api.o \
     tecc_buffer_manager.o \
     tecc_formatter_utils.o \
     tecc_icu_normalizer.o \
@@ -61,11 +58,8 @@ tecc_formatter.o: tecc_formatter.c tecc_formatter.h
 tecc_normalizer.o: tecc_normalizer.c tecc_normalizer.h tecc_formatter.h
 tecc_text_normalizer.o: tecc_text_normalizer.c tecc_text_normalizer.h tecc_formatter.h
 tecc_data_validator.o: tecc_data_validator.c tecc_data_validator.h tecc_formatter.h
-tecc_cipherdata.o: tecc_cipherdata.c tecc_cipherdata.h tecc_formatter.h
 tecc_type_converter.o: tecc_type_converter.c tecc_type_converter.h tecc_formatter.h
-tecc_format_validator.o: tecc_format_validator.c tecc_format_validator.h tecc_formatter.h
 tecc_hex_encoder.o: tecc_hex_encoder.c tecc_hex_encoder.h tecc_formatter.h
-tecc_encoder_api.o: tecc_encoder_api.c tecc_encoder_api.h tecc_formatter.h
 tecc_buffer_manager.o: tecc_buffer_manager.c tecc_buffer_manager.h tecc_formatter.h
 tecc_formatter_utils.o: tecc_formatter_utils.c tecc_formatter_utils.h tecc_formatter.h
 tecc_icu_normalizer.o: tecc_icu_normalizer.c tecc_icu_normalizer.h tecc_formatter.h

@@ -13,14 +13,18 @@ INSERT INTO cross_rnd (c_int2, c_int4, c_int8, c_float4, c_float8, c_numeric, c_
     (32767, 2147483647, 9223372036854775807, 3.14, 3.14159265358979, 999999.99, '特大值测试', 'varchar特', 'bpchar特');
 
 -- DET：插入等值查询测试数据
-INSERT INTO cross_det (c_int4, c_float8, c_text, c_varchar) VALUES
-    (100, 1.11, 'det_alpha', 'det_varchar_alpha');
-INSERT INTO cross_det (c_int4, c_float8, c_text, c_varchar) VALUES
-    (200, 2.22, 'det_beta', 'det_varchar_beta');
-INSERT INTO cross_det (c_int4, c_float8, c_text, c_varchar) VALUES
-    (100, 3.33, 'det_gamma', 'det_varchar_gamma');
-INSERT INTO cross_det (c_int4, c_float8, c_text, c_varchar) VALUES
-    (300, 4.44, 'det_alpha', 'det_varchar_alpha');
+INSERT INTO cross_det (c_int4, c_float8, c_numeric, c_text, c_varchar) VALUES
+    (100, 1.11, 10,   'det_alpha',   'det_varchar_alpha');
+INSERT INTO cross_det (c_int4, c_float8, c_numeric, c_text, c_varchar) VALUES
+    (200, 2.22, 20,   'det_beta',    'det_varchar_beta');
+INSERT INTO cross_det (c_int4, c_float8, c_numeric, c_text, c_varchar) VALUES
+    (100, 3.33, 10,   'det_gamma',   'det_varchar_gamma');
+INSERT INTO cross_det (c_int4, c_float8, c_numeric, c_text, c_varchar) VALUES
+    (300, 4.44, 100,  'det_alpha',   'det_varchar_alpha');
+INSERT INTO cross_det (c_int4, c_float8, c_numeric, c_text, c_varchar) VALUES
+    (400, 5.55, 100,  'det_delta',   'det_varchar_delta');
+INSERT INTO cross_det (c_int4, c_float8, c_numeric, c_text, c_varchar) VALUES
+    (500, 6.66, 1000, 'det_epsilon', 'det_varchar_epsilon');
 
 -- OPE：插入范围查询和排序测试数据
 INSERT INTO cross_ope (c_int4, c_numeric, c_text) VALUES

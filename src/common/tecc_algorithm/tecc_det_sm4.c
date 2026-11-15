@@ -23,7 +23,6 @@
 #include "../../include/common/tecc_algorithm/tecc_det_sm4.h"
 
 /* DET-SM4 data format constants */
-/* Note: DET_SM4_VERSION, DET_SM4_HEADER_SIZE, DET_SM4_MIN_SIZE, DET_SM4_MAX_SIZE are defined in tecc_types.h */
 
 /* Maximum data length limit (prevent memory exhaustion attacks) */
 #define DET_SM4_MAX_DATA_LEN (256 * 1024) /* 256KB, aligned with TECC_MAX_DATA_SIZE */
@@ -43,19 +42,6 @@ tecc_det_sm4_clear_memory(void *data, size_t len)
         for (i = 0; i < len; i++)
             p[i] = 0;
     }
-}
-
-/*
- * Get DET-SM4 data format size
- */
-size_t
-tecc_det_sm4_get_format_size(size_t plain_len)
-{
-    /* Calculate padded ciphertext size (PKCS#7 padding to 16-byte multiple) */
-    size_t padded_len = ((plain_len + TECC_SM4_BLOCK_SIZE - 1) / TECC_SM4_BLOCK_SIZE) * TECC_SM4_BLOCK_SIZE;
-
-    /* Total size = header size + padded ciphertext size */
-    return padded_len;
 }
 
 /*

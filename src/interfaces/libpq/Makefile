@@ -87,11 +87,8 @@ OBJS = \
 	tecc_formatter/tecc_normalizer.o \
 	tecc_formatter/tecc_text_normalizer.o \
 	tecc_formatter/tecc_data_validator.o \
-	tecc_formatter/tecc_cipherdata.o \
 	tecc_formatter/tecc_type_converter.o \
-	tecc_formatter/tecc_format_validator.o \
 	tecc_formatter/tecc_hex_encoder.o \
-	tecc_formatter/tecc_encoder_api.o \
 	tecc_formatter/tecc_buffer_manager.o \
 	tecc_formatter/tecc_formatter_utils.o \
 	tecc_formatter/tecc_icu_normalizer.o \

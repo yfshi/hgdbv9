@@ -1,0 +1,24 @@
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+CREATE KEK
+upper_pubkey_ok|t
+(1 row)
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+he_sum|30
+(1 row)
+he_scalar_mul|6
+he_scalar_mul|10
+(2 rows)
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+NOTICE: table "t_upper_he" does not exist, skipping
+NOTICE: data encryption key "dek_upper_add" does not exist, skipping
+NOTICE: data encryption key "dek_upper_mul" does not exist, skipping
+NOTICE: key encryption key "kek_upper" does not exist, skipping

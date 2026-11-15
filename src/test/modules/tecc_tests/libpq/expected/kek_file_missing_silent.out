@@ -1,0 +1,23 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+baseline plaintext|1|10|alpha
+baseline plaintext|2|20|bravo
+key file gone
+You are now connected to database "postgres" as user "postgres".
+after delete select1|1|\x被隐藏的HEX输出|\x被隐藏的HEX输出
+after delete select1|2|\x被隐藏的HEX输出|\x被隐藏的HEX输出
+after delete select2|1|\x被隐藏的HEX输出|\x被隐藏的HEX输出
+after delete select2|2|\x被隐藏的HEX输出|\x被隐藏的HEX输出
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../kek_file_missing_silent.sql:20: NOTICE:  table "t_fm" does not exist, skipping
+psql:/.../kek_file_missing_silent.sql:21: NOTICE:  data encryption key "dek_fm" does not exist, skipping
+psql:/.../kek_file_missing_silent.sql:22: NOTICE:  key encryption key "kek_fm" does not exist, skipping
+TECC ERROR: TECC SCHEDULER ERROR: Failed to get DEK key for encryption
+psql:/.../kek_file_missing_silent.sql:55: TECC query preprocessing failed: Encryption failed: Cannot encrypt: Failed to load KEK 'public.kek_fm' from file '/tmp/kek_fm.key': check if key file exists, is readable, and was not replaced

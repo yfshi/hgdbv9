@@ -71,6 +71,16 @@
 #define ORA_NESTED_AGG_MARK	(-810001)
 /* End - OA-REQ-2252 */
 
+/* Begin - OA-REQ-2252 */
+
+/*
+ * Oracle nested-aggregate compatibility markers.
+ * aggtransno/aggno are temporarily reused before planning; analyze.c consumes
+ * and clears them when rewriting into two-stage aggregation.
+ */
+#define ORA_NESTED_AGG_MARK	(-810001)
+/* End - OA-REQ-2252 */
+
 SynnameGetFuncInfo_hook_type SynnameGetFuncInfo_hook = NULL;	/* ReqID:SRS-SQL-SYNONYM */
 
 #ifdef ENABLE_COMPATIBLE_AK

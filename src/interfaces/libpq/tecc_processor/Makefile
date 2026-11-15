@@ -31,14 +31,12 @@ OBJS = \
 
     internal/tecc_processor_internal.o \
     column_ref_data.o \
-    record_processor.o \
     func_processor.o \
     func_hardcoded_values.o \
     prepared_statement.o \
     expr_processor.o \
     tecc_expression_walker.o \
     processor_utils.o \
-    raw_values_cont.o \
     key_management.o \
     alter_stmt_processor.o
     # prepared_statements_list.o \
@@ -87,9 +85,6 @@ expr_processor.o: expr_processor.c expr_processor.h column_ref_data.h internal/t
 tecc_expression_walker.o: tecc_expression_walker.c tecc_expression_walker.h internal/tecc_processor_internal.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
-record_processor.o: record_processor.c record_processor.h internal/tecc_processor_internal.h
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-
 func_processor.o: func_processor.c func_processor.h internal/tecc_processor_internal.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
@@ -100,9 +95,6 @@ prepared_statement.o: prepared_statement.c prepared_statement.h internal/tecc_pr
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 processor_utils.o: processor_utils.c processor_utils.h internal/tecc_processor_internal.h
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
-
-raw_values_cont.o: raw_values_cont.c raw_values_cont.h raw_value.h raw_values_list.h processor_utils.h internal/tecc_processor_internal.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 key_management.o: key_management.c internal/tecc_processor_internal.h

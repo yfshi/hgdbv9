@@ -1,0 +1,70 @@
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP DEK
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE DEK
+=== 1 with privkey ===
+(1 row)
+CREATE TABLE
+INSERT 0 4
+1|10|3
+2|20|5
+3|0|0
+4|-5|-2
+(4 rows)
+25
+(1 row)
+11
+21
+1
+-4
+(4 rows)
+8
+18
+-2
+-7
+(4 rows)
+9
+15
+0
+-6
+(4 rows)
+=== 2 without privkey ===
+(1 row)
+You are now connected to database "postgres" as user "postgres".
+CREATE TABLE
+INSERT 0 2
+1|\x被隐藏的HEX输出
+2|\x被隐藏的HEX输出
+(2 rows)
+\x被隐藏的HEX输出
+(1 row)
+=== 3 restore privkey ===
+(1 row)
+1|100
+2|200
+(2 rows)
+300
+(1 row)
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP DEK
+DROP DEK
+DROP KEK
+NOTICE: table "he_priv_t" does not exist, skipping
+NOTICE: table "he_priv_nopriv" does not exist, skipping
+NOTICE: data encryption key "dek_priv_add" does not exist, skipping
+NOTICE: data encryption key "dek_priv_add2" does not exist, skipping
+NOTICE: data encryption key "dek_priv_nopriv_add" does not exist, skipping
+NOTICE: data encryption key "dek_priv_mul" does not exist, skipping
+NOTICE: key encryption key "kek_priv" does not exist, skipping
+psql:/.../he_kek_privkey.sql:62: TECC query preprocessing failed: KEK 'kek_priv' private key is unavailable (localkms: .priv file missing or unreadable), cannot create DEK
+NOTICE: data encryption key "dek_priv_nopriv_add" does not exist, skipping

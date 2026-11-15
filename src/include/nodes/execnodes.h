@@ -2558,6 +2558,17 @@ typedef struct AggState
 	AggStatePerGroup *pergroups;	/* grouping set indexed array of per-group
 									 * pointers */
 	HeapTuple	grp_firstTuple; /* copy of first tuple of current group */
+
+	/* Begin - ReqID:TECC4.0 */
+	/*
+	 * Memory contexts for hash-based DISTINCT dedup (used for encrypted
+	 * columns without OPE, where sort-based dedup is impossible).  They are
+	 * created in ExecInitAgg() only when at least one pertrans uses the hash
+	 * distinct path.
+	 */
+	MemoryContext distinct_hash_metacxt;	/* memory for hash table itself */
+	ExprContext *distinct_hashcxt;	/* econtext for hash table entries */
+	/* End - ReqID:TECC4.0 */
 	/* these fields are used in AGG_HASHED and AGG_MIXED modes: */
 	bool		table_filled;	/* hash table filled yet? */
 	int			num_hashes;

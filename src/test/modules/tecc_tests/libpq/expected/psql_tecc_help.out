@@ -1,0 +1,48 @@
+Command:     CREATE KEK
+Description: define a TECC key-encryption key
+Syntax:
+CREATE KEK [ IF NOT EXISTS ] kek_name
+    WITH ( option = value [, ...] )
+
+URL: https://www.postgresql.org/docs/14/sql-createkek.html
+
+Command:     ALTER KEK
+Description: rotate a TECC key-encryption key
+Syntax:
+ALTER KEK kek_name
+    WITH ( KEY_PATH = value )
+
+URL: https://www.postgresql.org/docs/14/sql-alterkek.html
+
+Command:     CREATE DEK
+Description: define a TECC data-encryption key
+Syntax:
+CREATE DEK [ IF NOT EXISTS ] dek_name
+    WITH VALUES ( KEK = kek_name [, option = value ...] )
+
+URL: https://www.postgresql.org/docs/14/sql-createdek.html
+
+Command:     DROP KEK
+Description: remove a TECC key-encryption key
+Syntax:
+DROP KEK [ IF EXISTS ] kek_name [, ...] [ CASCADE | RESTRICT ]
+
+URL: https://www.postgresql.org/docs/14/sql-dropkek.html
+
+Command:     DROP DEK
+Description: remove a TECC data-encryption key
+Syntax:
+DROP DEK [ IF EXISTS ] dek_name [, ...] [ CASCADE | RESTRICT ]
+
+URL: https://www.postgresql.org/docs/14/sql-dropdek.html
+
+TECC
+  Connection parameter: enable_tecc=true|false (env: PGENABLETECC, default: true)
+  psql option:          -k on|off controls TECC connection preprocessing
+  Session mode:         \enable hg_tecc.mode / \disable hg_tecc.mode / \show hg_tecc.mode
+  Syntax help:          \h CREATE KEK, \h ALTER KEK, \h CREATE DEK, \h DROP KEK, \h DROP DEK
+  Show DDL:             \sT table_name, \sK kek_name, \sk dek_name
+  Show TECC objects:    \dkek[+] [PATTERN], \ddek[+] [PATTERN]
+  Column clause:        ENCRYPTED WITH (DEK = dek_name [, SUPPORT_ALGO = 'DET|OPE|SEARCH'])
+
+Formatting

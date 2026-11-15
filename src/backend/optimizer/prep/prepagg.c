@@ -44,6 +44,7 @@
 #include "optimizer/optimizer.h"
 #include "optimizer/plancat.h"
 #include "optimizer/prep.h"
+#include "optimizer/tlist.h"
 #include "parser/parse_agg.h"
 #include "utils/builtins.h"
 #include "utils/datum.h"
@@ -51,8 +52,10 @@
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
 #include "utils/syscache.h"
+#include "utils/tecc/tecc_index.h"
 
 static bool preprocess_aggrefs_walker(Node *node, PlannerInfo *root);
+static bool tecc_aggdistinct_supports_hash(PlannerInfo *root, Aggref *aggref);
 static int	find_compatible_agg(PlannerInfo *root, Aggref *newagg,
 								List **same_input_transnos);
 static int	find_compatible_trans(PlannerInfo *root, Aggref *newagg,
@@ -64,6 +67,48 @@ static int	find_compatible_trans(PlannerInfo *root, Aggref *newagg,
 								  Datum initValue, bool initValueIsNull,
 								  List *transnos);
 static Datum GetAggInitVal(Datum textInitVal, Oid transtype);
+
+/*
+ * Begin - ReqID:TECC4.0
+ *
+ * tecc_aggdistinct_supports_hash
+ *		Check at planning time whether a pure-DISTINCT aggregate is the
+ *		single bare encrypted-column case supported by TECC's per-group hash
+ *		dedup path.  Keep this deliberately conservative: if the source column
+ *		cannot be resolved to a base relation, retain PostgreSQL's ordered-
+ *		aggregate restriction rather than producing an unsupported HashAgg.
+ */
+static bool
+tecc_aggdistinct_supports_hash(PlannerInfo *root, Aggref *aggref)
+{
+	SortGroupClause *sortcl;
+	TargetEntry *tle;
+	Var		   *var;
+	RangeTblEntry *rte;
+
+	if (aggref->aggorder != NIL || aggref->aggdistinct == NIL ||
+		list_length(aggref->aggdistinct) != 1 ||
+		list_length(aggref->args) != 1)
+		return false;
+
+	sortcl = (SortGroupClause *) linitial(aggref->aggdistinct);
+	tle = get_sortgroupclause_tle(sortcl, aggref->args);
+	if (tle == NULL || !IsA(tle->expr, Var))
+		return false;
+
+	var = (Var *) tle->expr;
+	if (var->varlevelsup != 0 || var->varattno <= 0 || var->varno <= 0 ||
+		root->parse == NULL || var->varno > list_length(root->parse->rtable))
+		return false;
+
+	rte = planner_rt_fetch(var->varno, root);
+	if (rte == NULL || rte->rtekind != RTE_RELATION)
+		return false;
+
+	/* An encrypted column without OPE must use equality/hash dedup. */
+	return !tecc_column_supports_ordering(rte->relid, var->varattno);
+}
+/* End - ReqID:TECC4.0 */
 
 /* -----------------
  * Resolve the transition type of all Aggrefs, and determine which Aggrefs
@@ -242,10 +287,20 @@ preprocess_aggref(Aggref *aggref, PlannerInfo *root)
 		 * Count it, and check for cases requiring ordered input.  Note that
 		 * ordered-set aggs always have nonempty aggorder.  Any ordered-input
 		 * case also defeats partial aggregation.
+		 *
+		 * Begin - ReqID:TECC4.0
+		 * A supported pure-DISTINCT aggregate does not need ordered input: the
+		 * executor dedups a single bare encrypted column without OPE via a
+		 * per-group TupleHashTable (see use_hash_distinct in nodeAgg.c).
+		 * All other DISTINCT forms must still count as ordered; otherwise the
+		 * planner can produce a HashAgg that the executor cannot implement.
+		 * Partial aggregation is defeated for every DISTINCT form.
+		 * End - ReqID:TECC4.0
 		 */
 		if (aggref->aggorder != NIL || aggref->aggdistinct != NIL)
 		{
-			root->numOrderedAggs++;
+			if (!tecc_aggdistinct_supports_hash(root, aggref))
+				root->numOrderedAggs++;
 			root->hasNonPartialAggs = true;
 		}
 

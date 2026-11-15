@@ -1,0 +1,41 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+=== Setup OK ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+=== 1 Baseline ===
+(1 row)
+1a_baseline|1|Alice|10
+1a_baseline|3|Alice|30
+(2 rows)
+1b_baseline|4|Carol|40
+(1 row)
+=== 2 Simple Subquery ===
+(1 row)
+2a_star_subquery|1|Alice|10
+2a_star_subquery|2|Bob|20
+2a_star_subquery|3|Alice|30
+2a_star_subquery|4|Carol|40
+(4 rows)
+2b_subquery_inner_where|1|Alice|10
+2b_subquery_inner_where|3|Alice|30
+(2 rows)
+=== 3 Nested Subquery WHERE ===
+(1 row)
+(0 rows)
+3b_nested_match|1|Alice|10
+3b_nested_match|3|Alice|30
+(2 rows)
+=== 4 Cleanup ===
+(1 row)
+DROP TABLE
+DROP KEK
+NOTICE: key encryption key "kek_ns" does not exist, skipping
+NOTICE: table "t_base_ns" does not exist, skipping
+NOTICE: drop cascades to 2 other objects
+DETAIL:  drop cascades to data encryption key dek_det_ns
+drop cascades to data encryption key dek_ope_ns

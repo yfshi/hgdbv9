@@ -267,6 +267,8 @@
 #include "utils/memutils.h"
 #include "utils/syscache.h"
 #include "utils/tuplesort.h"
+/* ReqID:TECC4.0 - column encryption metadata for DISTINCT hash path */
+#include "utils/tecc/tecc_index.h"
 
 /*
  * Control how many partitions are created when spilling HashAgg to
@@ -608,59 +610,106 @@ initialize_aggregate(AggState *aggstate, AggStatePerTrans pertrans,
 	if (pertrans->numSortCols > 0)
 	{
 		/*
-		 * In case of rescan, maybe there could be an uncompleted sort
-		 * operation?  Clean it up if so.
+		 * Begin - ReqID:TECC4.0
+		 * For pure-DISTINCT aggregates on columns without OPE, use a
+		 * TupleHashTable for dedup instead of a Tuplesort (the btree
+		 * comparison would fail on DET-only ciphertexts).  Note: we must
+		 * NOT return early here -- the transition-value initialization
+		 * below must run regardless of which dedup path is used.
 		 */
-		if (pertrans->sortstates[aggstate->current_set])
-			tuplesort_end(pertrans->sortstates[aggstate->current_set]);
-		/* Begin Bug#8652 */
-		if (pertrans->numOrderCols > 0 &&
-			pertrans->orderstates[aggstate->current_set])
-			tuplesort_end(pertrans->orderstates[aggstate->current_set]);
-		/* End Bug#8652 */
-
-
-		/*
-		 * We use a plain Datum sorter when there's a single input column;
-		 * otherwise sort the full tuple.  (See comments for
-		 * process_ordered_aggregate_single.)
-		 */
-		if (pertrans->numInputs == 1)
+		if (pertrans->use_hash_distinct)
 		{
-			Form_pg_attribute attr = TupleDescAttr(pertrans->sortdesc, 0);
+			/* ReqID:TECC4.0 - The dedup table is per tuple group, not per
+			 * grouping set.  In AGG_HASHED/AGG_MIXED each new group gets a
+			 * freshly allocated per-group state (initialize_hash_entry) and
+			 * all groups coexist until the hash table is reset, so the table
+			 * is created in a child of the group's own context and simply
+			 * dropped with it.  In AGG_SORTED/AGG_PLAIN the per-group array is
+			 * reused across groups, so a single table is built once and reset
+			 * for each group. */
+			if (aggstate->curaggcontext == aggstate->hashcontext)
+			{
+				MemoryContext groupcxt;
 
-			pertrans->sortstates[aggstate->current_set] =
-				tuplesort_begin_datum(attr->atttypid,
-									  pertrans->sortOperators[0],
-									  pertrans->sortCollations[0],
-									  pertrans->sortNullsFirst[0],
-									  work_mem, NULL, false);
+				groupcxt = AllocSetContextCreate(aggstate->hashcontext->ecxt_per_tuple_memory,
+												 "DistinctAggHash group context",
+												 ALLOCSET_DEFAULT_SIZES);
+
+				pergroupstate->distinctHashtable =
+					BuildTupleHashTableExt(&aggstate->ss.ps,
+										   pertrans->sortdesc,
+										   1,	/* numCols: single DISTINCT column */
+										   pertrans->sortColIdx,
+										   pertrans->eqfuncoids,
+										   pertrans->hashfunctions,
+										   pertrans->sortCollations,
+										   1024,	/* initial nbuckets */
+										   0,	/* additionalsize */
+										   groupcxt,
+										   groupcxt,
+										   aggstate->tmpcontext->ecxt_per_tuple_memory,
+										   false);
+			}
+			else
+			{
+				TupleHashTable hashtable = pergroupstate->distinctHashtable;
+
+				if (hashtable == NULL)
+				{
+					pergroupstate->distinctHashtable =
+						BuildTupleHashTableExt(&aggstate->ss.ps,
+											   pertrans->sortdesc,
+											   1,	/* numCols: single DISTINCT column */
+											   pertrans->sortColIdx,
+											   pertrans->eqfuncoids,
+											   pertrans->hashfunctions,
+											   pertrans->sortCollations,
+											   1024,	/* initial nbuckets */
+											   0,	/* additionalsize */
+											   aggstate->distinct_hash_metacxt,
+											   aggstate->distinct_hashcxt->ecxt_per_tuple_memory,
+											   aggstate->tmpcontext->ecxt_per_tuple_memory,
+											   false);
+				}
+				else
+					ResetTupleHashTable(hashtable);
+			}
 		}
 		else
+		/* End - ReqID:TECC4.0 */
 		{
-			pertrans->sortstates[aggstate->current_set] =
-				tuplesort_begin_heap(pertrans->sortdesc,
-									 pertrans->numSortCols,
-									 pertrans->sortColIdx,
-									 pertrans->sortOperators,
-									 pertrans->sortCollations,
-									 pertrans->sortNullsFirst,
-									 work_mem, NULL, false);
-			
-			/* Begin Bug#8652: Create a second sorter for the aggregate ORDER BY keys. */	
-			if (pertrans->numOrderCols > 0)
-			{
-				pertrans->orderstates[aggstate->current_set] =
-					tuplesort_begin_heap(pertrans->sortdesc,
-									pertrans->numOrderCols,
-									pertrans->orderColIdx,
-									pertrans->orderOperators,
-									pertrans->orderCollations,
-									pertrans->orderNullsFirst,
-									work_mem, NULL, false);
+			/*
+			 * In case of rescan, maybe there could be an uncompleted sort
+			 * operation?  Clean it up if so.
+			 */
+			if (pertrans->sortstates[aggstate->current_set])
+				tuplesort_end(pertrans->sortstates[aggstate->current_set]);
 
+			/*
+			 * We use a plain Datum sorter when there's a single input column;
+			 * otherwise sort the full tuple.  (See comments for
+			 * process_ordered_aggregate_single.)
+			 */
+			if (pertrans->numInputs == 1)
+			{
+				Form_pg_attribute attr = TupleDescAttr(pertrans->sortdesc, 0);
+
+				pertrans->sortstates[aggstate->current_set] =
+					tuplesort_begin_datum(attr->atttypid,
+										  pertrans->sortOperators[0],
+										  pertrans->sortCollations[0],
+										  pertrans->sortNullsFirst[0],
+										  work_mem, NULL, false);
 			}
-			/* End Bug#8652 */
+			else
+				pertrans->sortstates[aggstate->current_set] =
+					tuplesort_begin_heap(pertrans->sortdesc,
+										 pertrans->numSortCols,
+										 pertrans->sortColIdx,
+										 pertrans->sortOperators,
+										 pertrans->sortCollations,
+										 pertrans->sortNullsFirst,
+										 work_mem, NULL, false);
 		}
 	}
 
@@ -910,6 +959,65 @@ process_ordered_aggregate_single(AggState *aggstate,
 	bool	   *isNull;
 
 	Assert(pertrans->numDistinctCols < 2);
+
+	/*
+	 * Begin - ReqID:TECC4.0
+	 * Hash-based DISTINCT dedup path: the input values were accumulated in a
+	 * TupleHashTable keyed by the DISTINCT column; scan it and run the
+	 * transition function once per distinct value.  (Used only for
+	 * pure-DISTINCT aggregates on columns without OPE, where the Tuplesort
+	 * btree comparison is unavailable.)
+	 */
+	if (pertrans->use_hash_distinct)
+	{
+		TupleHashTable hashtable = pergroupstate->distinctHashtable;
+		TupleHashIterator iter;
+		TupleHashEntry entry;
+		TupleTableSlot *slot = pertrans->sortslot;
+
+		/*
+		 * With empty input (or a group with no matching rows), the hash
+		 * table may never have been built; there is nothing to process.
+		 */
+		if (hashtable == NULL)
+			return;
+
+		ResetTupleHashIterator(hashtable, &iter);
+		while ((entry = ScanTupleHashTable(hashtable, &iter)) != NULL)
+		{
+			MemoryContextReset(workcontext);
+			oldContext = MemoryContextSwitchTo(workcontext);
+
+			/* unpack the representative minimal tuple into the sort slot */
+			ExecStoreMinimalTuple(entry->firstTuple, slot, false);
+			slot_getsomeattrs(slot, 1);
+
+			/* Load the column into argument 1 (arg 0 is transition value) */
+			fcinfo->args[1].value = slot->tts_values[0];
+			fcinfo->args[1].isnull = slot->tts_isnull[0];
+
+			advance_transition_function(aggstate, pertrans, pergroupstate);
+
+			MemoryContextSwitchTo(oldContext);
+		}
+
+		/* ReqID:TECC4.0 - In AGG_SORTED/AGG_PLAIN the per-group array is
+		 * reused for the next group, so release the table now.  In
+		 * AGG_HASHED/AGG_MIXED the table is scoped to this group's hash entry
+		 * and is freed together with it; just clear the pointer so that a
+		 * re-finalize of the same group (ExecReScanAgg reusing a filled hash
+		 * table) does not run the transition function a second time. */
+		if (aggstate->curaggcontext == aggstate->hashcontext)
+			pergroupstate->distinctHashtable = NULL;
+		else
+		{
+			ResetTupleHashTable(hashtable);
+			if (aggstate->distinct_hashcxt != NULL)
+				ResetExprContext(aggstate->distinct_hashcxt);
+		}
+		return;
+	}
+	/* End - ReqID:TECC4.0 */
 
 	tuplesort_performsort(pertrans->sortstates[aggstate->current_set]);
 
@@ -1463,6 +1571,20 @@ finalize_aggregates(AggState *aggstate,
 
 		if (pertrans->numSortCols > 0)
 		{
+			/* Begin - ReqID:TECC4.0
+			 * Hash-based DISTINCT dedup needs no ordering, so it is valid in
+			 * every strategy -- including AGG_HASHED/AGG_MIXED, where the
+			 * dedup table is kept in the group's own hash entry.
+			 */
+			if (pertrans->use_hash_distinct)
+			{
+				process_ordered_aggregate_single(aggstate,
+												 pertrans,
+												 pergroupstate);
+				continue;
+			}
+			/* End - ReqID:TECC4.0 */
+
 			Assert(aggstate->aggstrategy != AGG_HASHED &&
 				   aggstate->aggstrategy != AGG_MIXED);
 
@@ -4102,6 +4224,38 @@ ExecInitAgg(Agg *node, EState *estate, int eflags)
 	aggstate->numtrans = numtrans;
 
 	/*
+	 * Begin - ReqID:TECC4.0
+	 *
+	 * If any pertrans uses the hash-based DISTINCT dedup path, create the
+	 * memory contexts for the TupleHashTable (meta context holds the table
+	 * itself, hashcxt holds the entries).  These are cleaned up in
+	 * ExecEndAgg().
+	 *
+	 * Needed whenever a sorted/plain grouping phase exists, which includes
+	 * AGG_MIXED (its sort phases run aggregation the AGG_SORTED way).  Only
+	 * pure AGG_HASHED does without: there the dedup table is per hash entry
+	 * and lives in the hash context (see initialize_aggregate).
+	 */
+	if (aggstate->aggstrategy != AGG_HASHED)
+	{
+		int			transno;
+
+		for (transno = 0; transno < numtrans; transno++)
+		{
+			if (aggstate->pertrans[transno].use_hash_distinct)
+			{
+				aggstate->distinct_hash_metacxt =
+					AllocSetContextCreate(aggstate->ss.ps.state->es_query_cxt,
+										  "DistinctAggHash meta context",
+										  ALLOCSET_DEFAULT_SIZES);
+				aggstate->distinct_hashcxt = CreateWorkExprContext(estate);
+				break;
+			}
+		}
+	}
+	/* End - ReqID:TECC4.0 */
+
+	/*
 	 * Last, check whether any more aggregates got added onto the node while
 	 * we processed the expressions for the aggregate arguments (including not
 	 * only the regular arguments and FILTER expressions handled immediately
@@ -4213,6 +4367,63 @@ aggregate_needs_separate_order(Aggref *aggref)
  * of the arguments could be calculated from 'aggref', but the caller has
  * calculated them already, so might as well pass them.
  */
+static bool
+tecc_aggdistinct_uses_non_ope_column(AggState *aggstate, Aggref *aggref)
+{
+	EState	   *estate = aggstate->ss.ps.state;
+	SortGroupClause *sortcl;
+	TargetEntry *tle;
+	Var		   *var;
+	RangeTblEntry *rte;
+
+	if (aggref->aggdistinct == NIL || list_length(aggref->aggdistinct) != 1)
+		return false;
+
+	sortcl = (SortGroupClause *) linitial(aggref->aggdistinct);
+	tle = get_sortgroupclause_tle(sortcl, aggref->args);
+	if (!IsA(tle->expr, Var))
+		return false;
+
+	var = (Var *) tle->expr;
+
+	/*
+	 * After setrefs.c, an aggregate's arguments reference the outer
+	 * subplan's output columns via OUTER_VAR (see fix_upper_expr).  Walk
+	 * down the plan tree through any intermediate nodes (Sort, etc.) until
+	 * we reach a Var that references the base relation directly.
+	 */
+	{
+		Plan	   *cur_plan = outerPlan(aggstate->ss.ps.plan);
+
+		while (var->varno == OUTER_VAR && cur_plan != NULL)
+		{
+			TargetEntry *outer_tle;
+
+			if (var->varattno <= 0 ||
+				var->varattno > list_length(cur_plan->targetlist))
+				return false;
+			outer_tle = (TargetEntry *) list_nth(cur_plan->targetlist,
+												 var->varattno - 1);
+			if (outer_tle == NULL || !IsA(outer_tle->expr, Var))
+				return false;
+			var = (Var *) outer_tle->expr;
+			cur_plan = outerPlan(cur_plan);
+		}
+	}
+
+	if (var->varattno <= 0)
+		return false;
+	if (var->varno <= 0 || var->varno > estate->es_range_table_size)
+		return false;
+
+	rte = exec_rt_fetch(var->varno, estate);
+	if (rte == NULL || rte->rtekind != RTE_RELATION)
+		return false;
+
+	/* encrypted column without OPE cannot be sorted */
+	return !tecc_column_supports_ordering(rte->relid, var->varattno);
+}
+
 static void
 build_pertrans_for_aggref(AggStatePerTrans pertrans,
 						  AggState *aggstate, EState *estate,
@@ -4434,6 +4645,33 @@ build_pertrans_for_aggref(AggStatePerTrans pertrans,
 	pertrans->numOrderCols = numOrderCols;
 
 	/*
+	 * Begin - ReqID:TECC4.0
+	 *
+	 * Decide this before enforcing the HASHED/MIXED restriction below.  The
+	 * planner is allowed to choose those strategies only for this supported
+	 * TECC DISTINCT form.
+	 */
+		pertrans->use_hash_distinct =
+			(aggref->aggdistinct != NIL && aggref->aggorder == NIL &&
+			 pertrans->numInputs == 1 && numDistinctCols == 1 &&
+			 tecc_aggdistinct_uses_non_ope_column(aggstate, aggref));
+	/* ReqID:TECC4.0 - Prepare the equality/hash functions for the per-group
+	 * DISTINCT hashtable used by the TECC hash-DISTINCT path above.  Without
+	 * this the table is built with eqfuncoids == NULL and crashes inside
+	 * ExecBuildGroupingEqual(). */
+	if (pertrans->use_hash_distinct)
+	{
+		Oid			eqop;
+
+		eqop = ((SortGroupClause *) linitial(aggref->aggdistinct))->eqop;
+		execTuplesHashPrepare(1, &eqop,
+							  &pertrans->eqfuncoids,
+							  &pertrans->hashfunctions);
+	}
+
+	/* End - ReqID:TECC4.0 */
+
+	/*
 	 * If we have either sorting or filtering to do, create a tupledesc and
 	 * slot corresponding to the aggregated inputs (including sort
 	 * expressions) of the agg.
@@ -4449,10 +4687,12 @@ build_pertrans_for_aggref(AggStatePerTrans pertrans,
 	if (numSortCols > 0)
 	{
 		/*
-		 * We don't implement DISTINCT or ORDER BY aggs in the HASHED case
-		 * (yet)
+		 * We don't implement DISTINCT or ORDER BY aggs in the HASHED case,
+		 * except for TECC's supported per-group hash DISTINCT path.
 		 */
-		Assert(aggstate->aggstrategy != AGG_HASHED && aggstate->aggstrategy != AGG_MIXED);
+		Assert((aggstate->aggstrategy != AGG_HASHED &&
+				aggstate->aggstrategy != AGG_MIXED) ||
+			   pertrans->use_hash_distinct);
 
 		/* If we have only one input, we need its len/byval info. */
 		if (numInputs == 1)
@@ -4619,6 +4859,20 @@ ExecEndAgg(AggState *node)
 		node->hash_metacxt = NULL;
 	}
 
+	/* Begin - ReqID:TECC4.0 */
+	/* Clean up the hash-based DISTINCT dedup contexts, if any. */
+	if (node->distinct_hash_metacxt != NULL)
+	{
+		MemoryContextDelete(node->distinct_hash_metacxt);
+		node->distinct_hash_metacxt = NULL;
+	}
+	if (node->distinct_hashcxt != NULL)
+	{
+		ReScanExprContext(node->distinct_hashcxt);
+		node->distinct_hashcxt = NULL;
+	}
+	/* End - ReqID:TECC4.0 */
+
 	for (transno = 0; transno < node->numtrans; transno++)
 	{
 		AggStatePerTrans pertrans = &node->pertrans[transno];
@@ -4716,6 +4970,15 @@ ExecReScanAgg(AggState *node)
 			/* End Bug#8652 */
 		}
 	}
+
+	/* Begin - ReqID:TECC4.0 */
+	/*
+	 * Reset any hash-based DISTINCT dedup tables; they will be rebuilt (or
+	 * reset) by initialize_aggregate() when the next group is started.
+	 */
+	if (node->distinct_hashcxt != NULL)
+		ReScanExprContext(node->distinct_hashcxt);
+	/* End - ReqID:TECC4.0 */
 
 	/*
 	 * We don't need to ReScanExprContext the output tuple context here;

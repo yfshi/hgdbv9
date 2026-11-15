@@ -1,11 +1,11 @@
-﻿/* Begin - ReqID:TECC4.0 */
+/* Begin - ReqID:TECC4.0 */
 /*
  * File: tecc_kek_cache.c
  * Abstract:
  *   TECC KEK缓存实现，基于简化设计的两层架构。
  *   提供KEK相关的缓存查询和管理功能。
  *
- * Authored by <Claude Code>, 2026-04-15.
+ * Authored by <wanghaoyan>, 2026-04-15.
  *
  * Copyright:
  *   Copyright (c) 2026, HighGo Software Co.,Ltd. All rights reserved.
@@ -518,6 +518,12 @@ find_kek_in_cache_by_name(const TeccState *state, const char *key_name, const ch
 /*
  * load_kek_from_database_by_oid - 从数据库按OID加载KEK信息
  *
+ * ReqID:TECC4.0 - Bug 9256
+ * DEK 目录里存的是 kek_id(OID)，KEK 又可创建在任意 schema。若按名字 +
+ * search_path 解析，KEK 不在 search_path 上时必然落空（在 public 里使用
+ * sch1.kek 建表即报 "Failed to get KEK by name"）。OID 与 schema 无关，
+ * 是 DEK→KEK 最可靠的解析入口。
+ *
  * 参数:
  *   kek_oid - KEK对象标识符
  *   item - 返回的KEK缓存项指针
@@ -528,13 +534,38 @@ find_kek_in_cache_by_name(const TeccState *state, const char *key_name, const ch
 static int
 load_kek_from_database_by_oid(const TeccState *state, Oid kek_oid, TeccKekCacheItem **item)
 {
-    /* 桩实现：按OID查询KEK */
-    /* 注意：调用者已改为通过名称查询KEK（使用DEK缓存项中的kek_name字段） */
-    (void)state;
-    (void)kek_oid;
-    (void)item;
+    /* 通过数据获取器适配器查询KEK元数据 */
+    TeccCacheQueryParams query;
+    TeccFetcherErrorCode fetcher_error;
 
-    return TECC_CACHE_ERROR_NOT_FOUND;
+    /* 参数检查 */
+    if (state == NULL || item == NULL) {
+        return TECC_CACHE_ERROR_INVALID_PARAM;
+    }
+
+    *item = NULL;
+
+    if (kek_oid == InvalidOid) {
+        return TECC_CACHE_ERROR_NOT_FOUND;
+    }
+
+    /* 使用简化的适配器接口按OID查询KEK元数据 */
+    memset(&query, 0, sizeof(query));
+    query.flags = TECC_QUERY_BY_OID;
+    query.params.by_oid.oid = kek_oid;
+
+    fetcher_error = tecc_fetch_kek_for_cache(state, &query, item, NULL);
+    if (fetcher_error != TECC_FETCHER_OK) {
+        /* 查询失败，转换为缓存错误码 */
+        return tecc_cache_convert_error(fetcher_error);
+    }
+
+    /* 检查是否找到KEK */
+    if (*item == NULL) {
+        return TECC_CACHE_ERROR_NOT_FOUND;
+    }
+
+    return TECC_CACHE_OK;
 }
 
 /*
@@ -775,7 +806,16 @@ tecc_cache_remove_pending_kek(TeccState *state, const char *key_name, const char
     {
         TeccKekCacheItem *item = *(TeccKekCacheItem **)entry;
         if (item != NULL)
+        {
+            /* 同时从 OID 缓存中移除，防止 destroy_all_kek_items 双重释放 */
+            if (item->kek_oid != InvalidOid && manager->kek_cache != NULL)
+            {
+                KekHashKey oid_key;
+                oid_key.oid = item->kek_oid;
+                fe_hash_search(manager->kek_cache, &oid_key, HASH_REMOVE, NULL);
+            }
             destroy_kek_cache_item(item);
+        }
         pg_free(entry);
     }
     CACHE_UNLOCK(manager);

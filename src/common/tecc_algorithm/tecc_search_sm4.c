@@ -33,8 +33,6 @@
 /* Character hash output size (3 bytes per character) */
 #define CHAR_HASH_SIZE 3
 
-/* Note: SEARCH_MIN_SIZE is defined in tecc_types.h */
-
 /* Memory allocation wrappers for PostgreSQL independence */
 static void *tecc_search_sm4_alloc(size_t size) { return malloc(size); }
 static void tecc_search_sm4_free(void *ptr) { free(ptr); }
@@ -130,16 +128,6 @@ tecc_search_sm4_validate_format(const unsigned char *ciphertext, size_t cipher_l
 }
 
 /*
- * Get SEARCH output buffer size
- * This is a legacy function, use tecc_search_sm4_calc_encrypt_buffer_size instead
- */
-size_t
-tecc_search_sm4_get_format_size(size_t plain_len)
-{
-    return tecc_search_sm4_calc_encrypt_buffer_size(plain_len);
-}
-
-/*
  * Clear sensitive memory
  */
 void
@@ -167,7 +155,8 @@ tecc_search_sm4_encrypt(const unsigned char *key, size_t key_len,
                        const unsigned char *plaintext, size_t plain_len,
                        unsigned char *output_buffer, size_t buffer_size,
                        size_t *output_len,
-                       bool is_wildcard_pattern)
+                       bool is_wildcard_pattern,
+                       char escape_char)
 {
     int result = SM4_SEARCH_SUCCESS;
     size_t total_len;
@@ -224,8 +213,49 @@ tecc_search_sm4_encrypt(const unsigned char *key, size_t key_len,
         out_pos = 0;
         for (pos = 0; pos < plain_len; pos++)
         {
-            /* ReqID:TECC4.0 - Wildcards (% and _) only for pattern; data chars always hashed */
-            if (is_wildcard_pattern && (plaintext[pos] == '%' || plaintext[pos] == '_'))
+            /* ReqID:TECC4.0 - Wildcards (% and _) only for pattern; data chars always hashed.
+             * ReqID:TECC4.0 - ESCAPE support: when escape_char is set, characters
+             * following it are NOT wildcards (they are escaped/literal).  The escape
+             * char itself is skipped (not hashed, not output) because the server-side
+             * tecc_search_match interprets \ as an escape prefix in the pattern stream. */
+            if (escape_char != 0 && pos > 0 && plaintext[pos - 1] == (unsigned char)escape_char)
+            {
+                /* Escaped character: hash as literal (3 bytes), not wildcard */
+                unsigned char char_hash[CHAR_HASH_SIZE];
+                unsigned char pos_bytes[4];
+
+                pos_bytes[0] = (pos >> 24) & 0xFF;
+                pos_bytes[1] = (pos >> 16) & 0xFF;
+                pos_bytes[2] = (pos >> 8) & 0xFF;
+                pos_bytes[3] = (pos >> 0) & 0xFF;
+
+                if (!sm3_hash_bytes(&plaintext[pos], 1, key, key_len, pos_bytes, 4, char_hash, CHAR_HASH_SIZE))
+                {
+                    result = SM4_SEARCH_ERROR_OPENSSL;
+                    goto cleanup;
+                }
+                {
+                    int h;
+                    for (h = 0; h < CHAR_HASH_SIZE; h++)
+                    {
+                        unsigned char b = char_hash[h];
+                        if (b == '%' || b == '_' || b == '\\')
+                        {
+                            output_buffer[sizeof(uint32_t) + out_pos] = '\\';
+                            out_pos++;
+                        }
+                        output_buffer[sizeof(uint32_t) + out_pos] = b;
+                        out_pos++;
+                    }
+                }
+            }
+            else if (escape_char != 0 && plaintext[pos] == (unsigned char)escape_char)
+            {
+                /* Escape character itself: skip (not output, not hashed).
+                 * Server-side tecc_search_match will see the next byte as literal. */
+                continue;
+            }
+            else if (is_wildcard_pattern && (plaintext[pos] == '%' || plaintext[pos] == '_'))
             {
                 output_buffer[sizeof(uint32_t) + out_pos] = plaintext[pos];
                 out_pos += 1;
@@ -253,7 +283,12 @@ tecc_search_sm4_encrypt(const unsigned char *key, size_t key_len,
                  * the escape character.  Escape them by prefixing with
                  * '\\' so the server-side unescape can recover the real
                  * byte values, leaving only intentional wildcards for
-                 * bytealike to match against. */
+                 * bytealike to match against.
+                 *
+                 * ReqID:TECC4.0 - ESCAPE support: when escape_char is set,
+                 * characters following the escape char are NOT wildcards.
+                 * They must be hashed like normal characters, not output
+                 * as 1-byte wildcards. */
                 {
                     int h;
                     for (h = 0; h < CHAR_HASH_SIZE; h++)
@@ -558,7 +593,7 @@ tecc_search_sm4_encrypt_pattern_segments(Sm4SearchParsedPattern *parsed_pattern,
             result = tecc_search_sm4_encrypt(key, key_len,
                                            segment->data, segment->length,
                                            segment->encrypted_data, buffer_size,
-                                           &encrypted_len, true);
+                                           &encrypted_len, true, 0);
             if (result != SM4_SEARCH_SUCCESS)
             {
                 tecc_search_sm4_free(segment->encrypted_data);

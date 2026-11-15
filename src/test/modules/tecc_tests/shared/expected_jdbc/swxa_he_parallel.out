@@ -1,0 +1,30 @@
+NOTICE: table "swxa_he_par_t" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "swxa_he_par_add" does not exist, skipping
+DROP DEK
+NOTICE: data encryption key "swxa_he_par_sym" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "swxa_he_par_kek" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+=== SWXA-HE-PAR: 1. 整 64 个同态值（阈值边界，走字段级并行） ===
+INSERT 0 64
+64|2080|2080
+=== SWXA-HE-PAR: 2. 并行写入的明文回读（首/中/末行） ===
+1|1|1
+32|32|32
+64|64|64
+=== SWXA-HE-PAR: 3. 并行写入后的同态运算 ===
+UPDATE 8
+1|1|2
+4|4|8
+8|8|16
+=== SWXA-HE-PAR: 4. 阈值之下 8 个同态值（串行路径，对照） ===
+INSERT 0 8
+72|2628
+=== SWXA-HE-PAR: 5. 同态条件表达式（并行写入数据） ===
+2|6
+16|32

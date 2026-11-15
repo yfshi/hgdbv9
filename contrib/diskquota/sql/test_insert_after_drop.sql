@@ -13,6 +13,7 @@ insert into a select generate_series(1,100000000);
 insert into a select generate_series(1,100);
 drop extension diskquota;
 select pg_sleep(5);
+select pg_sleep(1);
 insert into a select generate_series(1,100);
 
 drop table a;
@@ -37,6 +38,7 @@ insert into a select generate_series(1,100000000);
 insert into a select generate_series(1,100);
 drop extension diskquota;
 select pg_sleep(5);
+select pg_sleep(1);
 insert into a select generate_series(1,100);
 
 drop table a;

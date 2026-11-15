@@ -69,6 +69,24 @@ extern TeccUnifiedEncryptResult *tecc_unified_encrypt_string(
 /* Note: tecc_unified_encrypt_string now includes connection parameter for thread safety */
 
 /*
+ * Schema-aware unified encryption — for DML literal encryption on
+ * schema-qualified tables (e.g. sch1.tb1). Pass the target table's real
+ * schema so the scheduler's column-metadata lookup doesn't fall back to
+ * search_path (which misses tables outside it). NULL schema behaves like
+ * tecc_unified_encrypt_string (search_path resolution).
+ */
+extern TeccUnifiedEncryptResult *tecc_unified_encrypt_string_with_schema(
+    PGconn *conn,
+    const char *schema_name,
+    const char *plaintext,
+    const char *table_name,
+    const char *column_name,
+    const char *kek_name,
+    const char *dek_name,
+    TeccCryptoContext *external_context
+);
+
+/*
  * ReqID:TECC4.0 - Unified encryption with explicit algorithm options.
  * For scenarios where column metadata is not in the cache (e.g. CREATE TABLE
  * DEFAULT encryption before the table exists). The caller specifies the
@@ -86,6 +104,46 @@ extern TeccUnifiedEncryptResult *tecc_unified_encrypt_string_with_options(
     bool supports_det,
     bool supports_ope,
     bool supports_search,
+    bool supports_he_add,
+    bool supports_he_mul,
+    TeccCryptoContext *external_context
+);
+
+/*
+ * ReqID:TECC4.0 - 同 tecc_unified_encrypt_string_with_options，但由调用方显式
+ * 给出该列将来生效的 collation locale（如 "zh_CN.utf8"）。
+ *
+ * 元数据缓存里查不到列时（典型场景就是 CREATE TABLE ... DEFAULT：表还没建），
+ * 上面的函数拿不到 collation_locale，DET/OPE 归一化会跳过 ICU sort key，
+ * 于是同一个明文在建表路径与 INSERT/WHERE 路径生成互不相等的密文 ——
+ * DEFAULT 插入的行被等值查询静默漏掉。建表路径用本变体把后端即将写入
+ * hg_encrypted_columns_info.collation_locale 的那个字符串显式传进来。
+ *
+ * collation_locale 为 NULL 或空串时行为与不支持 collation 时完全一致。
+ *
+ * ReqID:TECC4.0 - 同理，he_add_dek_name/he_mul_dek_name 是调用方从同一条
+ * ENCRYPTED WITH 里解析出的同态 DEK 名（HE_ADD_DEK/HE_MUL_DEK）。这类写入路径
+ * 恰好也拿不到 hg_encrypted_column_args，同态 DEK 没有别的来源；不传的话
+ * det+he-add 这类混合列会拿对称 DEK 去找 EC 公钥而失败，报
+ * "per-DEK EC public key not loaded"。传 NULL 表示该列没有对应同态 DEK。
+ */
+extern TeccUnifiedEncryptResult *tecc_unified_encrypt_string_with_options_and_collation(
+    PGconn *conn,
+    const char *plaintext,
+    const char *table_name,
+    const char *column_name,
+    const char *kek_name,
+    const char *dek_name,
+    Oid data_type_oid,
+    int32 type_mod,
+    bool supports_det,
+    bool supports_ope,
+    bool supports_search,
+    bool supports_he_add,
+    bool supports_he_mul,
+    const char *collation_locale,
+    const char *he_add_dek_name,
+    const char *he_mul_dek_name,
     TeccCryptoContext *external_context
 );
 
@@ -99,6 +157,17 @@ extern TeccUnifiedDecryptResult *tecc_unified_decrypt_hex(
     const char *table_name,
     const char *column_name,
     TeccCryptoContext *external_context
+);
+
+/* ReqID:TECC4.0 - Decrypt raw algorithm segment hex for tecc_decrypt_raw(). */
+extern TeccUnifiedDecryptResult *tecc_decrypt_raw_segment_hex(
+	PGconn *conn,
+	const char *hex_string,
+	const char *algorithm,
+	const char *schema_name,
+	const char *table_name,
+	const char *column_name,
+	TeccCryptoContext *external_context
 );
 
 /* Begin - ReqID:TECC4.0 */
@@ -156,22 +225,6 @@ extern TeccUnifiedEncryptResult *tecc_unified_encrypt_string_with_collation_and_
 );
 
 /*
- * Extended encryption with operator type support for SEARCH algorithm interface
- */
-extern TeccUnifiedEncryptResult *tecc_unified_encrypt_string_with_operator(
-    PGconn *conn,
-    const char *plaintext,
-    const char *table_name,
-    const char *column_name,
-    const char *kek_name,
-    const char *dek_name,
-    TeccOperatorType operator_type,
-    TeccCryptoContext *external_context
-);
-
-/* Note: tecc_unified_encrypt_string_with_operator now includes connection parameter for thread safety */
-
-/*
  * Unified encryption for WHERE clause comparisons.
  * Encrypts plaintext using the algorithm appropriate for the operator type:
  *   - = / <> : DET (for equality comparison)
@@ -184,10 +237,34 @@ extern TeccUnifiedEncryptResult *tecc_unified_encrypt_for_where(
     const char *plaintext,
     const char *table_name,
     const char *column_name,
+    const char *schema_name,
     const char *kek_name,
     const char *dek_name,
     TeccOperatorType operator_type,
+    char like_escape_char,
     TeccCryptoContext *external_context
+);
+
+/*
+ * ReqID:TECC4.0 - Homomorphic constant encryption for scalar operations.
+ * Encrypts an integer constant with the column's HE public key and returns a
+ * minimal CipherDataType (hex) carrying ONLY the EG_ADD slot (use_he_add=true,
+ * EC-ElGamal) or the EG_MUL slot (use_he_add=false, finite field ElGamal),
+ * including the per-segment DEK distributed ID prefix.
+ *
+ * The caller rewrites `enc + k` / `enc * k` into `enc + 'hex'::intN_enc`, so
+ * the server resolves the generic ciphertext×ciphertext HE operators
+ * (he_add_generic / he_sub_generic / he_mul_generic) and the plaintext
+ * constant never leaves the client.  Returns NULL on failure (e.g. column is
+ * not an HE column, HE DEK unresolvable, or HE algorithm missing).
+ */
+extern TeccUnifiedEncryptResult *tecc_unified_encrypt_he_constant(
+    PGconn *conn,
+    const char *plaintext,
+    const char *table_name,
+    const char *column_name,
+    const char *schema_name,
+    bool use_he_add
 );
 
 /*
@@ -245,6 +322,16 @@ extern void tecc_crypto_scheduler_get_batch_stats(TeccCryptoScheduler *scheduler
                                                 int *batch_error_count,
                                                 size_t *total_batch_items,
                                                 size_t *successful_batch_items);
+
+/*
+ * ReqID:TECC4.0 - 连接级 HSM 初始化锁（挂在 TeccState.hsm_init_lock 上）
+ *
+ * 只用于串行化 tecc_setup_hsm_context 的首次初始化段（见该函数内说明），
+ * 不影响软加密路径。create 返回 0 成功；失败（内存/互斥量不可用）返回 -1，
+ * 调用方应降级继续（锁为 NULL 时不加锁）。destroy 幂等。
+ */
+extern int tecc_hsm_init_lock_create(void *tecc_state);
+extern void tecc_hsm_init_lock_destroy(void *tecc_state);
 
 /*
  * Lazy initialization - ensure scheduler is initialized

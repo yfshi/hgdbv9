@@ -305,7 +305,7 @@ static char *redation_get_func_name(const char *fname, List *indirectionlist, co
 		CreateMatViewStmt RefreshMatViewStmt CreateAmStmt
 		CreatePublicationStmt AlterPublicationStmt
 		CreateSubscriptionStmt AlterSubscriptionStmt DropSubscriptionStmt
-		CreateKekStmt CreateDekStmt
+		CreateKekStmt CreateDekStmt AlterKekStmt
 /* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 %type <node>	AlterResourceGroupStmt
 		CreateResourceGroupStmt
@@ -712,7 +712,7 @@ static char *redation_get_func_name(const char *fname, List *indirectionlist, co
 
 	JOIN
 
-	KEK KEY KEY_LENGTH KEY_PATH KEY_STORE _KEK_FILE_CHECKSUM _TECC_PROCESSED
+	KEK KEY KEY_LENGTH KEY_PATH KEY_STORE _KEK_FILE_CHECKSUM _TECC_PROCESSED HE_EC_PRIVKEY HE_EC_PUBKEY HE_EG_PRIVKEY HE_EG_PUBKEY HE_PRIVKEY KEY_ALGO PUBLIC_KEY HE_PUBKEY
 
 	LABEL LANGUAGE LARGE_P LAST_P LATERAL_P
 	LEADING LEAKPROOF LEAST LEFT LEVEL LIKE LIMIT LISTEN LOAD LOCAL
@@ -1003,6 +1003,7 @@ stmt:
 			| CreateFunctionStmt
 			| CreateGroupStmt
 			| CreateKekStmt
+			| AlterKekStmt
 			| CreateMatViewStmt
 			| CreateOpClassStmt
 			| CreateOpFamilyStmt
@@ -3792,7 +3793,15 @@ encrypted_with_option:
 			{
 				$$ = makeDefElem("support_algo", (Node *)makeString($3), @1);
 			}
+		/* ReqID:TECC4.0 - 一列多 DEK：he-add/he-mul 各自的同态 DEK。
+		 * 选项名为普通标识符（he_add_dek/he_mul_dek），用 IDENT 匹配。 */
+		| IDENT '=' NonReservedWord_or_Sconst
+			{
+				$$ = makeDefElem($1, (Node *)makeString($3), @1);
+			}
 		;
+
+
 
 columnOptions:	ColId ColQualList
 				{
@@ -4959,6 +4968,16 @@ create_extension_opt_item:
  *
  *****************************************************************************/
 
+AlterKekStmt:
+				ALTER KEK any_name opt_with '(' kek_opt_list ')'
+					{
+						AlterKekStmt *n = makeNode(AlterKekStmt);
+						n->names = $3;
+						n->options = $6;
+						$$ = (Node *) n;
+					}
+				;
+
 CreateKekStmt: CREATE KEK any_name opt_with '(' kek_opt_list ')'
 				{
 					CreateKekStmt *n = makeNode(CreateKekStmt);
@@ -4990,6 +5009,14 @@ kek_opt_item:
 			KEY_STORE '=' NonReservedWord_or_Sconst
 				{
 					$$ = makeDefElem("key_store", (Node *)makeString($3), @1);
+				}
+			| KEY_ALGO '=' NonReservedWord_or_Sconst
+				{
+					$$ = makeDefElem("key_algo", (Node *)makeString($3), @1);
+				}
+			| PUBLIC_KEY '=' NonReservedWord_or_Sconst
+				{
+					$$ = makeDefElem("public_key", (Node *)makeString($3), @1);
 				}
 			| KEY_PATH '=' NonReservedWord_or_Sconst
 				{
@@ -5056,6 +5083,26 @@ dek_opt_item:
 			| ENCRYPTED_VALUE '=' Sconst
 				{
 					$$ = makeDefElem("encrypted_value", (Node *)makeString($3), @1);
+				}
+			| KEY_ALGO '=' NonReservedWord_or_Sconst
+				{
+					$$ = makeDefElem("key_algo", (Node *)makeString($3), @1);
+				}
+			| HE_EC_PUBKEY '=' NonReservedWord_or_Sconst
+				{
+					$$ = makeDefElem("he_ec_pubkey", (Node *)makeString($3), @1);
+				}
+			| HE_EC_PRIVKEY '=' NonReservedWord_or_Sconst
+				{
+					$$ = makeDefElem("he_ec_privkey", (Node *)makeString($3), @1);
+				}
+			| HE_EG_PUBKEY '=' NonReservedWord_or_Sconst
+				{
+					$$ = makeDefElem("he_eg_pubkey", (Node *)makeString($3), @1);
+				}
+			| HE_EG_PRIVKEY '=' NonReservedWord_or_Sconst
+				{
+					$$ = makeDefElem("he_eg_privkey", (Node *)makeString($3), @1);
 				}
 			| SUPPORT_ALGO '=' NonReservedWord_or_Sconst
 				{
@@ -16520,6 +16567,12 @@ unreserved_keyword:
 			| GROUPS
 			| HANDLER
 			| HEADER_P
+			| HE_EC_PRIVKEY
+			| HE_EC_PUBKEY
+			| HE_EG_PRIVKEY
+			| HE_EG_PUBKEY
+			| HE_PRIVKEY
+			| HE_PUBKEY
 			| HOLD
 			| HOUR_P
 			| IDENTITY_P
@@ -16545,6 +16598,7 @@ unreserved_keyword:
 			| ISOLATION
 			| KEK
 			| KEY
+        | KEY_ALGO
 			| KEY_LENGTH
 			| KEY_PATH
 			| KEY_STORE
@@ -16624,6 +16678,7 @@ unreserved_keyword:
 			| PROCEDURES
 			| PROGRAM
 			| PUBLICATION
+			| PUBLIC_KEY
 			| QUOTE
 			| QUOTES 	/* BUG#M0000414 */
 			| RANGE
@@ -17110,6 +17165,12 @@ bare_label_keyword:
 			| GROUPS
 			| HANDLER
 			| HEADER_P
+			| HE_EC_PRIVKEY
+			| HE_EC_PUBKEY
+			| HE_EG_PRIVKEY
+			| HE_EG_PUBKEY
+			| HE_PRIVKEY
+			| HE_PUBKEY
 			| HOLD
 			| IDENTITY_P
 			| IF_P
@@ -17144,6 +17205,7 @@ bare_label_keyword:
 			| JOIN
 			| KEK
 			| KEY
+        | KEY_ALGO
 			| KEY_LENGTH
 			| KEY_PATH
 			| KEY_STORE
@@ -17244,6 +17306,7 @@ bare_label_keyword:
 			| PROCEDURES
 			| PROGRAM
 			| PUBLICATION
+			| PUBLIC_KEY
 			| QUOTE
 			| QUOTES	/* BUG#M0000414 */
 			| RANGE

@@ -3044,6 +3044,7 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 				name = NULL;
 		}
 
+
 		if (name != NULL)
 		{
 			TargetEntry *target_result = NULL;

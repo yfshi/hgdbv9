@@ -14,6 +14,7 @@
  */
 #include "postgres.h"
 
+#include "commands/encrypted_column.h"
 #include "catalog/pg_class.h"
 #include "catalog/pg_type.h"
 #include "nodes/makefuncs.h"
@@ -40,6 +41,7 @@
 #include "utils/guc.h"
 /* End - ReqID:SRS-SQL-ROWNUM */
 #include "parser/parsetree.h"
+#include "utils/tecc/tecc_index.h"
 
 
 /* These parameters are set by GUC */
@@ -83,9 +85,12 @@ static bool check_outerjoin_delay(PlannerInfo *root, Relids *relids_p,
 static bool check_equivalence_delay(PlannerInfo *root,
 									RestrictInfo *restrictinfo);
 static bool check_redundant_nullability_qual(PlannerInfo *root, Node *clause);
-static void check_mergejoinable(RestrictInfo *restrictinfo);
-static void check_hashjoinable(RestrictInfo *restrictinfo);
-static void check_memoizable(RestrictInfo *restrictinfo);
+static void check_mergejoinable(PlannerInfo *root, RestrictInfo *restrictinfo);
+static void check_hashjoinable(PlannerInfo *root, RestrictInfo *restrictinfo);
+static void check_memoizable(PlannerInfo *root, RestrictInfo *restrictinfo);
+static bool tecc_opclause_supports_encrypted_capability(PlannerInfo *root,
+														Expr *clause,
+														uint32 required_mask);
 
 
 /*****************************************************************************
@@ -1631,13 +1636,18 @@ compute_semijoin_info(PlannerInfo *root, SpecialJoinInfo *sjinfo, List *clause)
 		{
 			/* oprcanmerge is considered a hint... */
 			if (!op_mergejoinable(opno, opinputtype) ||
-				get_mergejoin_opfamilies(opno) == NIL)
+				get_mergejoin_opfamilies(opno) == NIL ||
+				!tecc_opclause_supports_encrypted_capability(root, (Expr *) op,
+															 HG_ENCRYPTION_TYPE_OPE))
 				all_btree = false;
 		}
 		if (all_hash)
 		{
 			/* ... but oprcanhash had better be correct */
-			if (!op_hashjoinable(opno, opinputtype))
+			if (!op_hashjoinable(opno, opinputtype) ||
+				!tecc_opclause_supports_encrypted_capability(root, (Expr *) op,
+															 HG_ENCRYPTION_TYPE_DET |
+															 HG_ENCRYPTION_TYPE_OPE))
 				all_hash = false;
 		}
 		if (!(all_btree || all_hash))
@@ -1988,7 +1998,7 @@ distribute_qual_to_rels(PlannerInfo *root, Node *clause,
 	 * because we want to know about equivalences between vars of the same
 	 * relation, or between vars and consts.
 	 */
-	check_mergejoinable(restrictinfo);
+	check_mergejoinable(root, restrictinfo);
 
 	/*
 	 * If it is a true equivalence clause, send it to the EquivalenceClass
@@ -2321,14 +2331,14 @@ distribute_restrictinfo_to_rels(PlannerInfo *root,
 			 * Check for hashjoinable operators.  (We don't bother setting the
 			 * hashjoin info except in true join clauses.)
 			 */
-			check_hashjoinable(restrictinfo);
+			check_hashjoinable(root, restrictinfo);
 
 			/*
 			 * Likewise, check if the clause is suitable to be used with a
 			 * Memoize node to cache inner tuples during a parameterized
 			 * nested loop.
 			 */
-			check_memoizable(restrictinfo);
+			check_memoizable(root, restrictinfo);
 
 			/*
 			 * Add clause to the join lists of all the relevant relations.
@@ -2502,7 +2512,7 @@ process_implied_equality(PlannerInfo *root,
 	 * from an EquivalenceClass; but we could have reduced the original clause
 	 * to a constant.
 	 */
-	check_mergejoinable(restrictinfo);
+	check_mergejoinable(root, restrictinfo);
 
 	/*
 	 * Note we don't do initialize_mergeclause_eclasses(); the caller can
@@ -2570,9 +2580,9 @@ build_implied_join_equality(PlannerInfo *root,
 									 nullable_relids);	/* nullable_relids */
 
 	/* Set mergejoinability/hashjoinability flags */
-	check_mergejoinable(restrictinfo);
-	check_hashjoinable(restrictinfo);
-	check_memoizable(restrictinfo);
+	check_mergejoinable(root, restrictinfo);
+	check_hashjoinable(root, restrictinfo);
+	check_memoizable(root, restrictinfo);
 
 	return restrictinfo;
 }
@@ -2753,6 +2763,103 @@ match_foreign_keys_to_quals(PlannerInfo *root)
  *
  *****************************************************************************/
 
+typedef struct TeccOptColumnInfo
+{
+	bool		is_var;
+	bool		is_encrypted;
+	uint32		encryption_type;
+	Oid			dek_oid;
+} TeccOptColumnInfo;
+
+/*
+ * tecc_get_opt_column_info
+ *		Resolve simple Var expressions to TECC column metadata.
+ *
+ * Complex expressions are intentionally ignored here.  The executor/operator
+ * checks remain authoritative for those cases; planner filtering is applied
+ * only when the base encrypted column is unambiguous.
+ */
+static void
+tecc_get_opt_column_info(PlannerInfo *root, Node *arg,
+						 TeccOptColumnInfo *info)
+{
+	Var		   *var;
+	RangeTblEntry *rte;
+
+	memset(info, 0, sizeof(TeccOptColumnInfo));
+	info->dek_oid = InvalidOid;
+
+	while (arg != NULL && IsA(arg, RelabelType))
+		arg = (Node *) ((RelabelType *) arg)->arg;
+
+	if (arg == NULL || !IsA(arg, Var))
+		return;
+
+	var = (Var *) arg;
+	info->is_var = true;
+
+	if (var->varattno <= 0)
+		return;					/* whole-row or system column */
+
+	if (var->varno <= 0 || var->varno >= root->simple_rel_array_size)
+		return;
+
+	rte = root->simple_rte_array[var->varno];
+	if (rte == NULL || rte->rtekind != RTE_RELATION)
+		return;
+
+	tecc_get_column_encryption_info(rte->relid, (int16) var->varattno,
+									&info->is_encrypted,
+									&info->encryption_type,
+									&info->dek_oid);
+}
+
+/*
+ * tecc_opclause_supports_encrypted_capability
+ *		Check whether simple encrypted Vars in an opclause have the
+ *		required algorithm bits and, for Var-vs-Var clauses, the same DEK.
+ */
+static bool
+tecc_opclause_supports_encrypted_capability(PlannerInfo *root, Expr *clause,
+											uint32 required_mask)
+{
+	List	   *args;
+	Node	   *leftarg;
+	Node	   *rightarg;
+	TeccOptColumnInfo leftinfo;
+	TeccOptColumnInfo rightinfo;
+
+	if (!IsA(clause, OpExpr))
+		return true;
+
+	args = ((OpExpr *) clause)->args;
+	if (list_length(args) != 2)
+		return true;
+
+	leftarg = linitial(args);
+	rightarg = lsecond(args);
+
+	tecc_get_opt_column_info(root, leftarg, &leftinfo);
+	tecc_get_opt_column_info(root, rightarg, &rightinfo);
+
+	if (leftinfo.is_encrypted &&
+		(leftinfo.encryption_type & required_mask) == 0)
+		return false;
+	if (rightinfo.is_encrypted &&
+		(rightinfo.encryption_type & required_mask) == 0)
+		return false;
+
+	/* ReqID:TECC4.0 - Ciphertexts encrypted with different DEKs are not
+	 * equivalent.  Do not let the optimizer form hash/merge/memoize paths or
+	 * equivalence-derived clauses for simple Var-vs-Var mismatches. */
+	if (leftinfo.is_encrypted && rightinfo.is_encrypted &&
+		OidIsValid(leftinfo.dek_oid) && OidIsValid(rightinfo.dek_oid) &&
+		leftinfo.dek_oid != rightinfo.dek_oid)
+		return false;
+
+	return true;
+}
+
 /*
  * check_mergejoinable
  *	  If the restrictinfo's clause is mergejoinable, set the mergejoin
@@ -2763,7 +2870,7 @@ match_foreign_keys_to_quals(PlannerInfo *root)
  *	  anything --- as long as there are no volatile functions in them.
  */
 static void
-check_mergejoinable(RestrictInfo *restrictinfo)
+check_mergejoinable(PlannerInfo *root, RestrictInfo *restrictinfo)
 {
 	Expr	   *clause = restrictinfo->clause;
 	Oid			opno;
@@ -2774,6 +2881,18 @@ check_mergejoinable(RestrictInfo *restrictinfo)
 	if (!is_opclause(clause))
 		return;
 	if (list_length(((OpExpr *) clause)->args) != 2)
+		return;
+ 
+	/*
+	 * ReqID:TECC4.0 - DET-only/RND-only encrypted columns cannot be sorted
+	 * (no OPE ciphertext segment), so exclude their equality clauses from
+	 * Merge Join candidate generation.  This makes equality JOINs on such
+	 * columns fall through to Hash Join (or Nest Loop), whose equality
+	 * semantics are correct.  Hash joinability is determined independently
+	 * by check_hashjoinable.
+	 */
+	if (!tecc_opclause_supports_encrypted_capability(root, clause,
+													HG_ENCRYPTION_TYPE_OPE))
 		return;
 
 	opno = ((OpExpr *) clause)->opno;
@@ -2800,7 +2919,7 @@ check_mergejoinable(RestrictInfo *restrictinfo)
  *	  anything --- as long as there are no volatile functions in them.
  */
 static void
-check_hashjoinable(RestrictInfo *restrictinfo)
+check_hashjoinable(PlannerInfo *root, RestrictInfo *restrictinfo)
 {
 	Expr	   *clause = restrictinfo->clause;
 	Oid			opno;
@@ -2811,6 +2930,13 @@ check_hashjoinable(RestrictInfo *restrictinfo)
 	if (!is_opclause(clause))
 		return;
 	if (list_length(((OpExpr *) clause)->args) != 2)
+		return;
+
+	/* ReqID:TECC4.0 - Hash Join on encrypted values needs DET or OPE and
+	 * matching DEK identities for simple encrypted Var-vs-Var clauses. */
+	if (!tecc_opclause_supports_encrypted_capability(root, clause,
+													HG_ENCRYPTION_TYPE_DET |
+													HG_ENCRYPTION_TYPE_OPE))
 		return;
 
 	opno = ((OpExpr *) clause)->opno;
@@ -2828,7 +2954,7 @@ check_hashjoinable(RestrictInfo *restrictinfo)
  *	  during caching.
  */
 static void
-check_memoizable(RestrictInfo *restrictinfo)
+check_memoizable(PlannerInfo *root, RestrictInfo *restrictinfo)
 {
 	TypeCacheEntry *typentry;
 	Expr	   *clause = restrictinfo->clause;
@@ -2840,6 +2966,13 @@ check_memoizable(RestrictInfo *restrictinfo)
 	if (!is_opclause(clause))
 		return;
 	if (list_length(((OpExpr *) clause)->args) != 2)
+		return;
+
+	/* ReqID:TECC4.0 - Memoize uses hash equality semantics, so apply the
+	 * same encrypted-column capability and DEK checks as Hash Join. */
+	if (!tecc_opclause_supports_encrypted_capability(root, clause,
+													HG_ENCRYPTION_TYPE_DET |
+													HG_ENCRYPTION_TYPE_OPE))
 		return;
 
 	lefttype = exprType(linitial(((OpExpr *) clause)->args));
@@ -2925,7 +3058,7 @@ split_rels_qual(PlannerInfo *root, Node *quals, Relids qualscope,
 			 * qualification and GROUP BY/ORDER BY clauses after the hierarchical
 			 * query.
 			 */
-			check_mergejoinable(restriction);
+			check_mergejoinable(root, restriction);
 
 			*my_restrictinfo = lappend(*my_restrictinfo, restriction);
 

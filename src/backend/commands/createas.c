@@ -308,7 +308,7 @@ create_ctas_nodata(Query *ctas_query, IntoClause *into)
 	/* Create the relation definition using the ColumnDef list */
        {
                ObjectAddress addr = create_ctas_internal(attrList, into);
-               populate_ctas_encryption_metadata(addr.objectId, attrList, tlist, rtable);
+               populate_ctas_encryption_metadata(addr.objectId, attrList, tlist, rtable, NULL, NULL);
                return addr;
        }
 
@@ -696,7 +696,7 @@ intorel_startup(DestReceiver *self, int operation, TupleDesc typeinfo)
 	/* ReqID:TECC4.0 - populate encryption metadata for encrypted columns */
 	if (myState->source_tlist != NIL || myState->source_rtable != NIL)
 		populate_ctas_encryption_metadata(intoRelationAddr.objectId,
-			attrList, myState->source_tlist, myState->source_rtable);
+			attrList, myState->source_tlist, myState->source_rtable, NULL, NULL);
 
 	/*
 	 * Actually create the target table
@@ -706,7 +706,7 @@ intorel_startup(DestReceiver *self, int operation, TupleDesc typeinfo)
         /* ReqID:TECC4.0 - populate encryption metadata for encrypted columns */
         if (myState->source_tlist != NIL || myState->source_rtable != NIL)
                populate_ctas_encryption_metadata(intoRelationAddr.objectId,
-                       attrList, myState->source_tlist, myState->source_rtable);
+                       attrList, myState->source_tlist, myState->source_rtable, NULL, NULL);
 
 
 	/*

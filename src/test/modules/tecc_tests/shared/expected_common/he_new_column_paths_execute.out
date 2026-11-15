@@ -1,0 +1,42 @@
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE KEK
+CREATE DEK
+=== 1 PREPARE + CTAS AS EXECUTE（混合 det,he-add）===
+(1 row)
+PREPARE
+SELECT 1
+INSERT 0 1
+2|12
+(1 row)
+=== 2 PREPARE + CTAS AS EXECUTE（纯同态 he-add）===
+(1 row)
+PREPARE
+SELECT 1
+INSERT 0 1
+2|12
+(1 row)
+DEALLOCATE
+DEALLOCATE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+NOTICE: table "hencp_pe_mixed" does not exist, skipping
+NOTICE: table "hencp_pe_mixed_pure" does not exist, skipping
+NOTICE: data encryption key "hencp_dek_add" does not exist, skipping
+NOTICE: data encryption key "hencp_dek_sym" does not exist, skipping
+NOTICE: key encryption key "hencp_kek_asym" does not exist, skipping
+NOTICE: key encryption key "hencp_kek_sym" does not exist, skipping
+WARNING: could not determine encryption metadata for column "a" in CTAS result table
+DETAIL:  The column will have encrypted type but no encryption metadata. Consider creating the table with an explicit ENCRYPTED WITH clause.
+WARNING: could not determine encryption metadata for column "a" in CTAS result table
+DETAIL:  The column will have encrypted type but no encryption metadata. Consider creating the table with an explicit ENCRYPTED WITH clause.

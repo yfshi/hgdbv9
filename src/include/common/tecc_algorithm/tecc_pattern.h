@@ -142,21 +142,6 @@ TeccPatternErrorCode tecc_parse_pattern_full(
  */
 void tecc_free_parsed_pattern(TeccParsedPattern *parsed_pattern);
 
-/*
- * Encrypt fixed string segments in parsed pattern
- *
- * Parameters:
- *   parsed_pattern - Parsed pattern with fixed string segments
- *   key - Encryption key
- *   key_len - Key length
- *
- * Returns:
- *   TECC_PATTERN_SUCCESS on success, error code on failure
- */
-TeccPatternErrorCode tecc_encrypt_pattern_segments(
-    TeccParsedPattern *parsed_pattern,
-    const unsigned char *key,
-    size_t key_len);
 
 /*
  * Create pattern matching context

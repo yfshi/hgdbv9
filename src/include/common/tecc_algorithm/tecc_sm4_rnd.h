@@ -12,7 +12,7 @@
  *   Copyright (c) 2026, HighGo Software Co.,Ltd. All rights reserved.
  *
  * Identification:
- *   src/common/tecc_algorithm/tecc_sm4_rnd.h
+ *   src/include/common/tecc_algorithm/tecc_sm4_rnd.h
  */
 
 #ifndef TECC_SM4_RND_H
@@ -113,11 +113,6 @@ int tecc_sm4_rnd_derive_keys(const unsigned char *master_key, size_t master_key_
  * Data format validation interface
  */
 int tecc_sm4_rnd_validate_format(const unsigned char *ciphertext, size_t cipher_len);
-
-/*
- * Get SM4-RND data format size
- */
-size_t tecc_sm4_rnd_get_format_size(size_t plain_len);
 
 /*
  * Clear sensitive memory

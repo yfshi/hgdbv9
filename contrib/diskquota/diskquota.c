@@ -1033,8 +1033,7 @@ set_min_quota_internal(Oid targetoid, int64 min_limit_mb, QuotaType type)
 	get_disk_space(DataDir, &total, &free);
 	/* Begin - BUG#Z8153 */
 	old_reserve_bytes = get_min_quota_reserve_file_size(type, targetoid);
-	if (min_limit_mb > 0 && /* Bug#z8703 */
-		(uint64)(min_limit_mb + diskquota_min_quota_free_space) * 1024 * 1024 >
+	if ((uint64)(min_limit_mb + diskquota_min_quota_free_space) * 1024 * 1024 >
 		(free + old_reserve_bytes))
 		elog(ERROR,
 			"The current available disk space is %ld MB,"

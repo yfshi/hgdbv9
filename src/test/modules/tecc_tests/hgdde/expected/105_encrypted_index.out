@@ -1,0 +1,15 @@
+=== 5A.1 建表（OPE / DET / RND-only / SEARCH 各一列）并分发 ===
+
+=== 5A.2 合法索引：BTree(OPE) / Hash(DET) / Hash(OPE) ===
+=== 5A.3 每个分片上的索引结构与个数一致（3 个：btree×1 + hash×2）===
+8|0|1|3|btree,hash,hash
+=== 5A.4 BTree 建在 DET-only 列上必须被拒（需要 OPE）===
+btree_on_det_rejected
+=== 5A.5 Hash 建在 RND-only 列上必须被拒（需要 DET 或 OPE）===
+hash_on_rnd_rejected
+=== 5A.6 建索引后跨分片查询照常 ===
+6
+7
+8
+4
+6

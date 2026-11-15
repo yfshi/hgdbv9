@@ -1,8 +1,3 @@
-#ifdef _MSC_VER
-#define TECC_ATTR_UNUSED
-#else
-#define TECC_ATTR_UNUSED __attribute__((unused))
-#endif
 
 /* Begin - ReqID:TECC4.0 */
 /*
@@ -31,6 +26,8 @@
 #include "../tecc_libpq_integration/fe-tecc-integration.h"
 #include "../tecc_scheduler/tecc_crypto_scheduler.h"
 #include "../tecc_scheduler/tecc_key_manager_adapter.h"
+/* ReqID:TECC4.0 - Bug 9263: tecc_he_meta_cache_clear()（HE 元数据缓存失效） */
+#include "../tecc_scheduler/tecc_algorithm_scheduler.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -38,7 +35,6 @@
 #include <time.h>
 
 /* Internal helper functions */
-static void free_cache_update_info(TeccCacheUpdateInfo *info);
 static TeccPostStmtProcessorResult analyze_statement_for_postprocessing(TeccPostStmtProcessorContext *context);
 static TeccPostStmtProcessorResult sync_processing_state(TeccPostStmtProcessorContext *context);
 static TeccPostStmtProcessorResult update_metadata_cache(TeccPostStmtProcessorContext *context);
@@ -439,29 +435,6 @@ tecc_post_stmt_processor_run(PGconn *conn,
 
 /* ==================== Internal helper functions ==================== */
 
-/* Free cache update information */
-static void TECC_ATTR_UNUSED
-free_cache_update_info(TeccCacheUpdateInfo *info)
-{
-    if (info == NULL) {
-        return;
-    }
-
-    if (info->table_name != NULL) {
-        pg_free(info->table_name);
-    }
-
-    if (info->column_name != NULL) {
-        pg_free(info->column_name);
-    }
-
-    if (info->operation != NULL) {
-        pg_free(info->operation);
-    }
-
-    pg_free(info);
-}
-
 /* Analyze statement for postprocessing needs */
 static TeccPostStmtProcessorResult
 analyze_statement_for_postprocessing(TeccPostStmtProcessorContext *context)
@@ -710,6 +683,11 @@ update_metadata_cache(TeccPostStmtProcessorContext *context)
         case TECC_STMT_TYPE_CREATE_DEK:
             /* PENDING→ENCRYPTED promotion is handled in tecc_process_result
              * (PGRES_COMMAND_OK path). No cache refresh needed here. */
+            /* ReqID:TECC4.0 - Bug 9263: HE 元数据缓存按 DEK 名缓存密钥材料，
+             * 同名 DEK 重建（新 OID、新 HE 密钥对）后旧条目必须失效，否则本
+             * 进程继续用旧公钥加密、旧私钥解密——本会话自洽，但换个进程就
+             * 解不开（HE result out of range）。 */
+            tecc_he_meta_cache_clear();
             tecc_processor_debug(TECC_LOG_DEBUG1,
                                 "CREATE KEK/DEK: handled by tecc_process_result PENDING promotion");
             break;
@@ -771,6 +749,18 @@ update_metadata_cache(TeccPostStmtProcessorContext *context)
                 tecc_key_cache_expire(drop_state->crypto_scheduler->key_adapter,
                                      stmt_data->drop_key_oid);
             }
+
+            /* ReqID:TECC4.0 - Bug 9263: HE 元数据缓存一并失效。
+             * DROP DEK 删掉的是某个 DEK 的 HE 密钥材料，而该缓存按 【DEK 名】
+             * 索引；同名重建会拿到全新 HE 密钥对，旧条目（旧公钥 / 旧私钥信封）
+             * 不清就会继续被本进程使用——本会话读写自洽，但写入的数据只有那把
+             * 已删掉的旧密钥能解，任何其他进程读都是 "HE result out of range"。
+             * DROP KEK 同理：它重封/作废了关联 HE DEK 的私钥信封。
+             * DROP 是 DDL，这里不区分对象类型、一律清空（缓存仅 16 项，重建代价
+             * 是一次 PQexec），宁可多清一次，不要留一个"按名命中旧材料"的口子。 */
+            tecc_he_meta_cache_clear();
+            tecc_processor_debug(TECC_LOG_DEBUG1,
+                                "DROP: cleared HE metadata cache");
             break;
         }
 

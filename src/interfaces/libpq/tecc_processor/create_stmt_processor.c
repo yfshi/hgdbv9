@@ -30,6 +30,8 @@
 
 /* ReqID:TECC4.0 - Encryption and cache interfaces for DEFAULT encryption */
 #include "../tecc_scheduler/tecc_crypto_scheduler.h"
+/* Modify - ReqID:TECC4.0: P1-1 校验 DEK key_algo 需查询 hg_dek_args（tecc_he_load_dek_key_hex） */
+#include "../tecc_scheduler/tecc_algorithm_scheduler.h"
 #include "../tecc_cache/tecc_metadata_cache.h"
 #include "../tecc_libpq_integration/fe-tecc-integration.h"
 
@@ -49,12 +51,44 @@ static void create_context_cleanup(TeccCreateStmtProcessorContext *context);
 
 /* ReqID:TECC4.0 - Forward declarations for DEFAULT encryption helpers */
 Oid map_enc_type_name_to_base_oid(const char *type_name);
-static const char *parse_support_algo_flags(const char *algo_value, bool *has_det, bool *has_ope, bool *has_search);
+static const char *parse_support_algo_flags(const char *algo_value,
+    bool *has_det, bool *has_ope, bool *has_search,
+    bool *has_he_add, bool *has_he_mul);
 
 /* ReqID:TECC4.0 - Forward declarations for partition boundary encryption */
 static void encrypt_partition_bounds(CreateStmt *stmt,
                                      TeccCreateStmtProcessorContext *context,
                                      TeccStatementData *statement_data);
+
+/*
+ * ReqID:TECC4.0 - P1-1 查询 DEK 的 key_algo
+ * 返回 0 成功（buf 填充 key_algo），非 0 失败（查询错误）。
+ * 注意：传统对称 DEK 不存储 key_algo 条目，视为 'sm4'（默认）。
+ */
+static int
+tecc_dek_get_key_algo(TeccState *state, const char *dek_name,
+                      char *buf, size_t bufsz)
+{
+    char   *kt_raw = NULL;
+
+    if (state == NULL || dek_name == NULL || buf == NULL || bufsz == 0)
+        return -1;
+
+    /* 只读新规范名 key_algo；传统对称 DEK 不存储 key_algo，默认为 sm4 */
+    if (tecc_he_load_dek_key_hex(state, dek_name, "key_algo", &kt_raw) != 0 ||
+        kt_raw == NULL || kt_raw[0] == '\0')
+    {
+        if (kt_raw)
+            pg_free(kt_raw);
+        strlcpy(buf, "sm4", bufsz);
+        return 0;
+    }
+
+    strlcpy(buf, kt_raw, bufsz);
+    pg_free(kt_raw);
+
+    return 0;
+}
 
 /*
  * Encryption-supported column types
@@ -74,6 +108,46 @@ static const struct {
     {"bpchar_enc", "DET"},
     {NULL, NULL}
 };
+
+/*
+ * ReqID:TECC4.0 - Bug 7972: 在 SQL 文本中定位 "关键字 值" 形态的模式。
+ *
+ * 关键字部分（pattern 的前 keyword_len 个字符）按大小写不敏感比较，其余部分
+ * 仍按原样逐字节比较（值来自同一条 SQL 的解析结果，必须完全一致）。
+ *
+ * 原实现只是"先找大写 DEFAULT，找不到再找全小写 default"，混合大小写
+ * （DeFaUlT/Default/dEfAuLt）两种都匹配不上 → DEFAULT 重写被静默跳过 →
+ * 明文原样下发后端 → cipherdata_in 报 invalid hex string。SQL 关键字本身
+ * 大小写不敏感，能写出 'DeFaUlT' 就必须能加密。
+ *
+ * 返回值：匹配位置（指向 haystack 内部），无匹配返回 NULL。
+ * 注：调用方用 strlen(pattern) 计算匹配长度，故匹配段与 pattern 等长。
+ */
+static char *
+tecc_find_pattern_keyword_ci(const char *haystack, const char *pattern,
+                             size_t keyword_len)
+{
+    size_t pat_len;
+    char  *p;
+
+    if (haystack == NULL || pattern == NULL)
+        return NULL;
+
+    pat_len = strlen(pattern);
+    if (pat_len < keyword_len)
+        return NULL;
+
+    p = (char *) haystack;
+    for (; *p != '\0'; p++)
+    {
+        if (pg_strncasecmp(p, pattern, keyword_len) == 0 &&
+            strncmp(p + keyword_len, pattern + keyword_len,
+                    pat_len - keyword_len) == 0)
+            return p;
+    }
+
+    return NULL;
+}
 
 /*
  * Main CREATE statement processing entry point
@@ -108,6 +182,25 @@ tecc_create_stmt_processor_run(const CreateStmt *create_stmt,
     if (result != TECC_CREATE_PROCESSOR_SUCCESS)
         goto cleanup;
 
+    /* ReqID:TECC4.0 - 临时表处理：
+     * 1) TEMP + 加密列：明确拒绝（后端 DefineRelation 同样拒绝，防孤儿元数据行）；
+     * 2) 普通 TEMP 表：记录到会话级临时表清单，未限定表名解析时临时表优先
+     *    （与 PG 的 pg_temp 优先语义一致，避免误解析到 search_path 同名表）。 */
+    if (create_stmt->is_temp)
+    {
+        TeccState *state = tecc_get_state(statement_data->conn);
+        if (state != NULL && context.has_encrypted_columns)
+        {
+            tecc_processor_set_error(statement_data,
+                TECC_PROCESSOR_ERROR,
+                "TECC does not support temporary encrypted tables");
+            result = TECC_CREATE_PROCESSOR_ERROR;
+            goto cleanup;
+        }
+        if (state != NULL && create_stmt->relation != NULL)
+            tecc_state_add_temp_table(state, create_stmt->relation->relname);
+    }
+
     /* ReqID:TECC4.0 - Encrypt partition boundary values */
     encrypt_partition_bounds((CreateStmt *)create_stmt, &context, statement_data);
     if (statement_data->error_code != 0)
@@ -134,56 +227,58 @@ tecc_create_stmt_processor_run(const CreateStmt *create_stmt,
                 foreach(lc, context.default_encryptions)
                 {
                     TeccDefaultEncInfo *info = (TeccDefaultEncInfo *) lfirst(lc);
-                    char search_pattern[512];
-                    char replace_pattern[1024];
+                    char *search_pattern;
+                    char *replace_pattern;
                     char *found_pos;
                     char *new_query;
+                    size_t search_len;
+                    size_t replace_len;
                     size_t prefix_len;
                     size_t new_len;
                     size_t suffix_len;
+                    const char *bare_hex;
+                    const char *col_type;
 
                     /* Build search pattern: "DEFAULT <plaintext_value>"
-                     * ReqID:TECC4.0 - Search case-insensitively because user SQL
-                     * may use lowercase 'default'. Try uppercase first, then lowercase. */
-                    snprintf(search_pattern, sizeof(search_pattern),
+                     * ReqID:TECC4.0 - Bug 7972: SQL 关键字大小写不敏感，
+                     * DEFAULT / default / DeFaUlT 等任意写法都要能定位。
+                     *
+                     * 动态分配（原先 search_pattern/replace_pattern 是定长栈数组）：
+                     * 同态密文的 hex 有上千字符，定长 snprintf 会把替换文本截断，
+                     * 截断后引号不闭合 —— 服务端只报 unterminated quoted string，
+                     * 看不出是前端截断。 */
+                    search_len = strlen(info->plaintext_value) + strlen("DEFAULT ") + 1;
+                    search_pattern = (char *)pg_malloc(search_len);
+                    snprintf(search_pattern, search_len,
                              "DEFAULT %s", info->plaintext_value);
-                    found_pos = strstr(current_query, search_pattern);
-                    if (found_pos == NULL)
-                    {
-                        /* Try lowercase 'default' variant */
-                        size_t pat_len = strlen(search_pattern);
-                        if (pat_len > 7)
-                        {
-                            char lower_pattern[512];
-                            if (pat_len < sizeof(lower_pattern))
-                            {
-                                lower_pattern[0] = 'd';
-                                lower_pattern[1] = 'e';
-                                lower_pattern[2] = 'f';
-                                lower_pattern[3] = 'a';
-                                lower_pattern[4] = 'u';
-                                lower_pattern[5] = 'l';
-                                lower_pattern[6] = 't';
-                                memcpy(lower_pattern + 7, search_pattern + 7,
-                                       pat_len - 7 + 1);
-                                found_pos = strstr(current_query, lower_pattern);
-                            }
-                        }
-                    }
+                    found_pos = tecc_find_pattern_keyword_ci(current_query,
+                                                             search_pattern,
+                                                             strlen("DEFAULT"));
                     if (found_pos == NULL)
                     {
                         tecc_processor_debug(TECC_LOG_WARNING,
                             "Cannot find DEFAULT pattern '%s' in query for column '%s'",
                             search_pattern, info->column_name);
+                        pg_free(search_pattern);
                         continue;
                     }
 
-                    /* Build replacement: "DEFAULT '<hex>'::<type>"
-                     * Note: encrypted_hex already includes \x prefix from hex_encode */
-                    snprintf(replace_pattern, sizeof(replace_pattern),
-                             "DEFAULT '%s'::%s",
-                             info->encrypted_hex,
-                             info->column_type ? info->column_type : "text");
+                    /* Build replacement: "DEFAULT E'\\x<hex>'::<type>"
+                     * ReqID:TECC4.0 - E-string for scs compatibility.
+                     * Strip \x prefix from encrypted_hex for E'' context. */
+                    bare_hex = info->encrypted_hex;
+                    if (bare_hex != NULL &&
+                        bare_hex[0] == '\\' && bare_hex[1] == 'x')
+                        bare_hex += 2;
+                    if (bare_hex == NULL)
+                        bare_hex = "";
+                    col_type = (info->column_type != NULL) ? info->column_type : "text";
+                    /* 注意格式串里是两个反斜杠（E'' 上下文的 \\x），长度按同形计算 */
+                    replace_len = strlen(bare_hex) + strlen(col_type) +
+                                  strlen("DEFAULT E'\\\\x'::") + 1;
+                    replace_pattern = (char *)pg_malloc(replace_len);
+                    snprintf(replace_pattern, replace_len,
+                             "DEFAULT E'\\\\x%s'::%s", bare_hex, col_type);
 
                     /* Calculate positions */
                     prefix_len = (size_t)(found_pos - current_query);
@@ -192,7 +287,11 @@ tecc_create_stmt_processor_run(const CreateStmt *create_stmt,
 
                     new_query = (char *)pg_malloc(new_len);
                     if (new_query == NULL)
+                    {
+                        pg_free(search_pattern);
+                        pg_free(replace_pattern);
                         continue;
+                    }
 
                     /* Build new query: prefix + replacement + suffix */
                     memcpy(new_query, current_query, prefix_len);
@@ -203,6 +302,9 @@ tecc_create_stmt_processor_run(const CreateStmt *create_stmt,
 
                     pg_free(current_query);
                     current_query = new_query;
+
+                    pg_free(search_pattern);
+                    pg_free(replace_pattern);
 
                     tecc_processor_debug(TECC_LOG_DEBUG1,
                         "Rewritten DEFAULT for column '%s': '%s' -> hex",
@@ -379,7 +481,14 @@ tecc_create_stmt_processor_check_column(const ColumnDef *column_def,
                 col_data = tecc_column_ref_data_create();
                 if (col_data != NULL)
                 {
-                    tecc_column_ref_data_init(col_data, NULL, NULL, context->table_name, column_def->colname);
+                    /* ReqID:TECC4.0 - Pass schema from CREATE TABLE relation so
+                     * that last_table_schema is set correctly for post-DDL cache
+                     * refresh. Without this, deferred DDL refresh queries the
+                     * wrong schema (e.g. public instead of sch_t), causing
+                     * subsequent INSERT to miss encrypted column metadata. */
+                    tecc_column_ref_data_init(col_data, NULL,
+                        context->schema_name,
+                        context->table_name, column_def->colname);
                     /* ReqID:TECC4.0 - pending_tables: store original _enc type name */
                     if (type_name != NULL)
                     {
@@ -430,6 +539,17 @@ tecc_create_stmt_processor_check_column(const ColumnDef *column_def,
                                 tecc_column_ref_data_set_dek_name(col_data, dek_value);
 
                             }
+                            /* ReqID:TECC4.0 - 一列多 DEK：he-add/he-mul 各自的同态 DEK */
+                            else if (strcasecmp(opt->defname, "he_add_dek") == 0 && opt->arg != NULL)
+                            {
+                                char *dek_value = strVal((Value *)opt->arg);
+                                tecc_column_ref_data_set_he_add_dek_name(col_data, dek_value);
+                            }
+                            else if (strcasecmp(opt->defname, "he_mul_dek") == 0 && opt->arg != NULL)
+                            {
+                                char *dek_value = strVal((Value *)opt->arg);
+                                tecc_column_ref_data_set_he_mul_dek_name(col_data, dek_value);
+                            }
                             else if (strcasecmp(opt->defname, "support_algo") == 0 && opt->arg != NULL)
                             {
                                 char *algo_value = strVal((Value *)opt->arg);
@@ -469,6 +589,139 @@ tecc_create_stmt_processor_check_column(const ColumnDef *column_def,
                     }
                     }
 
+            /* ReqID:TECC4.0 - 一列多 DEK 校验：
+             * 仅当列显式提供了 HE_ADD_DEK/HE_MUL_DEK（进入多 DEK 体系）时，
+             * 才校验其存在且与 SUPPORT_ALGO 对应。若列只用单个 DEK 服务所有
+             * 算法（未提供 HE_ADD_DEK/HE_MUL_DEK），保持 V4.0.0 兼容行为，
+             * 不做强制拆分。 */
+            {
+                const char *col_algo = tecc_column_ref_data_get_support_algo(col_data);
+                const char *he_add_dek = tecc_column_ref_data_get_he_add_dek_name(col_data);
+                const char *he_mul_dek = tecc_column_ref_data_get_he_mul_dek_name(col_data);
+                bool c_has_he_add = false, c_has_he_mul = false;
+                bool c_dummy_det = false, c_dummy_ope = false, c_dummy_search = false;
+                bool multi_dek_mode = (he_add_dek != NULL || he_mul_dek != NULL);
+                TeccState *col_state;
+
+                if (col_algo != NULL)
+                    parse_support_algo_flags(col_algo, &c_dummy_det, &c_dummy_ope,
+                                             &c_dummy_search, &c_has_he_add, &c_has_he_mul);
+
+                if (!multi_dek_mode)
+                {
+                    /* ReqID:TECC4.0 - 单 DEK 兼容模式校验：列启用 HE 算法但
+                     * 未提供 HE_ADD_DEK/HE_MUL_DEK（V4.0.0 单 DEK 风格）时，
+                     * DEK 参数必须是 HE DEK（key_algo='he-add' 或 'he-mul'），
+                     * 防止 sm4 DEK 用于 HE 列导致后续运算/解密加载密钥失败。
+                     * 单 DEK 可同时服务 he-add/he-mul（V4.0.0 兼容，P0-2
+                     * 多 DEK 落地前的过渡形态）。 */
+                    char algo_buf2[16];
+                    const char *dek_name2;
+
+                    col_state = tecc_get_state(statement_data->conn);
+                    if (col_state != NULL && (c_has_he_add || c_has_he_mul))
+                    {
+                        dek_name2 = tecc_column_ref_data_get_dek_name(col_data);
+
+                        if (dek_name2 == NULL || dek_name2[0] == '\0' ||
+                            tecc_dek_get_key_algo(col_state, dek_name2,
+                                                  algo_buf2, sizeof(algo_buf2)) != 0 ||
+                            (strcmp(algo_buf2, "he-add") != 0 &&
+                             strcmp(algo_buf2, "he-mul") != 0))
+                        {
+                            tecc_processor_set_error(statement_data,
+                                TECC_PROCESSOR_INVALID_INPUT,
+                                "DEK '%s' for HE column '%s' must be a HE DEK "
+                                "(KEY_ALGO='he-add' or 'he-mul')",
+                                dek_name2 ? dek_name2 : "(none)",
+                                column_def->colname);
+                            return TECC_CREATE_PROCESSOR_ERROR;
+                        }
+                    }
+                }
+                else
+                {
+                    col_state = tecc_get_state(statement_data->conn);
+
+                    if (c_has_he_add && he_add_dek == NULL)
+                    {
+                        tecc_processor_set_error(statement_data,
+                            TECC_PROCESSOR_INVALID_INPUT,
+                            "Column '%s' enables he-add but no HE_ADD_DEK specified",
+                            column_def->colname);
+                        return TECC_CREATE_PROCESSOR_ERROR;
+                    }
+                    if (c_has_he_mul && he_mul_dek == NULL)
+                    {
+                        tecc_processor_set_error(statement_data,
+                            TECC_PROCESSOR_INVALID_INPUT,
+                            "Column '%s' enables he-mul but no HE_MUL_DEK specified",
+                            column_def->colname);
+                        return TECC_CREATE_PROCESSOR_ERROR;
+                    }
+                /* ReqID:TECC4.0 - HE_ADD_DEK/HE_MUL_DEK 的存在性与 key_algo 校验
+                 * 统一由下方 tecc_dek_get_key_algo 完成（支持 qualified 名如
+                 * 'public.dek_env_he'），不再用 search_path 查找（它不支持
+                 * schema 限定名）。 */
+
+                    /* ReqID:TECC4.0 - P1-1 key_algo 匹配校验：
+                     * HE_ADD_DEK 必须指向 key_algo='he-add' 的 DEK，
+                     * HE_MUL_DEK 必须指向 key_algo='he-mul' 的 DEK；
+                     * 对称算法（DET/OPE/SEARCH）开启时，必须提供对称 DEK
+                     * （DEK 参数）且其 key_algo='sm4'。 */
+                    if (col_state != NULL)
+                    {
+                        char algo_buf[16];
+
+                        if (he_add_dek != NULL &&
+                            (tecc_dek_get_key_algo(col_state, he_add_dek,
+                                                   algo_buf, sizeof(algo_buf)) != 0 ||
+                             strcmp(algo_buf, "he-add") != 0))
+                        {
+                            tecc_processor_set_error(statement_data,
+                                TECC_PROCESSOR_INVALID_INPUT,
+                                "HE_ADD_DEK '%s' for column '%s' must be a he-add DEK "
+                                "(KEY_ALGO='he-add')", he_add_dek, column_def->colname);
+                            return TECC_CREATE_PROCESSOR_ERROR;
+                        }
+                        if (he_mul_dek != NULL &&
+                            (tecc_dek_get_key_algo(col_state, he_mul_dek,
+                                                   algo_buf, sizeof(algo_buf)) != 0 ||
+                             strcmp(algo_buf, "he-mul") != 0))
+                        {
+                            tecc_processor_set_error(statement_data,
+                                TECC_PROCESSOR_INVALID_INPUT,
+                                "HE_MUL_DEK '%s' for column '%s' must be a he-mul DEK "
+                                "(KEY_ALGO='he-mul')", he_mul_dek, column_def->colname);
+                            return TECC_CREATE_PROCESSOR_ERROR;
+                        }
+                        if (c_dummy_det || c_dummy_ope || c_dummy_search)
+                        {
+                            const char *sym_dek = tecc_column_ref_data_get_dek_name(col_data);
+
+                            if (sym_dek == NULL || sym_dek[0] == '\0')
+                            {
+                                tecc_processor_set_error(statement_data,
+                                    TECC_PROCESSOR_INVALID_INPUT,
+                                    "Column '%s' enables symmetric algorithms "
+                                    "(DET/OPE/SEARCH) but no DEK specified", column_def->colname);
+                                return TECC_CREATE_PROCESSOR_ERROR;
+                            }
+                            if (tecc_dek_get_key_algo(col_state, sym_dek,
+                                                      algo_buf, sizeof(algo_buf)) != 0 ||
+                                strcmp(algo_buf, "sm4") != 0)
+                            {
+                                tecc_processor_set_error(statement_data,
+                                    TECC_PROCESSOR_INVALID_INPUT,
+                                    "DEK '%s' for symmetric algorithms of column '%s' "
+                                    "must be a sm4 DEK (KEY_ALGO='sm4')", sym_dek, column_def->colname);
+                                return TECC_CREATE_PROCESSOR_ERROR;
+                            }
+                        }
+                    }
+                }
+            }
+
             /* ReqID:TECC4.0 - Collation + OPE validation:
              * Character encrypted columns (text_enc/varchar_enc/bpchar_enc)
              * with COLLATE require support_algo to include 'ope'. Collation
@@ -480,8 +733,10 @@ tecc_create_stmt_processor_check_column(const ColumnDef *column_def,
             {
                 const char *algo_str2;
                 bool h_det = false, h_ope = false, h_search = false;
+                bool h_he_add = false, h_he_mul = false;
                 algo_str2 = tecc_column_ref_data_get_support_algo(col_data);
-                if (parse_support_algo_flags(algo_str2, &h_det, &h_ope, &h_search) == NULL && !h_ope)
+                if (parse_support_algo_flags(algo_str2, &h_det, &h_ope, &h_search,
+                                             &h_he_add, &h_he_mul) == NULL && !h_ope)
                 {
                     tecc_processor_set_error(statement_data,
                         TECC_PROCESSOR_INVALID_INPUT,
@@ -533,10 +788,15 @@ tecc_create_stmt_processor_check_column(const ColumnDef *column_def,
                             const char *kek_name;
                             Oid base_oid;
                             bool has_det, has_ope, has_search;
+                            bool has_he_add = false, has_he_mul = false;
                             TeccUnifiedEncryptResult *enc_result;
                         const char *encrypt_value;
                             TeccDefaultEncInfo *info;
                             const char *algo_err;
+                            char *collation_locale;
+                            int32 local_typmod;
+                            const char *he_add_dek_name;
+                            const char *he_mul_dek_name;
 
                             plaintext_buf[0] = '\0';
 
@@ -591,8 +851,20 @@ tecc_create_stmt_processor_check_column(const ColumnDef *column_def,
                                 plaintext_value = plaintext_buf;
                             }
 
-                            /* Get DEK from cache */
+                            /* Get DEK from cache。
+                             * ReqID:TECC4.0 - 纯同态列没有对称 DEK（ENCRYPTED WITH
+                             * 里只写了 HE_ADD_DEK/HE_MUL_DEK），与列路径同一处理：用
+                             * 同态 DEK 名当 dek_name（见 tecc_column_cache.c 里从缓存项
+                             * 构造列元数据处），否则纯 HE 列的 DEFAULT 会被静默跳过。 */
+                            he_add_dek_name =
+                                tecc_column_ref_data_get_he_add_dek_name(col_data);
+                            he_mul_dek_name =
+                                tecc_column_ref_data_get_he_mul_dek_name(col_data);
                             dek_name = tecc_column_ref_data_get_dek_name(col_data);
+                            if (dek_name == NULL || dek_name[0] == '\0')
+                                dek_name = (he_add_dek_name != NULL &&
+                                            he_add_dek_name[0] != '\0')
+                                           ? he_add_dek_name : he_mul_dek_name;
                             if (dek_name == NULL || dek_name[0] == '\0')
                             {
                                 tecc_processor_debug(TECC_LOG_WARNING,
@@ -635,7 +907,8 @@ tecc_create_stmt_processor_check_column(const ColumnDef *column_def,
                             }
 
                             algo_str = tecc_column_ref_data_get_support_algo(col_data);
-                            algo_err = parse_support_algo_flags(algo_str, &has_det, &has_ope, &has_search);
+                            algo_err = parse_support_algo_flags(algo_str, &has_det, &has_ope, &has_search,
+                                                               &has_he_add, &has_he_mul);
                             if (algo_err != NULL)
                             {
                                 tecc_processor_debug(TECC_LOG_ERROR,
@@ -644,8 +917,28 @@ tecc_create_stmt_processor_check_column(const ColumnDef *column_def,
                                 continue;
                             }
 
+                            /* ReqID:TECC4.0 - 该列尚未入库、缓存必然 miss，必须
+                             * 显式给出将来生效的 collation locale，否则 DET/OPE
+                             * 归一化与查询路径不一致，DEFAULT 行等值查不到。 */
+                            collation_locale = resolve_new_column_collation_locale(
+                                statement_data->conn, base_oid,
+                                (CollateClause *)column_def->collClause);
+
+                            /* ReqID:TECC4.0 - DEFAULT 值同样要按列声明的长度校验：
+                             * 加密列语法里 varchar_enc(N)/bpchar_enc(N) 的 N 原样存在
+                             * typemod，而调度器判据要的是 atttypmod（N+VARHDRSZ）。
+                             * 不换算就等于不校验 —— `varchar_enc(3) DEFAULT 'abcdefghij'`
+                             * 会被静默接受，而同一张表用 INSERT 写同样长的值会报
+                             * value too long for type character varying(3)。 */
+                            local_typmod = -1;
+                            if (column_def->typeName != NULL &&
+                                column_def->typeName->typemod >= 0 &&
+                                (base_oid == 1043 /* VARCHAROID */ ||
+                                 base_oid == 1042 /* BPCHAROID */))
+                                local_typmod = column_def->typeName->typemod + VARHDRSZ;
+
                             /* Encrypt the DEFAULT value */
-                            enc_result = tecc_unified_encrypt_string_with_options(
+                            enc_result = tecc_unified_encrypt_string_with_options_and_collation(
                                 statement_data->conn,
                                 encrypt_value,
                                 context->table_name ? context->table_name : "unknown",
@@ -653,17 +946,38 @@ tecc_create_stmt_processor_check_column(const ColumnDef *column_def,
                                 kek_name,
                                 dek_name,
                                 base_oid,
-                                -1, /* default typmod */
+                                local_typmod,
                                 has_det,
                                 has_ope,
                                 has_search,
+                                has_he_add,
+                                has_he_mul,
+                                collation_locale,
+                                he_add_dek_name,
+                                he_mul_dek_name,
                                 NULL);
+
+                            if (collation_locale != NULL)
+                                pg_free(collation_locale);
 
                             if (enc_result == NULL || enc_result->hex_string == NULL)
                             {
+                                /* ReqID:TECC4.0 - 失败原因（列声明长度的拒收等）在调度器的
+                                 * 错误记录里，必须上抛：静默跳过等于让这条 DEFAULT 留在
+                                 * CREATE TABLE 里当明文，建出来的表每个 DEFAULT 行都读不回来。
+                                 * 与 INSERT/cast 路径（stmt_report_encrypt_failure）一致。 */
+                                const char *reason =
+                                    (enc_result != NULL && enc_result->error_msg[0] != '\0')
+                                    ? enc_result->error_msg
+                                    : tecc_get_last_error(statement_data->conn);
+
                                 if (enc_result != NULL)
                                     tecc_unified_free_encrypt_result(enc_result);
-                                continue;
+                                tecc_processor_set_error(statement_data, TECC_PROCESSOR_ERROR,
+                                    "Encryption failed: %s",
+                                    (reason != NULL && reason[0] != '\0') ?
+                                    reason : "unknown error");
+                                return TECC_CREATE_PROCESSOR_ERROR;
                             }
 
                             /* Store encryption info for later SQL rewrite */
@@ -767,11 +1081,241 @@ map_enc_type_name_to_base_oid(const char *type_name)
 }
 
 /*
+ * ReqID:TECC4.0 - 把 CollateClause 的限定名拼成 SQL 里可直接解析的标识符文本：
+ * 每段加双引号、内部双引号翻倍（"sch"."MyColl"）。这样 to_regcollation() 才能
+ * 按原始大小写精确解析，而不会被当作未加引号的标识符折叠成小写。
+ * 返回 pg_strdup 的字符串，调用方负责 pg_free；结构异常时返回 NULL。
+ */
+static char *
+build_qualified_collation_name(const CollateClause *coll_clause)
+{
+    char        buf[2 * NAMEDATALEN + 8];
+    size_t      off = 0;
+    ListCell   *lc;
+    bool        first = true;
+
+    if (coll_clause == NULL || coll_clause->collname == NIL)
+        return NULL;
+
+    foreach(lc, coll_clause->collname)
+    {
+        Node       *node = (Node *) lfirst(lc);
+        const char *ident = NULL;
+        const char *p;
+
+        if (IsA(node, String) || IsA(node, Const))
+            ident = strVal((Value *) node);
+        if (ident == NULL || ident[0] == '\0' || strlen(ident) >= NAMEDATALEN)
+            return NULL;
+
+        if (!first)
+        {
+            if (off + 1 >= sizeof(buf))
+                return NULL;
+            buf[off++] = '.';
+        }
+        first = false;
+
+        if (off + 3 >= sizeof(buf))
+            return NULL;
+        buf[off++] = '"';
+        for (p = ident; *p != '\0'; p++)
+        {
+            if (off + 3 >= sizeof(buf))
+                return NULL;
+            if (*p == '"')
+                buf[off++] = '"';
+            buf[off++] = *p;
+        }
+        buf[off++] = '"';
+    }
+    buf[off] = '\0';
+
+    return pg_strdup(buf);
+}
+
+/*
+ * ReqID:TECC4.0 - 从 ENCRYPTED WITH 选项里取同态 DEK 名（HE_ADD_DEK / HE_MUL_DEK）。
+ *
+ * 目标列还不存在的写入路径（CTAS 的结果表列、视图/物化视图定义里的 cast、加密列
+ * DEFAULT）拿不到列元数据，同态 DEK 就没有别的来源 —— 加密入口只有单个 dek_name
+ * 参数，列级的 he_add_dek/he_mul_dek 要靠 hg_encrypted_column_args 解析，而这些
+ * 路径恰好没有那一行。调用方把名字交给
+ * tecc_unified_encrypt_string_with_options_and_collation() 即可。
+ *
+ * 返回的是解析树里字符串的指针（不复制、不要释放）；没有对应选项时置 NULL。
+ */
+void
+tecc_typename_get_he_dek_names(const TypeName *type_name,
+                               const char **he_add_dek_name,
+                               const char **he_mul_dek_name)
+{
+    ListCell *lc;
+
+    if (he_add_dek_name != NULL)
+        *he_add_dek_name = NULL;
+    if (he_mul_dek_name != NULL)
+        *he_mul_dek_name = NULL;
+
+    if (type_name == NULL)
+        return;
+
+    foreach(lc, type_name->encryptedOpts)
+    {
+        DefElem *elem = (DefElem *) lfirst(lc);
+
+        if (elem == NULL || elem->defname == NULL || elem->arg == NULL)
+            continue;
+        if (nodeTag(elem->arg) != FE_T_String)
+            continue;
+
+        if (he_add_dek_name != NULL &&
+            pg_strcasecmp(elem->defname, "he_add_dek") == 0)
+            *he_add_dek_name = strVal((const Value *) elem->arg);
+        else if (he_mul_dek_name != NULL &&
+                 pg_strcasecmp(elem->defname, "he_mul_dek") == 0)
+            *he_mul_dek_name = strVal((const Value *) elem->arg);
+    }
+}
+
+/*
+ * ReqID:TECC4.0 - 解析新建加密列将来生效的 collation locale 字符串。
+ *
+ * 为什么需要：DET/OPE 归一化要用 locale 生成 ICU sort key。建表时列还不存在，
+ * 元数据缓存查不到该列，加密 DEFAULT 值的路径拿不到 collation_locale，归一化
+ * 会退化成无 collation 的二进制拷贝；而 INSERT/WHERE 路径从
+ * hg_encrypted_columns_info 拿到了 locale —— 同一明文因此产生两套互不相等的
+ * （但各自确定性的）密文，DEFAULT 插入的行被等值查询静默漏掉。
+ *
+ * 取值必须与后端建完列之后视图给出的值一致：后端建列时
+ * collOid = tecc_resolve_collation_oid(GetColumnDefCollation(...))，视图
+ * hg_encrypted_columns_info 再取该 collation 的 collcollate。因此：
+ *   - 列上写了 COLLATE   → 该 collation 的 collcollate；
+ *   - 文本类型且无 COLLATE → 库默认排序规则的 collcollate（先把
+ *     DEFAULT_COLLATION_OID 按 datcollate 解析成具体 collation，再取
+ *     collcollate，规则与 tecc_resolve_collation_oid 一致）；
+ *   - 非文本类型         → NULL（无 collation）。
+ * 查询失败或结果为空一律返回 NULL：行为与修复前相同（拿不到 collation），
+ * 不会让建表失败，但会打一条警告（否则"环境异常导致静默退化成旧行为"无从发现）。
+ *
+ * 返回值是 pg_strdup 的字符串，调用方负责 pg_free。
+ * 目标列还不存在的其他路径（CTAS、物化视图/视图定义里的带 ENCRYPTED WITH cast）
+ * 也用它：那些列同样没有 COLLATE 子句，传 coll_clause = NULL 即取库默认排序规则，
+ * 结果按连接缓存在 TeccState.default_collation_locale（一个 CTAS 里每个密态字面量
+ * 都调一次，不缓存就是每个字面量一次元数据查询）。
+ */
+char *
+resolve_new_column_collation_locale(PGconn *conn, Oid base_oid,
+                                    const CollateClause *coll_clause)
+{
+    char        query[1024];
+    PGresult   *res;
+    char       *result = NULL;
+    bool        saved_enable_tecc;
+    bool        is_text_type = (base_oid == 25    /* TEXTOID */ ||
+                                base_oid == 1043  /* VARCHAROID */ ||
+                                base_oid == 1042  /* BPCHAROID */);
+    TeccState  *state = NULL;
+
+    if (conn == NULL)
+        return NULL;
+
+    /* 非文本类型本来就没有 collation，免查 */
+    if (coll_clause == NULL && !is_text_type)
+        return NULL;
+
+    /* 无 COLLATE 分支的结果只取决于所连库的默认排序规则，一条连接绑定一个库
+     * （换库必须重连），可安全缓存；只缓存成功解析出的值。 */
+    if (coll_clause == NULL)
+    {
+        state = tecc_get_state(conn);
+        if (state != NULL && state->default_collation_locale != NULL)
+            return pg_strdup(state->default_collation_locale);
+    }
+
+    if (coll_clause != NULL)
+    {
+        char   *qualified = build_qualified_collation_name(coll_clause);
+        char   *literal;
+
+        if (qualified == NULL)
+            return NULL;
+        literal = PQescapeLiteral(conn, qualified, strlen(qualified));
+        pg_free(qualified);
+        if (literal == NULL)
+            return NULL;
+
+        snprintf(query, sizeof(query),
+                 "SELECT CASE WHEN c.oid = 100 "
+                 "THEN (SELECT datcollate FROM pg_database "
+                 "      WHERE datname = current_database()) "
+                 "ELSE c.collcollate END "
+                 "FROM pg_collation c WHERE c.oid = to_regcollation(%s)",
+                 literal);
+        PQfreemem(literal);
+    }
+    else
+    {
+        snprintf(query, sizeof(query),
+                 "SELECT c.collcollate FROM pg_collation c "
+                 "WHERE c.collencoding IN "
+                 "      (pg_char_to_encoding(current_setting('server_encoding')), -1) "
+                 "  AND c.collprovider IN ('d', 'c') "
+                 "  AND lower(replace(c.collcollate, '-', '')) = "
+                 "      lower(replace((SELECT datcollate FROM pg_database "
+                 "                     WHERE datname = current_database()), '-', '')) "
+                 "LIMIT 1");
+    }
+
+    /* 内部元数据查询：临时关闭 TECC 预处理，避免递归处理这条查询本身 */
+    saved_enable_tecc = conn->enable_tecc;
+    conn->enable_tecc = false;
+    res = PQexec(conn, query);
+    conn->enable_tecc = saved_enable_tecc;
+
+    if (res != NULL)
+    {
+        if (PQresultStatus(res) == PGRES_TUPLES_OK && PQntuples(res) > 0 &&
+            !PQgetisnull(res, 0, 0))
+        {
+            const char *val = PQgetvalue(res, 0, 0);
+
+            if (val != NULL && val[0] != '\0')
+                result = pg_strdup(val);
+        }
+        PQclear(res);
+    }
+
+    if (result != NULL)
+    {
+        /* 缓存给同一连接后续调用（一个 CTAS 里有多个密态字面量时不必重复查） */
+        if (coll_clause == NULL && state != NULL &&
+            state->default_collation_locale == NULL)
+            state->default_collation_locale = pg_strdup(result);
+    }
+    else
+        /* 注意：解析不出 locale 不等于报错，加密会退回不带 collation 的归一化，
+         * 密文与列自身路径不一致（等值查询静默查不到）。这里必须留下痕迹，否则
+         * 环境异常（如 collation 元数据不可读）会表现为"少数语句莫名查不到"。 */
+        tecc_processor_debug(TECC_LOG_WARNING,
+            "Could not resolve collation locale for a new encrypted column "
+            "(base type oid %u, %s); DET/OPE ciphertext may not match the "
+            "column's own path",
+            base_oid,
+            (coll_clause != NULL) ? "explicit COLLATE clause"
+                                  : "database default collation");
+
+    return result;
+}
+
+/*
  * ReqID:TECC4.0 - Parse SUPPORT_ALGO string into boolean flags.
  * Input: "DET,SEARCH" → has_det=true, has_search=true
  */
 static const char *
-parse_support_algo_flags(const char *algo_value, bool *has_det, bool *has_ope, bool *has_search)
+parse_support_algo_flags(const char *algo_value,
+                          bool *has_det, bool *has_ope, bool *has_search,
+                          bool *has_he_add, bool *has_he_mul)
 {
     char *algo_copy;
     char *saveptr;
@@ -780,6 +1324,8 @@ parse_support_algo_flags(const char *algo_value, bool *has_det, bool *has_ope, b
     *has_det = false;
     *has_ope = false;
     *has_search = false;
+    *has_he_add = false;
+    *has_he_mul = false;
 
     if (algo_value == NULL || algo_value[0] == '\0')
         return NULL;
@@ -803,6 +1349,11 @@ parse_support_algo_flags(const char *algo_value, bool *has_det, bool *has_ope, b
             *has_ope = true;
         else if (strcasecmp(token, "search") == 0)
             *has_search = true;
+        /* ReqID:TECC4.0 */
+        else if (strcasecmp(token, "he-add") == 0)
+            *has_he_add = true;
+        else if (strcasecmp(token, "he-mul") == 0)
+            *has_he_mul = true;
         token = strtok_r(NULL, ",", &saveptr);
     }
     pg_free(algo_copy);
@@ -1051,6 +1602,16 @@ tecc_encrypt_boundary_value(PGconn *conn,
     if (encrypt_value == NULL)
         return NULL;
 
+    /* ReqID:TECC4.0 - Skip encryption for sentinel bounds (Infinity/-Infinity/MAXVALUE).
+     * These are not real data values and cannot be normalized as encrypted types.
+     * MAXVALUE is already handled above (c->constisnull).
+     * Handle both bare and single-quoted forms (lexer may produce either). */
+    if (strcmp(encrypt_value, "Infinity") == 0 ||
+        strcmp(encrypt_value, "-Infinity") == 0 ||
+        strcmp(encrypt_value, "'Infinity'") == 0 ||
+        strcmp(encrypt_value, "'-Infinity'") == 0)
+        return NULL;
+
     /* ReqID:TECC4.0 - Flush pending DEK before lookup (same fix as DEFAULT encryption) */
     tecc_accept_pending_statements(conn);
 
@@ -1079,6 +1640,8 @@ tecc_encrypt_boundary_value(PGconn *conn,
         (col_cache->encryption_type & TECC_ENC_TYPE_DET) != 0,
         (col_cache->encryption_type & TECC_ENC_TYPE_OPE) != 0,
         false,  /* supports_search */
+        (col_cache->encryption_type & TECC_ENC_TYPE_HE_ADD) != 0,  /* supports_he_add */
+        (col_cache->encryption_type & TECC_ENC_TYPE_HE_MUL) != 0,  /* supports_he_mul */
         NULL);  /* external_context */
 
     if (enc_result == NULL || enc_result->hex_string == NULL)
@@ -1166,7 +1729,7 @@ encrypt_partition_bounds(CreateStmt *stmt,
 {
     PartitionBoundSpec *partbound;
     RangeVar *parent;
-    char *parent_schema;
+    const char *parent_schema;
     char *parent_table;
     char **partkey_cols = NULL;
     int partkey_ncols = 0;
@@ -1199,7 +1762,10 @@ encrypt_partition_bounds(CreateStmt *stmt,
     }
 
     parent_table = parent->relname;
-    parent_schema = parent->schemaname ? parent->schemaname : "public";
+    /* ReqID:TECC4.0 - 未限定父表名按 search_path 解析真实 schema（同 stmt_load_table_metadata） */
+    parent_schema = tecc_stmt_resolve_table_schema(statement_data,
+                                                   parent->schemaname,
+                                                   parent->relname);
 
     /* Step 1: Query partition key column names from parent table */
     partkey_cols = tecc_query_partkey_columns(statement_data->conn,
@@ -1232,70 +1798,19 @@ encrypt_partition_bounds(CreateStmt *stmt,
     parent_enc_cols = tecc_cache_get_columns_by_table_name(
         state, db_name, parent_schema, parent_table, &parent_enc_ncols);
 
-    /* ReqID:TECC4.0 - Direct main connection fallback for cache miss */
+    /* ReqID:TECC4.0 - 缓存层在查询失败时已设置 state->last_error（TECC_ERR_DATA_FETCHER）。
+     * 检测失败并上抛错误，避免加密父表被误判为普通表导致分区边界明文泄漏。
+     * 不再在主连接上直接 PQexec 兜底（原 fallback 绕过 data_fetcher 分层）。 */
     if ((parent_enc_cols == NULL || parent_enc_ncols == 0) &&
-        statement_data != NULL && statement_data->conn != NULL)
+        state->last_error.error_code == TECC_ERR_DATA_FETCHER)
     {
-        PGconn *mc = statement_data->conn;
-        int saved_tecc = mc->enable_tecc;
-        char qbuf[8192], *esc_t, *esc_s;
-        PGresult *qr; int nr, ri;
-        mc->enable_tecc = 0;
-        esc_t = PQescapeLiteral(mc, parent_table, strlen(parent_table));
-        esc_s = PQescapeLiteral(mc, parent_schema, strlen(parent_schema));
-        if (esc_t != NULL && esc_s != NULL)
-        {
-            snprintf(qbuf, sizeof(qbuf),
-                "SELECT column_attnum,column_name,dek_name,"
-                "encryption_type,data_type_original_oid,"
-                "data_type_original_mod,collation_locale,"
-                "column_key_id "
-                "FROM hg_encrypted_columns_info "
-                "JOIN pg_class cls ON table_oid=cls.oid "
-                "JOIN pg_namespace ns ON cls.relnamespace=ns.oid "
-                "WHERE cls.relname=%s AND ns.nspname=%s "
-                "AND current_database()='%s' ORDER BY column_attnum",
-                esc_t, esc_s, db_name ? db_name : "postgres");
-            PQfreemem(esc_t); PQfreemem(esc_s);
-            qr = PQexec(mc, qbuf);
-            mc->enable_tecc = saved_tecc;
-            if (qr != NULL && PQresultStatus(qr) == PGRES_TUPLES_OK &&
-                (nr = PQntuples(qr)) > 0)
-            {
-                parent_enc_ncols = nr;
-                parent_enc_cols = (TeccColumnCacheItem **)pg_malloc(
-                    nr * sizeof(TeccColumnCacheItem *));
-                for (ri = 0; ri < nr; ri++)
-                {
-                    TeccColumnCacheItem *ci = (TeccColumnCacheItem *)
-                        pg_malloc0(sizeof(TeccColumnCacheItem));
-                    ci->cache_status = TECC_CACHE_STATUS_ENCRYPTED;
-                    ci->database_name = pg_strdup(db_name ? db_name : "postgres");
-                    ci->schema_name = pg_strdup(parent_schema);
-                    ci->table_name = pg_strdup(parent_table);
-                    ci->column_attnum = atoi(PQgetvalue(qr, ri, 0));
-                    ci->column_name = pg_strdup(PQgetvalue(qr, ri, 1));
-                    ci->dek_name = pg_strdup(PQgetvalue(qr, ri, 2));
-                    ci->encryption_type = atoi(PQgetvalue(qr, ri, 3));
-                    ci->original_type_oid = atoi(PQgetvalue(qr, ri, 4));
-                    ci->original_type_mod = atoi(PQgetvalue(qr, ri, 5));
-                    {
-                        const char *loc = PQgetvalue(qr, ri, 6);
-                        if (!PQgetisnull(qr, ri, 6) && loc[0] != '\0')
-                            ci->collation_locale = pg_strdup(loc);
-                    }
-                    ci->dek_id = atoi(PQgetvalue(qr, ri, 7));
-                    parent_enc_cols[ri] = ci;
-                }
-            }
-            if (qr != NULL) PQclear(qr);
-        }
-        else
-        {
-            mc->enable_tecc = saved_tecc;
-            if (esc_t != NULL) PQfreemem(esc_t);
-            if (esc_s != NULL) PQfreemem(esc_s);
-        }
+        tecc_processor_set_error(statement_data,
+            TECC_PROCESSOR_ERROR,
+            "failed to load encrypted column metadata for partition parent \"%s.%s\": %s",
+            parent_schema, parent_table,
+            state->last_error.error_msg[0] != '\0' ? state->last_error.error_msg
+                                                   : "data fetcher error");
+        goto cleanup;
     }
 
     /* Step 3: Determine which lists to iterate */

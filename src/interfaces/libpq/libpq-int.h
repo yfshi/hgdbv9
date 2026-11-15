@@ -616,6 +616,7 @@ struct pg_conn
 
 	/* TECC (Transparent Encrypted Column Computing) support */
 	bool		enable_tecc;	/* TECC enabled flag, default true */
+	bool		tecc_ddl_only;	/* TECC 只做 DDL（分布式内部连接） */
 	void	   *tecc_crypto_ctx;	/* Crypto context */
 	void	   *tecc_key_mgr;	/* Key manager context */
 	void	   *tecc_metadata_mgr;	/* Metadata manager context */

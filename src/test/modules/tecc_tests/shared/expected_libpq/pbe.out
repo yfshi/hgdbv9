@@ -143,6 +143,8 @@ UPDATE 1
 
 DEALLOCATE
 PREPARE
+DEALLOCATE
+PREPARE
 PREPARE
 DEALLOCATE ALL
 DROP TABLE
@@ -183,33 +185,45 @@ PREPARE
 
 DEALLOCATE
 PREPARE
+UPDATE 1
     ?column?     | id | salary 
 -----------------+----+--------
- 3b_update_param |  1 | 50000
+ 3b_update_param |  1 | 55000
 (1 row)
 
 DEALLOCATE
 INSERT 0 1
 PREPARE
+DELETE 1
       ?column?       | count 
 ---------------------+-------
- 3c_delete_param_cnt |     1
+ 3c_delete_param_cnt |     0
 (1 row)
 
 DEALLOCATE
 CREATE TABLE
 PREPARE
- ?column? | id | name | age | score 
-----------+----+------+-----+-------
-(0 rows)
+INSERT 0 1
+INSERT 0 1
+      ?column?       | id | name  | age | score 
+---------------------+----+-------+-----+-------
+ 3d_multi_enc_insert |  1 | Alice | 30  | 95.5
+ 3d_multi_enc_insert |  2 | Bob   | 25  | 88
+(2 rows)
 
 DEALLOCATE
 PREPARE
+ id | name  | age | score 
+----+-------+-----+-------
+  1 | Alice | 30  | 95.5
+(1 row)
+
 DEALLOCATE
 PREPARE
- id | name | age 
-----+------+-----
-(0 rows)
+ id | name  | age 
+----+-------+-----
+  1 | Alice | 30
+(1 row)
 
 DEALLOCATE
 PREPARE
@@ -219,10 +233,11 @@ PREPARE
 
 DEALLOCATE
 PREPARE
-UPDATE 0
- ?column? | id | age | score 
-----------+----+-----+-------
-(0 rows)
+UPDATE 1
+    ?column?     | id | age | score 
+-----------------+----+-----+-------
+ 3e_multi_update |  1 | 31  | 96
+(1 row)
 
 DEALLOCATE
 PREPARE
@@ -242,24 +257,25 @@ INSERT 0 1
 
 DEALLOCATE
 PREPARE
- id | name | salary 
-----+------+--------
-(0 rows)
+ id | name  | salary 
+----+-------+--------
+  1 | Alice | 55000
+(1 row)
 
 DEALLOCATE
 CREATE TABLE
 PREPARE
 INSERT 0 1
-   ?column?    | id |   code    |    label    
----------------+----+-----------+-------------
- 3h_bpchar_enc |  1 | 'CODE001' | Test code 1
+   ?column?    | id |  code   |    label    
+---------------+----+---------+-------------
+ 3h_bpchar_enc |  1 | CODE001 | Test code 1
 (1 row)
 
 DEALLOCATE
 PREPARE
- id |   code    |    label    
-----+-----------+-------------
-  1 | 'CODE001' | Test code 1
+ id |  code   |    label    
+----+---------+-------------
+  1 | CODE001 | Test code 1
 (1 row)
 
 DEALLOCATE
@@ -293,30 +309,5 @@ DROP TABLE
 DROP KEK
 psql:/.../pbe.sql:10: NOTICE:  key encryption key "kek_pbe" does not exist, skipping
 psql:/.../pbe.sql:19: NOTICE:  table "test_prep_t1" does not exist, skipping
-psql:/.../pbe.sql:138: ERROR:  operator does not exist: int4_enc > integer
-LINE 1: ... d1 AS SELECT id, name FROM test_pe_t1 WHERE salary > 50000;
-                                                               ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
-psql:/.../pbe.sql:139: ERROR:  prepared statement "d1" does not exist
-psql:/.../pbe.sql:182: ERROR:  parameter $1 of type integer cannot be coerced to the expected type int4_enc
-LINE 1: EXECUTE c1(55000, 1);
-                   ^
-HINT:  You will need to rewrite or cast the expression.
-psql:/.../pbe.sql:189: ERROR:  parameter $1 of type integer cannot be coerced to the expected type int4_enc
-LINE 1: EXECUTE d1(70000);
-                   ^
-HINT:  You will need to rewrite or cast the expression.
-psql:/.../pbe.sql:205: ERROR:  invalid hex string: "Alice"
-LINE 1: EXECUTE e1(1, 'Alice', 30, 95.5, 'Alice bio', 'IT');
-                      ^
-DETAIL:  Hex string must contain only 0-9, a-f, A-F characters and may have \x prefix.
-psql:/.../pbe.sql:206: ERROR:  invalid hex string: "Bob"
-LINE 1: EXECUTE e1(2, 'Bob', 25, 88.0, 'Bob bio', 'HR');
-                      ^
-DETAIL:  Hex string must contain only 0-9, a-f, A-F characters and may have \x prefix.
-psql:/.../pbe.sql:212: ERROR:  parameter $1 of type integer cannot be coerced to the expected type int4_enc
-LINE 1: EXECUTE e2(28, 90.0);
-                   ^
-HINT:  You will need to rewrite or cast the expression.
 psql:/.../pbe.sql:268: NOTICE:  table "t1" does not exist, skipping
 psql:/.../pbe.sql:286: NOTICE:  drop cascades to data encryption key dek_pbe

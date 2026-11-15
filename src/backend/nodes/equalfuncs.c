@@ -2358,6 +2358,15 @@ _equalCreateDekStmt(const CreateDekStmt *a, const CreateDekStmt *b)
 
 	return true;
 }
+
+static bool
+_equalAlterKekStmt(const AlterKekStmt *a, const AlterKekStmt *b)
+{
+	COMPARE_NODE_FIELD(names);
+	COMPARE_NODE_FIELD(options);
+
+	return true;
+}
 /* End - ReqID:TECC4.0 */
 
 static bool
@@ -3820,6 +3829,7 @@ _equalValue(const Value *a, const Value *b)
 		/* End - ReqID:SRS-PLSQL-EXCEPTION */
 		case T_HexString: /* BUG#5048 5070 */
 		case T_MysBitString:	/* SRS-MYSQL-HEX-LITERAL */
+		case T_IntroducerConst:		/* Req:SRS-MYSQL-SQL-Select */
 			COMPARE_STRING_FIELD(val.str);
 			break;
 		case T_Null:
@@ -5039,6 +5049,8 @@ equal(const void *a, const void *b)
 			retval = _equalAlterCollectionTypeStmt(a, b);
 			break;
 		/* End - ReqID:SRS-SQL-Collection */
+				case T_AlterKekStmt:
+				retval = _equalAlterKekStmt(a, b);
 		default:
 			elog(ERROR, "unrecognized node type: %d",
 				 (int) nodeTag(a));

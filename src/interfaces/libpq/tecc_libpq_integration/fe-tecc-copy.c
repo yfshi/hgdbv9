@@ -1,8 +1,3 @@
-#ifdef _MSC_VER
-#define TECC_ATTR_UNUSED
-#else
-#define TECC_ATTR_UNUSED __attribute__((unused))
-#endif
 
 /*-------------------------------------------------------------------------
  *
@@ -27,33 +22,52 @@
 
 #include "libpq-fe.h"
 #include "libpq-int.h"
+#include "port/pg_bswap.h"
 #include "fe-tecc-integration.h"
 #include "fe-tecc-copy.h"
 
 #include "../tecc_cache/tecc_metadata_cache.h"
+#include "../tecc_cache/tecc_data_fetcher_adapter.h"
 #include "../tecc_processor/tecc_processor.h"
 #include "../tecc_processor/internal/tecc_processor_internal.h"
 #include "../tecc_processor/processor_utils.h"
 #include "../tecc_scheduler/tecc_crypto_scheduler.h"
 #include "../tecc_scheduler/tecc_key_manager_adapter.h"
+#include "../tecc_scheduler/tecc_algorithm_scheduler.h"
 #include "../tecc_common/tecc_frontend_list.h"
 
 #include "../frontend_parser/tecc_parser.h"
 #include "../frontend_parser/tecc_nodes.h"
 #include "../frontend_parser/tecc_error.h"
 #include "../../../common/tecc_types.h"
+#undef TECC_CLAMP
+#include "../tecc_formatter/tecc_hex_encoder.h"
+#include "../tecc_formatter/tecc_hex_encoder.h"
 
 /* External declarations for utility functions from fe-tecc-integration.c */
+
+/* PostgreSQL COPY binary format constants */
+#define TECC_BINARY_SIGNATURE      "PGCOPY\n\377\r\n\0"
+#define TECC_BINARY_SIG_LEN        11
+#define TECC_BINARY_FLAGS_LEN      4
+#define TECC_BINARY_EXT_LEN        4
+#define TECC_BINARY_HEADER_LEN     (TECC_BINARY_SIG_LEN + TECC_BINARY_FLAGS_LEN + TECC_BINARY_EXT_LEN)
 
 /* Static function prototypes */
 static TeccCopyState *tecc_create_copy_state(PGconn *conn, const char *command);
 static void tecc_free_copy_state(TeccCopyState *copy_state);
 static int tecc_parse_copy_with_frontend_parser(PGconn *conn, const char *command, char **table_name,
                                            char ***column_names, int *column_count,
+                                           int **column_mapping, int *mapping_count,
+                                           char ***column_table_names,
                                            bool *is_from_stdin, bool *is_to_stdout,
-                                           bool *csv_mode, char *delimiter,
+                                           bool *csv_mode, bool *binary_mode,
+                                           char *delimiter,
                                            char *quote, char *escape,
-                                           bool *header, char **null_string);
+                                           bool *header, char **null_string,
+                                           char **schema_name);
+static int tecc_copy_state_load_encrypted_columns_for_table(TeccEnhancedCopyState *copy_state,
+                                                             const char *table_name);
 static int tecc_process_copy_row(TeccEnhancedCopyState *copy_state, const char *row_data,
                                  int row_len, char **processed_row, int *processed_len,
                                  bool is_import);
@@ -71,15 +85,276 @@ static int tecc_copy_format_csv_row(char **fields, int *field_lens, int field_co
                                    char **row_data, int *row_len);
 static int tecc_copy_format_text_row(char **fields, int *field_lens, int field_count,
                                     char delimiter, char **row_data, int *row_len);
+static int tecc_copy_parse_binary_row(const char *row_data, int row_len,
+                                      char ***fields, int **field_lens, int *field_count);
+static int tecc_copy_format_binary_row(char **fields, int *field_lens, int field_count,
+                                       char **row_data, int *row_len);
+/* ReqID:TECC4.0 - Convert binary field to TEXT representation by type */
+static void
+tecc_copy_binary_to_text(
+	const unsigned char *data, int data_len,
+	TeccEnhancedCopyState *copy_state, int field_idx,
+	PQExpBuffer buf)
+{
+	int j;
+	Oid base_oid = InvalidOid;
+	/* ReqID:TECC4.0 - Bug 907: 多表 JOIN 时同 attnum 可能属于不同表，
+	 * 需按本列来源表过滤，否则会拿错表的原始类型 OID 去转文本。 */
+	const char *field_table = NULL;
+
+	if (copy_state->column_table_names != NULL &&
+		field_idx >= 0 && field_idx < copy_state->mapping_count)
+		field_table = copy_state->column_table_names[field_idx];
+
+	for (j = 0; j < copy_state->encrypted_column_count; j++)
+	{
+		TeccEncryptedColumnMetadata *col = copy_state->encrypted_column_info[j];
+		if (col)
+		{
+			int att = copy_state->column_mapping ?
+				copy_state->column_mapping[field_idx] : (field_idx + 1);
+			if (col->column_attnum == att &&
+				(field_table == NULL ||
+				 (col->table_name != NULL &&
+				  pg_strcasecmp(col->table_name, field_table) == 0)))
+			{
+				base_oid = col->data_type_original_oid;
+				break;
+			}
+		}
+	}
+	if (base_oid == InvalidOid)
+	{
+		char *hex = NULL;
+		if (tecc_hex_encoder_encode(data, (size_t)data_len, &hex) ==
+			TECC_FORMATTER_SUCCESS && hex != NULL)
+		{
+			const char *p = hex;
+			if (p[0] == '\\' && p[1] == 'x') p += 2;
+			appendPQExpBufferStr(buf, p);
+			tecc_pfree(hex);
+		}
+		return;
+	}
+	switch (base_oid)
+	{
+		case 23:
+		{
+			int32 val;
+			char tmp[32];
+			if (data_len >= 4)
+			{
+				memcpy(&val, data, 4);
+				val = ntohl(val);
+				snprintf(tmp, sizeof(tmp), "%d", val);
+				appendPQExpBufferStr(buf, tmp);
+			}
+			return;
+		}
+		case 21:
+		{
+			int16 val;
+			char tmp[32];
+			if (data_len >= 2)
+			{
+				memcpy(&val, data, 2);
+				val = ntohs(val);
+				snprintf(tmp, sizeof(tmp), "%hd", val);
+				appendPQExpBufferStr(buf, tmp);
+			}
+			return;
+		}
+		case 20:
+		{
+			uint64 uv = 0;
+			char tmp[32];
+			int _bi;
+			for (_bi = 0; _bi < 8 && _bi < data_len; _bi++)
+				uv = (uv << 8) | data[_bi];
+			snprintf(tmp, sizeof(tmp), "%lld", (long long)uv);
+			appendPQExpBufferStr(buf, tmp);
+			return;
+		}
+		case 25:
+		default:
+		{
+			int _ci;
+			for (_ci = 0; _ci < data_len; _ci++)
+			{
+				char ch = data[_ci];
+				if (ch == '\\' || ch == '\n' || ch == '\r')
+					appendPQExpBufferChar(buf, '\\');
+				appendPQExpBufferChar(buf, ch);
+			}
+			return;
+		}
+	}
+}
+
+/* Byte-swap 32-bit (network/host byte order conversion) */
+static int32 tecc_copy_swap32(int32 v) {
+	return (int32)(((uint32)v >> 24) | (((uint32)v >> 8) & 0xff00) |
+	               (((uint32)v << 8) & 0xff0000) | ((uint32)v << 24));
+}
+
+/* Number of 32-bit words in the wire header for a packed version value.
+ * Layout: version, dek_dist_oid, then one length word per present segment.
+ * v1.0 keeps its historical fixed four-length layout; v2.0 is mask-driven,
+ * so the count varies per value and must never be assumed constant. */
+static int tecc_copy_header_words(int32 host_version)
+{
+	if (CIPHERDATA_MAJOR_VERSION(host_version) == CIPHERDATA_VERSION_1_0)
+		return 2 + 4;
+	return 2 + (int)CIPHERDATA_POPCOUNT16(CIPHERDATA_SEG_MASK(host_version));
+}
+
+/* Convert binary cipherdata from network byte order to host byte order
+ * with varsize prepended, then hex-encode for TECC processing */
+static int tecc_copy_cipherdata_to_hex(const unsigned char *bin, int bin_len,
+                                        char **hex_out)
+{
+	int i, n32;
+	int32 net_version;
+	int32 host_version;
+	int header_bytes;
+	int32 total_sz;
+	unsigned char *host_buf;
+	int result;
+
+	if (!bin || bin_len < (int)(2 * sizeof(int32)) || !hex_out) return -1;
+
+	/* The on-wire version is network order; read it to learn how many
+	 * length words follow so the rest of the header can be located. */
+	memcpy(&net_version, bin, sizeof(int32));
+	host_version = tecc_copy_swap32(net_version);
+	n32 = tecc_copy_header_words(host_version);
+	header_bytes = n32 * (int)sizeof(int32);
+	if (bin_len < header_bytes) return -1;
+
+	total_sz = (int32)(sizeof(int32) + header_bytes + (bin_len - header_bytes));
+	host_buf = (unsigned char *)pg_malloc((size_t)total_sz);
+	if (!host_buf) return -1;
+	memcpy(host_buf, &total_sz, sizeof(int32));
+	for (i = 0; i < n32; i++) {
+		int32 net_val;
+		memcpy(&net_val, bin + i * (int)sizeof(int32), sizeof(int32));
+		((int32 *)(host_buf + sizeof(int32)))[i] = tecc_copy_swap32(net_val);
+	}
+	if (bin_len > header_bytes)
+		memcpy(host_buf + sizeof(int32) + header_bytes,
+		       bin + header_bytes,
+		       (size_t)(bin_len - header_bytes));
+	result = tecc_hex_encoder_encode(host_buf, (size_t)total_sz, hex_out);
+	tecc_pfree(host_buf);
+	return (result == TECC_FORMATTER_SUCCESS && *hex_out != NULL) ? 0 : -1;
+}
+
+/* Convert hex-encoded cipherdata back to network byte order
+ * (strips varsize, byte-swaps header fields) for binary format */
+static int tecc_copy_hex_to_cipherdata(const char *hex_str,
+                                         unsigned char **bin_out, int *bin_len)
+{
+	unsigned char *raw_bytes = NULL;
+	size_t raw_len = 0;
+	int i, n32;
+	int32 host_version;
+	int header_bytes;
+	int data_len;
+	unsigned char *net_buf;
+	int result;
+
+	if (!hex_str || !bin_out || !bin_len) return -1;
+	result = tecc_hex_encoder_decode(hex_str, &raw_bytes, &raw_len);
+	if (result != TECC_FORMATTER_SUCCESS || !raw_bytes ||
+		raw_len < sizeof(int32) + 2 * sizeof(int32)) {
+		if (raw_bytes) tecc_pfree(raw_bytes);
+		return -1;
+	}
+
+	/* raw_bytes is the host-order on-disk form: vl_len_, version, dek, ... */
+	memcpy(&host_version, raw_bytes + sizeof(int32), sizeof(int32));
+	n32 = tecc_copy_header_words(host_version);
+	header_bytes = n32 * (int)sizeof(int32);
+	if (raw_len < sizeof(int32) + (size_t)header_bytes) {
+		tecc_pfree(raw_bytes);
+		return -1;
+	}
+
+	data_len = (int)(raw_len - sizeof(int32));
+	net_buf = (unsigned char *)pg_malloc((size_t)data_len);
+	if (!net_buf) { tecc_pfree(raw_bytes); return -1; }
+	for (i = 0; i < n32; i++) {
+		int32 host_val = ((int32 *)(raw_bytes + sizeof(int32)))[i];
+		int32 net_val = tecc_copy_swap32(host_val);
+		memcpy(net_buf + i * (int)sizeof(int32), &net_val, sizeof(int32));
+	}
+	if (data_len > header_bytes)
+		memcpy(net_buf + header_bytes,
+		       raw_bytes + sizeof(int32) + header_bytes,
+		       (size_t)(data_len - header_bytes));
+	tecc_pfree(raw_bytes);
+	*bin_out = net_buf;
+	*bin_len = data_len;
+	return 0;
+}
+
+/* ReqID:TECC4.0 - Check if field at given file-column index is an encrypted column */
+static bool tecc_copy_is_field_encrypted(TeccEnhancedCopyState *copy_state, int field_idx)
+{
+	int j;
+	int table_attnum;
+	const char *field_table_name;
+	const char *field_col_name;
+	if (copy_state == NULL || copy_state->encrypted_column_count <= 0)
+		return false;
+	if (field_idx < 0)
+		return false;
+	if (copy_state->column_mapping != NULL &&
+		copy_state->mapping_count > 0 &&
+		field_idx < copy_state->mapping_count)
+		table_attnum = copy_state->column_mapping[field_idx];
+	else
+		table_attnum = field_idx + 1;
+	field_table_name = (copy_state->column_table_names != NULL &&
+	                        field_idx < copy_state->mapping_count)
+		? copy_state->column_table_names[field_idx] : NULL;
+	field_col_name = (copy_state->column_names != NULL &&
+	                      field_idx < copy_state->mapping_count)
+		? copy_state->column_names[field_idx] : NULL;
+	for (j = 0; j < copy_state->encrypted_column_count; j++)
+	{
+		TeccEncryptedColumnMetadata *col_info = copy_state->encrypted_column_info[j];
+		if (col_info == NULL) continue;
+		/* Multi-table: match by (table_name, column_name) */
+		if (field_table_name != NULL && field_col_name != NULL &&
+			col_info->table_name != NULL && col_info->column_name != NULL &&
+			pg_strcasecmp(col_info->table_name, field_table_name) == 0 &&
+			pg_strcasecmp(col_info->column_name, field_col_name) == 0)
+			return true;
+		/* Single-table fallback: match by (table_name, attnum) */
+		if (col_info->column_attnum == table_attnum &&
+			(field_table_name == NULL ||
+			 (col_info->table_name != NULL &&
+			  pg_strcasecmp(col_info->table_name, field_table_name) == 0)))
+			return true;
+	}
+	return false;
+}
+
+
+/* Byte-swap 32-bit (network/host byte order conversion) */
 static void tecc_copy_free_parsed_fields(char **fields, int *field_lens, int field_count);
 
 /* COPY state helper functions (non-static, declared in tecc_common_types.h) */
 int tecc_copy_state_load_encrypted_columns(TeccEnhancedCopyState *copy_state);
 int tecc_copy_state_init_column_mapping(TeccEnhancedCopyState *copy_state);
-int tecc_copy_state_init_processor_context(TeccEnhancedCopyState *copy_state);
 int tecc_copy_state_init_crypto_context(TeccEnhancedCopyState *copy_state);
 int tecc_copy_state_init_stream_contexts(TeccEnhancedCopyState *copy_state);
 int tecc_copy_state_cleanup_stream_contexts(TeccEnhancedCopyState *copy_state);
+void tecc_copy_state_cleanup_crypto_context(TeccEnhancedCopyState *copy_state);
+/* ReqID:TECC4.0 - Bug 907：多表 JOIN 子查询的来源表元数据补载 */
+int tecc_copy_state_load_mapped_tables(TeccEnhancedCopyState *copy_state);
+int tecc_copy_state_reload_mapped_columns(TeccEnhancedCopyState *copy_state);
 /* ==================== COPY Processing Functions ==================== */
 
 /*
@@ -227,6 +502,269 @@ tecc_process_copy_data(PGconn *conn, const char *data, int data_len,
 		}
 
 		return result;
+	}
+
+	/* Binary mode: process as binary COPY data (not line-based) */
+	if (copy_state->binary_mode)
+	{
+		char *binary_result = NULL;
+		int binary_result_size = 0;
+		int binary_result_pos = 0;
+		const char *bin_pos = data;
+		const char *bin_end = data + data_len;
+
+		/* Initialize result buffer */
+		binary_result_size = data_len * 2 + 1024;
+		binary_result = (char *)pg_malloc(binary_result_size);
+		if (binary_result == NULL)
+		{
+			tecc_handle_error(conn, TECC_ERR_MEMORY,
+			                  "Failed to allocate memory for binary COPY data");
+			return -1;
+		}
+
+		/* On first call, skip the binary header (19 bytes) */
+		if (copy_state->current_row == 0 && data_len >= TECC_BINARY_HEADER_LEN)
+		{
+			memcpy(binary_result, bin_pos, TECC_BINARY_HEADER_LEN);
+			binary_result_pos = TECC_BINARY_HEADER_LEN;
+			bin_pos += TECC_BINARY_HEADER_LEN;
+		}
+
+		/* Process remaining data as binary rows */
+		while (bin_pos < bin_end)
+		{
+			int remaining = bin_end - bin_pos;
+			uint16 fld_count_net;
+			int16 fld_count;
+			char **fields = NULL;
+			int *field_lens = NULL;
+			int field_count = 0;
+			int parse_result;
+
+			if (remaining < 2)
+				break;
+
+			memcpy(&fld_count_net, bin_pos, 2);
+			fld_count = (int16) pg_ntoh16(fld_count_net);
+
+			/* End-of-data marker */
+			if (fld_count == -1)
+			{
+				if (binary_result_pos + 2 > binary_result_size)
+				{
+					int new_size = binary_result_size * 2;
+					char *new_buf = (char *)pg_realloc(binary_result, new_size);
+					if (new_buf == NULL) { tecc_pfree(binary_result); return -1; }
+					binary_result = new_buf;
+					binary_result_size = new_size;
+				}
+				memcpy(binary_result + binary_result_pos, bin_pos, 2);
+				binary_result_pos += 2;
+				bin_pos += 2;
+				break;
+			}
+
+			/* Parse binary row into fields */
+			parse_result = tecc_copy_parse_binary_row(bin_pos, remaining,
+			                                         &fields, &field_lens,
+			                                         &field_count);
+			if (parse_result != 0 || fields == NULL)
+			{
+				tecc_pfree(binary_result);
+				tecc_handle_error(conn, TECC_ERR_PROCESSOR,
+				                  "Failed to parse binary COPY row");
+				return -1;
+			}
+
+			/* Convert binary fields -> TEXT row -> processor -> TEXT -> binary */
+			{
+				PQExpBufferData text_row_buf;
+				char *text_processed = NULL;
+				int text_processed_len = 0;
+				char **proc_fields = NULL;
+				int *proc_field_lens = NULL;
+				int proc_field_count = 0;
+				char *binary_row = NULL;
+				int binary_row_len = 0;
+				int i, process_result, parse_proc_result;
+
+				initPQExpBuffer(&text_row_buf);
+				for (i = 0; i < field_count; i++)
+				{
+					if (i > 0)
+						appendPQExpBufferChar(&text_row_buf, copy_state->delimiter);
+
+					if (field_lens[i] == -1 || fields[i] == NULL)
+						appendPQExpBufferStr(&text_row_buf, "\\N");
+					else
+					/* ReqID:TECC4.0 - Import: convert binary to TEXT by type */
+					if (tecc_copy_is_field_encrypted(copy_state, i))
+					{
+						tecc_copy_binary_to_text(
+							(const unsigned char *)fields[i], field_lens[i],
+							copy_state, i,
+							&text_row_buf);
+					}
+					else
+					{
+						/* Non-encrypted: hex-encode raw bytes (NO x prefix) */
+						char *hex_out = NULL;
+						if (tecc_hex_encoder_encode(
+							(const unsigned char *)fields[i],
+							(size_t)field_lens[i],
+							&hex_out) == TECC_FORMATTER_SUCCESS && hex_out != NULL)
+						{
+							const char *hex_p = hex_out;
+							if (hex_p[0] == '\\' && hex_p[1] == 'x')
+								hex_p += 2;
+							appendPQExpBufferStr(&text_row_buf, hex_p);
+							tecc_pfree(hex_out);
+						}
+					}
+				}
+
+				/* Process TEXT row through standard processor (import/encrypt) */
+				process_result = tecc_process_copy_row(copy_state,
+				                                       text_row_buf.data,
+				                                       text_row_buf.len,
+				                                       &text_processed,
+				                                       &text_processed_len,
+				                                       true);
+				if (process_result != 0)
+				{
+					termPQExpBuffer(&text_row_buf);
+					tecc_copy_free_parsed_fields(fields, field_lens, field_count);
+					tecc_pfree(binary_result);
+					tecc_handle_error(conn, TECC_ERR_PROCESSOR,
+					                  "Failed to process binary COPY row");
+					return -1;
+				}
+
+				/* Parse processed TEXT row back into fields */
+				parse_proc_result = tecc_copy_parse_text_row(text_processed,
+				                                             text_processed_len,
+				                                             copy_state->delimiter,
+				                                             &proc_fields,
+				                                             &proc_field_lens,
+				                                             &proc_field_count);
+				if (parse_proc_result != 0 || proc_fields == NULL)
+				{
+					termPQExpBuffer(&text_row_buf);
+					tecc_copy_free_parsed_fields(fields, field_lens, field_count);
+					tecc_pfree(binary_result);
+					tecc_pfree(text_processed);
+					tecc_handle_error(conn, TECC_ERR_PROCESSOR,
+					                  "Failed to parse processed COPY row");
+					return -1;
+				}
+
+				/* ReqID:TECC4.0 - Decode post-TECC fields to proper binary */
+				{
+					int _di;
+					for (_di = 0; _di < proc_field_count; _di++)
+					{
+						if (proc_fields[_di] == NULL || proc_field_lens[_di] <= 0)
+							continue;
+
+						if (tecc_copy_is_field_encrypted(copy_state, _di))
+						{
+							/* Always hex decode via hex_to_cipherdata (processor strips \\x) */
+							{
+								unsigned char *raw_bytes = NULL;
+								int raw_len = 0;
+								if (tecc_copy_hex_to_cipherdata(
+										proc_fields[_di],
+										&raw_bytes, &raw_len) == 0 &&
+								    raw_bytes != NULL && raw_len >= sizeof(int32) * 9)
+								{
+									tecc_pfree(proc_fields[_di]);
+									proc_fields[_di] = (char *)raw_bytes;
+									proc_field_lens[_di] = raw_len;
+								}
+							}
+						}
+						else
+						{
+							unsigned char *raw_bytes = NULL;
+							size_t raw_len = 0;
+							if (tecc_hex_encoder_decode(proc_fields[_di],
+								&raw_bytes, &raw_len) == TECC_FORMATTER_SUCCESS &&
+							    raw_bytes != NULL && raw_len > 0)
+							{
+								tecc_pfree(proc_fields[_di]);
+								proc_fields[_di] = (char *)raw_bytes;
+								proc_field_lens[_di] = (int)raw_len;
+							}
+						}
+					}
+				}
+				/* Format processed fields back to binary */
+				if (tecc_copy_format_binary_row(proc_fields, proc_field_lens,
+				                                proc_field_count,
+				                                &binary_row, &binary_row_len) != 0)
+				{
+					termPQExpBuffer(&text_row_buf);
+					tecc_copy_free_parsed_fields(fields, field_lens, field_count);
+					tecc_copy_free_parsed_fields(proc_fields, proc_field_lens,
+					                             proc_field_count);
+					tecc_pfree(binary_result);
+					tecc_pfree(text_processed);
+					tecc_handle_error(conn, TECC_ERR_PROCESSOR,
+					                  "Failed to format binary row");
+					return -1;
+				}
+
+				/* Append to result */
+				while (binary_result_pos + binary_row_len > binary_result_size)
+				{
+					int new_size = binary_result_size * 2;
+					char *new_buf = (char *)pg_realloc(binary_result, new_size);
+					if (new_buf == NULL)
+					{
+						termPQExpBuffer(&text_row_buf);
+						tecc_copy_free_parsed_fields(fields, field_lens, field_count);
+						tecc_copy_free_parsed_fields(proc_fields, proc_field_lens,
+						                             proc_field_count);
+						tecc_pfree(binary_result);
+						tecc_pfree(binary_row);
+						tecc_pfree(text_processed);
+						return -1;
+					}
+					binary_result = new_buf;
+					binary_result_size = new_size;
+				}
+				memcpy(binary_result + binary_result_pos, binary_row,
+				       binary_row_len);
+				binary_result_pos += binary_row_len;
+
+				tecc_pfree(binary_row);
+				tecc_copy_free_parsed_fields(proc_fields, proc_field_lens,
+				                             proc_field_count);
+				termPQExpBuffer(&text_row_buf);
+				tecc_pfree(text_processed);
+			}
+
+			/* Advance past the raw binary row */
+			{
+				int raw_row_len = 2;
+				int i;
+				for (i = 0; i < field_count; i++)
+				{
+					raw_row_len += 4;
+					if (field_lens[i] > 0)
+						raw_row_len += field_lens[i];
+				}
+				bin_pos += raw_row_len;
+			}
+
+			tecc_copy_free_parsed_fields(fields, field_lens, field_count);
+			copy_state->current_row++;
+		}
+
+		*processed_data = binary_result;
+		*processed_len = binary_result_pos;
+		return 0;
 	}
 
 	/* Initialize result buffer */
@@ -466,6 +1004,344 @@ tecc_process_copy_result(PGconn *conn, const char *encrypted_data,
 		return result;
 	}
 
+	/* Binary mode: process as binary COPY result (not line-based) */
+	if (copy_state->binary_mode)
+	{
+		char *binary_result = NULL;
+		int binary_result_size = 0;
+		int binary_result_pos = 0;
+		const char *bin_pos = encrypted_data;
+		const char *bin_end = encrypted_data + encrypted_len;
+
+		/* Initialize result buffer */
+		binary_result_size = encrypted_len * 2 + 1024;
+		binary_result = (char *)pg_malloc(binary_result_size);
+		if (binary_result == NULL)
+		{
+			tecc_handle_error(conn, TECC_ERR_MEMORY,
+			                  "Failed to allocate memory for binary COPY result");
+			return -1;
+		}
+
+		/* On first call, skip the binary header (19 bytes) */
+		if (copy_state->current_row == 0 && encrypted_len >= TECC_BINARY_HEADER_LEN)
+		{
+			memcpy(binary_result, bin_pos, TECC_BINARY_HEADER_LEN);
+			binary_result_pos = TECC_BINARY_HEADER_LEN;
+			bin_pos += TECC_BINARY_HEADER_LEN;
+		}
+
+		/* Process remaining data as binary rows */
+		while (bin_pos < bin_end)
+		{
+			int remaining = bin_end - bin_pos;
+			uint16 fld_count_net;
+			int16 fld_count;
+			char **fields = NULL;
+			int *field_lens = NULL;
+			int field_count = 0;
+			int parse_result;
+
+			if (remaining < 2)
+				break;
+
+			memcpy(&fld_count_net, bin_pos, 2);
+			fld_count = (int16) pg_ntoh16(fld_count_net);
+
+			/* End-of-data marker */
+			if (fld_count == -1)
+			{
+				if (binary_result_pos + 2 > binary_result_size)
+				{
+					int new_size = binary_result_size * 2;
+					char *new_buf = (char *)pg_realloc(binary_result, new_size);
+					if (new_buf == NULL) { tecc_pfree(binary_result); return -1; }
+					binary_result = new_buf;
+					binary_result_size = new_size;
+				}
+				memcpy(binary_result + binary_result_pos, bin_pos, 2);
+				binary_result_pos += 2;
+				bin_pos += 2;
+				break;
+			}
+
+			/* Parse binary row into fields */
+			parse_result = tecc_copy_parse_binary_row(bin_pos, remaining,
+			                                         &fields, &field_lens,
+			                                         &field_count);
+			if (parse_result != 0 || fields == NULL)
+			{
+				tecc_pfree(binary_result);
+				tecc_handle_error(conn, TECC_ERR_PROCESSOR,
+				                  "Failed to parse binary COPY result row");
+				return -1;
+			}
+
+			/* Convert binary fields -> TEXT row -> processor -> TEXT -> binary */
+			{
+				PQExpBufferData text_row_buf;
+				char *text_processed = NULL;
+				int text_processed_len = 0;
+				char **proc_fields = NULL;
+				int *proc_field_lens = NULL;
+				int proc_field_count = 0;
+				char *binary_row = NULL;
+				int binary_row_len = 0;
+				int i, process_result, parse_proc_result;
+
+				initPQExpBuffer(&text_row_buf);
+				for (i = 0; i < field_count; i++)
+				{
+					if (i > 0)
+						appendPQExpBufferChar(&text_row_buf, copy_state->delimiter);
+
+					if (field_lens[i] == -1 || fields[i] == NULL)
+						appendPQExpBufferStr(&text_row_buf, "\\N");
+					else
+					{
+						/* ReqID:TECC4.0 - Encrypted: convert net-order binary to host-order hex */
+						if (tecc_copy_is_field_encrypted(copy_state, i))
+						{
+							char *hex_out = NULL;
+							if (tecc_copy_cipherdata_to_hex(
+								(const unsigned char *)fields[i],
+								field_lens[i], &hex_out) == 0)
+							{
+								appendPQExpBufferStr(&text_row_buf, hex_out);
+								tecc_pfree(hex_out);
+							}
+						}
+						else
+						{
+							/*
+							 * ReqID:TECC4.0 - Export: hex-encode non-encrypted raw
+							 * bytes WITHOUT the \x prefix, so TECC TEXT parsing
+							 * does not consume the backslash as escape char.
+							 */
+							char *hex_out = NULL;
+							if (tecc_hex_encoder_encode(
+								(const unsigned char *)fields[i],
+								(size_t)field_lens[i],
+								&hex_out) == TECC_FORMATTER_SUCCESS && hex_out != NULL)
+							{
+								const char *hex_p = hex_out;
+								if (hex_p[0] == '\\' && hex_p[1] == 'x')
+									hex_p += 2;
+								appendPQExpBufferStr(&text_row_buf, hex_p);
+								tecc_pfree(hex_out);
+							}
+						}
+					}
+				}
+
+				/* Process TEXT row through standard processor (export/decrypt) */
+				process_result = tecc_process_copy_row(copy_state,
+				                                       text_row_buf.data,
+				                                       text_row_buf.len,
+				                                       &text_processed,
+				                                       &text_processed_len,
+				                                       false);
+				if (process_result != 0)
+				{
+					termPQExpBuffer(&text_row_buf);
+					tecc_copy_free_parsed_fields(fields, field_lens, field_count);
+					tecc_pfree(binary_result);
+					tecc_handle_error(conn, TECC_ERR_PROCESSOR,
+					                  "Failed to process binary COPY result row");
+					return -1;
+				}
+
+				/* Parse processed TEXT row back into fields */
+				parse_proc_result = tecc_copy_parse_text_row(text_processed,
+				                                             text_processed_len,
+				                                             copy_state->delimiter,
+				                                             &proc_fields,
+				                                             &proc_field_lens,
+				                                             &proc_field_count);
+				if (parse_proc_result != 0 || proc_fields == NULL)
+				{
+					termPQExpBuffer(&text_row_buf);
+					tecc_copy_free_parsed_fields(fields, field_lens, field_count);
+					tecc_pfree(binary_result);
+					tecc_pfree(text_processed);
+					tecc_handle_error(conn, TECC_ERR_PROCESSOR,
+					                  "Failed to parse processed COPY result row");
+					return -1;
+				}
+
+				/* ReqID:TECC4.0 - Decode post-TECC fields to proper binary */
+				{
+					int _di;
+					for (_di = 0; _di < proc_field_count; _di++)
+					{
+						if (proc_fields[_di] == NULL || proc_field_lens[_di] <= 0)
+							continue;
+
+						if (tecc_copy_is_field_encrypted(copy_state, _di))
+						{
+							if (tecc_hex_encoder_has_prefix(proc_fields[_di]) ||
+							(proc_fields[_di][0] == 'x' &&
+							 proc_fields[_di][1] >= '0' && proc_fields[_di][1] <= '9'))
+							{
+								unsigned char *raw_bytes = NULL;
+								int raw_len = 0;
+								if (tecc_copy_hex_to_cipherdata(
+										proc_fields[_di],
+										&raw_bytes, &raw_len) == 0 &&
+								    raw_bytes != NULL && raw_len > 0)
+								{
+									tecc_pfree(proc_fields[_di]);
+									proc_fields[_di] = (char *)raw_bytes;
+									proc_field_lens[_di] = raw_len;
+								}
+							}
+							else
+							{
+								long long llv = atoll(proc_fields[_di]);
+								int base_oid = 0;
+								int _bj;
+								for (_bj = 0; _bj < copy_state->encrypted_column_count; _bj++)
+								{
+									TeccEncryptedColumnMetadata *col =
+										copy_state->encrypted_column_info[_bj];
+									if (col)
+									{
+										int att = copy_state->column_mapping ?
+											copy_state->column_mapping[_di] : (_di + 1);
+										if (col->column_attnum == att)
+										{
+											base_oid = col->data_type_original_oid;
+											break;
+										}
+									}
+								}
+								if (base_oid == 21)
+								{
+									/* ReqID:TECC4.0 INT2 uses 2 bytes in PG binary COPY */
+									uint16 v16 = (uint16)llv;
+									uint16 nv = pg_hton16(v16);
+									unsigned char *bv = (unsigned char *)pg_malloc(2);
+									if (bv)
+									{
+										memcpy(bv, &nv, 2);
+										tecc_pfree(proc_fields[_di]);
+										proc_fields[_di] = (char *)bv;
+										proc_field_lens[_di] = 2;
+									}
+								}
+								else if (base_oid == 23)
+								{
+									uint32 uv = pg_hton32((uint32)llv);
+									unsigned char *bv = (unsigned char *)pg_malloc(4);
+									if (bv)
+									{
+										memcpy(bv, &uv, 4);
+										tecc_pfree(proc_fields[_di]);
+										proc_fields[_di] = (char *)bv;
+										proc_field_lens[_di] = 4;
+									}
+								}
+								else if (base_oid == 20)
+								{
+									uint64 uv = (uint64)llv;
+									unsigned char bv[8];
+									int _bi2;
+									unsigned char *bvp = (unsigned char *)pg_malloc(8);
+									for (_bi2 = 0; _bi2 < 8; _bi2++)
+										bv[7 - _bi2] = (unsigned char)((uv >> (_bi2 * 8)) & 0xff);
+									if (bvp)
+									{
+										memcpy(bvp, bv, 8);
+										tecc_pfree(proc_fields[_di]);
+										proc_fields[_di] = (char *)bvp;
+										proc_field_lens[_di] = 8;
+									}
+								}
+							}
+						}
+						else
+						{
+							unsigned char *raw_bytes = NULL;
+							size_t raw_len = 0;
+							if (tecc_hex_encoder_decode(proc_fields[_di],
+								&raw_bytes, &raw_len) == TECC_FORMATTER_SUCCESS &&
+							    raw_bytes != NULL && raw_len > 0)
+							{
+								tecc_pfree(proc_fields[_di]);
+								proc_fields[_di] = (char *)raw_bytes;
+								proc_field_lens[_di] = (int)raw_len;
+							}
+						}
+					}
+				}
+				/* Format processed fields back to binary */
+				if (tecc_copy_format_binary_row(proc_fields, proc_field_lens,
+				                                proc_field_count,
+				                                &binary_row, &binary_row_len) != 0)
+				{
+					termPQExpBuffer(&text_row_buf);
+					tecc_copy_free_parsed_fields(fields, field_lens, field_count);
+					tecc_copy_free_parsed_fields(proc_fields, proc_field_lens,
+					                             proc_field_count);
+					tecc_pfree(binary_result);
+					tecc_pfree(text_processed);
+					tecc_handle_error(conn, TECC_ERR_PROCESSOR,
+					                  "Failed to format binary result row");
+					return -1;
+				}
+
+				/* Append to result */
+				while (binary_result_pos + binary_row_len > binary_result_size)
+				{
+					int new_size = binary_result_size * 2;
+					char *new_buf = (char *)pg_realloc(binary_result, new_size);
+					if (new_buf == NULL)
+					{
+						termPQExpBuffer(&text_row_buf);
+						tecc_copy_free_parsed_fields(fields, field_lens, field_count);
+						tecc_copy_free_parsed_fields(proc_fields, proc_field_lens,
+						                             proc_field_count);
+						tecc_pfree(binary_result);
+						tecc_pfree(binary_row);
+						tecc_pfree(text_processed);
+						return -1;
+					}
+					binary_result = new_buf;
+					binary_result_size = new_size;
+				}
+				memcpy(binary_result + binary_result_pos, binary_row,
+				       binary_row_len);
+				binary_result_pos += binary_row_len;
+
+				tecc_pfree(binary_row);
+				tecc_copy_free_parsed_fields(proc_fields, proc_field_lens,
+				                             proc_field_count);
+				termPQExpBuffer(&text_row_buf);
+				tecc_pfree(text_processed);
+			}
+
+			/* Advance past the raw binary row */
+			{
+				int raw_row_len = 2;
+				int i;
+				for (i = 0; i < field_count; i++)
+				{
+					raw_row_len += 4;
+					if (field_lens[i] > 0)
+						raw_row_len += field_lens[i];
+				}
+				bin_pos += raw_row_len;
+			}
+
+			tecc_copy_free_parsed_fields(fields, field_lens, field_count);
+			copy_state->current_row++;
+		}
+
+		*decrypted_data = binary_result;
+		*decrypted_len = binary_result_pos;
+		return 0;
+	}
+
 	/* Initialize result buffer */
 	result_buffer_size = encrypted_len * 2; /* Allocate extra space for potential decryption expansion */
 	result_buffer = (char *)pg_malloc(result_buffer_size);
@@ -574,6 +1450,289 @@ tecc_process_copy_result(PGconn *conn, const char *encrypted_data,
 /* End - ReqID:TECC4.0 */
 
 /*
+ * ReqID:TECC4.0 - 单事务恢复(-1)修复：COPY 行到达前，在主连接上补齐本会话
+ * 尚未提交（对独立 data-fetcher 连接不可见）的 DEK/KEK 完整缓存项。
+ *
+ * pg_restore -1 把 CREATE KEK/DEK/TABLE 与 COPY 数据放进同一个未提交事务。
+ * CREATE KEK/DEK 后的 tecc_refresh_*_cache 用独立 data-fetcher 连接读元数据，
+ * 读不到未提交行，缓存里只剩 PENDING 哨兵；COPY 行流式加密期间主连接忙，
+ * 按行回退到独立连接同样读不到 → "DEK search_path not found" → PQputCopyData
+ * 失败。表列元数据之所以没这个毛病，是因为 tecc_refresh_table_cache 在 COPY
+ * 预处理时用主连接读（同事务可见）。
+ *
+ * 故在 tecc_create_copy_state（主连接空闲、COPY 尚未真正开始）里，把这些 DEK
+ * 及各自 KEK 用主连接读全并塞进客户端缓存，行处理时缓存即命中，不再依赖
+ * 独立连接。此函数与 tecc_refresh_table_cache 同法：预处理期间临时关掉
+ * enable_tecc 防递归，非管道模式才走（管道下主连接禁止同步 PQexec）。
+ */
+static TeccDekCacheItem *
+tecc_copy_ensure_dek_via_conn(TeccState *state, PGconn *conn,
+                              const char *dek_name, const char *ns_hint)
+{
+	TeccCacheQueryParams q;
+	TeccDekCacheItem *item = NULL;
+	int count = 0;
+	TeccFetcherErrorCode ret;
+	bool saved_enable;
+
+	if (state == NULL || conn == NULL || dek_name == NULL || dek_name[0] == '\0')
+		return NULL;
+
+	memset(&q, 0, sizeof(q));
+	q.flags = TECC_QUERY_BY_NAME;
+	q.params.by_name.name = dek_name;
+	q.params.by_name.namespace = ns_hint;	/* 可能为 NULL */
+	q.external_conn = conn;
+
+	saved_enable = conn->enable_tecc;
+	conn->enable_tecc = false;
+	ret = tecc_fetch_dek_for_cache(state, &q, &item, &count);
+	conn->enable_tecc = saved_enable;
+
+	/* schema 提示未命中（如 DEK 与表不同 schema）时，退化为不限定 namespace */
+	if ((ret != TECC_FETCHER_OK || item == NULL) && ns_hint != NULL)
+	{
+		memset(&q, 0, sizeof(q));
+		q.flags = TECC_QUERY_BY_NAME;
+		q.params.by_name.name = dek_name;
+		q.params.by_name.namespace = NULL;
+		q.external_conn = conn;
+		saved_enable = conn->enable_tecc;
+		conn->enable_tecc = false;
+		ret = tecc_fetch_dek_for_cache(state, &q, &item, &count);
+		conn->enable_tecc = saved_enable;
+	}
+
+	if (ret != TECC_FETCHER_OK || item == NULL)
+		return NULL;
+
+	if (item->key_name != NULL && item->key_namespace != NULL)
+	{
+		/* 先摘旧项（PENDING/负缓存/旧全量项），避免同键重复插入 */
+		tecc_cache_remove_pending_dek(state, item->key_name, item->key_namespace);
+		if (tecc_cache_insert_dek_item(state, item) != 0)
+			tecc_record_debug(state,
+				"TECC COPY: insert DEK '%s' into cache failed", item->key_name);
+	}
+	return item;
+}
+
+static TeccKekCacheItem *
+tecc_copy_ensure_kek_via_conn(TeccState *state, PGconn *conn,
+                              const char *kek_name, const char *ns_hint)
+{
+	TeccCacheQueryParams q;
+	TeccKekCacheItem *item = NULL;
+	int count = 0;
+	TeccFetcherErrorCode ret;
+	bool saved_enable;
+
+	if (state == NULL || conn == NULL || kek_name == NULL || kek_name[0] == '\0')
+		return NULL;
+
+	memset(&q, 0, sizeof(q));
+	q.flags = TECC_QUERY_BY_NAME;
+	q.params.by_name.name = kek_name;
+	q.params.by_name.namespace = ns_hint;
+	q.external_conn = conn;
+
+	saved_enable = conn->enable_tecc;
+	conn->enable_tecc = false;
+	ret = tecc_fetch_kek_for_cache(state, &q, &item, &count);
+	conn->enable_tecc = saved_enable;
+
+	if ((ret != TECC_FETCHER_OK || item == NULL) && ns_hint != NULL)
+	{
+		memset(&q, 0, sizeof(q));
+		q.flags = TECC_QUERY_BY_NAME;
+		q.params.by_name.name = kek_name;
+		q.params.by_name.namespace = NULL;
+		q.external_conn = conn;
+		saved_enable = conn->enable_tecc;
+		conn->enable_tecc = false;
+		ret = tecc_fetch_kek_for_cache(state, &q, &item, &count);
+		conn->enable_tecc = saved_enable;
+	}
+
+	if (ret != TECC_FETCHER_OK || item == NULL)
+		return NULL;
+
+	if (item->key_name != NULL && item->key_namespace != NULL)
+	{
+		tecc_cache_remove_pending_kek(state, item->key_name, item->key_namespace);
+		if (tecc_cache_insert_kek_item(state, item) != 0)
+			tecc_record_debug(state,
+				"TECC COPY: insert KEK '%s' into cache failed", item->key_name);
+	}
+	return item;
+}
+
+/*
+ * tecc_copy_warm_he_dek - 用主连接预取某 HE DEK 在行级加/解密所需字段。
+ *
+ * he-add/he-mul 行级加密与导出解密（tecc_crypto_scheduler.c）在 COPY 忙态下无法
+ * 用主连接执行 PQexec，字段却只经 tecc_he_load_dek_key_hex（查 hg_dek_args）取。
+ * 这里在 COPY 开始前把 per-DEK 字段写入字段级缓存，并像 DET DEK 一样把该 HE DEK
+ * 及其 KEK 的全量缓存项补齐，行级 search_path 解析 distributed_id/私钥信封即可命中。
+ * 导出纯 HE 值解密时 tecc_he_load_dek_privkey 需读 he_*_privkey 与 kek（DEK 的
+ * KEK 名）两行，故除公钥外一并预热。is_ec=1 表示 EC-ElGamal(he-add)，0 表示
+ * 有限域 ElGamal(he-mul)。
+ */
+static void
+tecc_copy_warm_he_dek(TeccState *state, PGconn *conn, const char *schema,
+                      const char *dek_name, int is_ec)
+{
+	const char *pub_key = is_ec ? "he_ec_pubkey" : "he_eg_pubkey";
+	const char *prv_key = is_ec ? "he_ec_privkey" : "he_eg_privkey";
+	char  *hex = NULL;
+	TeccDekCacheItem *dek_item;
+
+	if (state == NULL || conn == NULL || dek_name == NULL || dek_name[0] == '\0')
+		return;
+
+	if (tecc_he_load_dek_key_hex(state, dek_name, pub_key, &hex) != 0)
+		tecc_record_debug(state,
+			"TECC COPY: warm %s for HE DEK '%s' not found", pub_key, dek_name);
+	if (hex != NULL)
+		pg_free(hex);
+	hex = NULL;
+
+	if (tecc_he_load_dek_key_hex(state, dek_name, prv_key, &hex) != 0)
+		tecc_record_debug(state,
+			"TECC COPY: warm %s for HE DEK '%s' not found", prv_key, dek_name);
+	if (hex != NULL)
+		pg_free(hex);
+	hex = NULL;
+
+	/* 私钥信封解封（SM2 解封）需该 DEK 的 kek 名（hg_dek_args 'kek' 行） */
+	if (tecc_he_load_dek_key_hex(state, dek_name, "kek", &hex) != 0)
+		tecc_record_debug(state,
+			"TECC COPY: warm kek for HE DEK '%s' not found", dek_name);
+	if (hex != NULL)
+		pg_free(hex);
+
+	dek_item = tecc_copy_ensure_dek_via_conn(state, conn, dek_name, schema);
+	if (dek_item != NULL && dek_item->kek_name != NULL)
+		tecc_copy_ensure_kek_via_conn(state, conn, dek_item->kek_name, schema);
+}
+
+/*
+ * tecc_copy_preload_table_keys - 在 COPY 开始前用主连接补全目标表的 DEK/KEK
+ */
+static void
+tecc_copy_preload_table_keys(TeccEnhancedCopyState *copy_state)
+{
+	PGconn *conn;
+	TeccState *state;
+	const char *db;
+	const char *schema;
+	const char *table;
+	TeccColumnCacheItem **cols;
+	int ncols;
+	int i;
+
+	if (copy_state == NULL)
+		return;
+	conn = copy_state->conn;
+	if (conn == NULL)
+		return;
+	/* 管道模式下主连接禁止同步 PQexec：保持原行为（独立连接看不到未提交 DDL） */
+	if (conn->pipelineStatus != PQ_PIPELINE_OFF)
+		return;
+	state = tecc_get_state(conn);
+	if (state == NULL)
+		return;
+	schema = copy_state->schema_name;
+	table = copy_state->table_name;
+	if (schema == NULL || table == NULL)
+		return;
+	db = PQdb(conn);
+	if (db == NULL || db[0] == '\0')
+		db = "postgres";
+
+	cols = tecc_cache_get_columns_by_table_name(state, db, schema, table, &ncols);
+	if (cols == NULL || ncols <= 0)
+		return;
+
+	for (i = 0; i < ncols; i++)
+	{
+		TeccColumnCacheItem *col = cols[i];
+		TeccDekCacheItem *dek_item;
+
+		if (col == NULL)
+			continue;
+
+		/* 对称/DET DEK + 其 KEK（纯 HE 列 dek_name 为 NULL，跳过） */
+		if (col->dek_name != NULL && col->dek_name[0] != '\0')
+		{
+			dek_item = tecc_copy_ensure_dek_via_conn(state, conn, col->dek_name, schema);
+			if (dek_item != NULL && dek_item->kek_name != NULL)
+				tecc_copy_ensure_kek_via_conn(state, conn, dek_item->kek_name, schema);
+		}
+
+		/* 一列多 DEK / HE 列：预热 he-add/he-mul 所需的字段级缓存（列 HE DEK 名 +
+		 * per-DEK 公钥）及该 HE DEK/KEK 的全量缓存项。行级加密在 COPY 忙态下不能
+		 * 用主连接查 hg_encrypted_column_args / hg_dek_args，故须提前取好。 */
+		if ((col->encryption_type & 0x08) != 0 ||	/* he-add */
+			(col->encryption_type & 0x10) != 0 ||	/* he-mul */
+			(col->he_add_dek_name != NULL && col->he_add_dek_name[0] != '\0') ||
+			(col->he_mul_dek_name != NULL && col->he_mul_dek_name[0] != '\0'))
+		{
+			char he_add_buf[NAMEDATALEN] = {0};
+			char he_mul_buf[NAMEDATALEN] = {0};
+			const char *add_dek = NULL;
+			const char *mul_dek = NULL;
+
+			/* he-add：DEK 名优先取列绑定（与行级 tecc_load_column_he_dek_name +
+			 * context->dek_name 回退一致），公钥字段 key='he_ec_pubkey' */
+			if ((col->encryption_type & 0x08) != 0 ||
+				(col->he_add_dek_name != NULL && col->he_add_dek_name[0] != '\0'))
+			{
+				if (OidIsValid(col->table_oid) && col->column_attnum > 0)
+					tecc_load_column_he_dek_name(state, col->table_oid,
+												 col->column_attnum, "he_add_dek",
+												 he_add_buf, sizeof(he_add_buf));
+				add_dek = (he_add_buf[0] != '\0') ? he_add_buf :
+					((col->he_add_dek_name != NULL && col->he_add_dek_name[0] != '\0') ?
+					 col->he_add_dek_name : col->dek_name);
+				tecc_copy_warm_he_dek(state, conn, schema, add_dek, 1);
+			}
+
+			/* he-mul：公钥字段 key='he_eg_pubkey' */
+			if ((col->encryption_type & 0x10) != 0 ||
+				(col->he_mul_dek_name != NULL && col->he_mul_dek_name[0] != '\0'))
+			{
+				if (OidIsValid(col->table_oid) && col->column_attnum > 0)
+					tecc_load_column_he_dek_name(state, col->table_oid,
+												 col->column_attnum, "he_mul_dek",
+												 he_mul_buf, sizeof(he_mul_buf));
+				mul_dek = (he_mul_buf[0] != '\0') ? he_mul_buf :
+					((col->he_mul_dek_name != NULL && col->he_mul_dek_name[0] != '\0') ?
+					 col->he_mul_dek_name : col->dek_name);
+				tecc_copy_warm_he_dek(state, conn, schema, mul_dek, 0);
+			}
+		}
+	}
+
+	/* DEK 补全后，把先前因缓存未满而为 NULL 的列 DEK 名回填，让
+	 * tecc_copy_state_init_crypto_context 的 KEK 解析能继续 */
+	if (copy_state->encrypted_column_info != NULL)
+	{
+		for (i = 0; i < copy_state->encrypted_column_count; i++)
+		{
+			TeccEncryptedColumnMetadata *meta = copy_state->encrypted_column_info[i];
+			TeccDekCacheItem *item;
+
+			if (meta == NULL || meta->column_key_id == InvalidOid || meta->dek_name != NULL)
+				continue;
+			item = tecc_cache_get_dek_by_oid(state, meta->column_key_id);
+			if (item != NULL && item->key_name != NULL)
+				meta->dek_name = pg_strdup(item->key_name);
+		}
+	}
+}
+
+/*
  * tecc_cleanup_copy_state - Clean up COPY state
  */
 void
@@ -601,6 +1760,7 @@ tecc_create_copy_state(PGconn *conn, const char *command)
 {
 	TeccCopyState *copy_state;
 	char *table_name = NULL;
+	char *schema_name = NULL;
 	char **column_names = NULL;
 	int column_count = 0;
 	bool is_from_stdin = false;
@@ -609,16 +1769,26 @@ tecc_create_copy_state(PGconn *conn, const char *command)
 
 	/* Parse COPY command with format options */
 	bool csv_mode = false;
+	bool binary_mode = false;
 	char delimiter = '\t';
 	char quote = '"';
 	char escape = '\\';
 	bool header = false;
 	char *null_string = NULL;
 
+	int *subquery_mapping = NULL;
+	int subquery_mapping_count = 0;
+	char **subquery_column_table_names = NULL;
+
 	if (tecc_parse_copy_with_frontend_parser(conn, command, &table_name, &column_names,
-									   &column_count, &is_from_stdin, &is_to_stdout,
-									   &csv_mode, &delimiter, &quote, &escape,
-									   &header, &null_string) != 0)
+									   &column_count,
+									   &subquery_mapping, &subquery_mapping_count,
+									   &subquery_column_table_names,
+									   &is_from_stdin, &is_to_stdout,
+									   &csv_mode, &binary_mode,
+					   &delimiter, &quote, &escape,
+									   &header, &null_string,
+									   &schema_name) != 0)
 	{
 		return NULL;
 	}
@@ -649,8 +1819,13 @@ tecc_create_copy_state(PGconn *conn, const char *command)
 
 	/* Set basic information */
 	copy_state->table_name = table_name;
+	copy_state->schema_name = schema_name;  /* 可能为 NULL（未限定表名，运行时解析） */
 	copy_state->column_names = column_names;
 	copy_state->column_count = column_count;
+	/* For subquery with column_names populated, set column_count for processor name matching */
+	if (subquery_mapping != NULL && subquery_mapping_count > 0 && copy_state->column_names != NULL &&
+		copy_state->column_count == 0)
+		copy_state->column_count = subquery_mapping_count;
 	copy_state->is_from_stdin = is_from_stdin;
 	copy_state->is_to_stdout = is_to_stdout;
 	copy_state->current_row = 0;
@@ -660,7 +1835,7 @@ tecc_create_copy_state(PGconn *conn, const char *command)
 	copy_state->quote = quote;
 	copy_state->escape = escape;
 	copy_state->csv_mode = csv_mode;
-	copy_state->binary_mode = false; /* Binary mode not supported yet */
+	copy_state->binary_mode = binary_mode;
 	copy_state->header = header;
 	copy_state->null_string = null_string;
 
@@ -710,19 +1885,28 @@ tecc_create_copy_state(PGconn *conn, const char *command)
 		copy_state->encrypted_column_count = 0;
 	}
 
-	/* Initialize column mapping */
-	if (tecc_copy_state_init_column_mapping(copy_state) != 0)
+	{
+	}
+	/* Initialize column mapping: use subquery mapping if available */
+	if (subquery_mapping != NULL && subquery_mapping_count > 0)
+	{
+		copy_state->column_mapping = subquery_mapping;
+		copy_state->mapping_count = subquery_mapping_count;
+		copy_state->column_table_names = subquery_column_table_names;
+	}
+	else if (tecc_copy_state_init_column_mapping(copy_state) != 0)
 	{
 		tecc_record_debug(NULL, "Failed to initialize column mapping");
 		/* Continue anyway, mapping will be identity mapping */
 	}
 
-	/* Initialize processor context */
-	if (tecc_copy_state_init_processor_context(copy_state) != 0)
-	{
-		tecc_record_debug(NULL, "Failed to initialize processor context");
-		/* Continue without processor context */
-	}
+	/* For multi-table subquery: load encrypted columns from all referenced tables */
+	(void)tecc_copy_state_load_mapped_tables((TeccEnhancedCopyState *)copy_state);
+
+	/* ReqID:TECC4.0 - 单事务恢复(-1)修复：行到达前用主连接补全本会话未提交的
+	 * DEK/KEK 缓存（详见 tecc_copy_preload_table_keys 注释）。必须在
+	 * init_crypto_context 之前，且 COPY 尚未把主连接置为 COPY-in 忙态。 */
+	tecc_copy_preload_table_keys((TeccEnhancedCopyState *)copy_state);
 
 	/* Initialize crypto context */
 	if (tecc_copy_state_init_crypto_context(copy_state) != 0)
@@ -733,7 +1917,6 @@ tecc_create_copy_state(PGconn *conn, const char *command)
 
 	return copy_state;
 
-error_cleanup:
 	if (table_name != NULL)
 	{
 		tecc_pfree(table_name);
@@ -752,6 +1935,14 @@ error_cleanup:
 	if (null_string != NULL)
 	{
 		tecc_pfree(null_string);
+	}
+	if (subquery_mapping != NULL)
+	{
+		tecc_pfree(subquery_mapping);
+	}
+	if (subquery_column_table_names != NULL)
+	{
+		tecc_pfree(subquery_column_table_names);
 	}
 	if (copy_state != NULL)
 	{
@@ -777,7 +1968,7 @@ tecc_free_copy_state(TeccCopyState *copy_state)
 		 * by a prior call (e.g., copy.c:471 before SendQuery/PQexec).
 		 * Keeping it allows PQputCopyData encryption to still work.
 		 */
-		return NULL;
+		return;
 	}
 
 	/* Free table name */
@@ -818,6 +2009,20 @@ tecc_free_copy_state(TeccCopyState *copy_state)
 		tecc_pfree(copy_state->column_mapping);
 	}
 
+	/* Free column table names */
+	if (copy_state->column_table_names != NULL)
+	{
+		/* ReqID:TECC4.0 - Bug 907：逐列来源表名由 processor pg_strdup 出来 */
+		for (i = 0; i < copy_state->mapping_count; i++)
+		{
+			if (copy_state->column_table_names[i] != NULL)
+			{
+				tecc_pfree(copy_state->column_table_names[i]);
+			}
+		}
+		tecc_pfree(copy_state->column_table_names);
+	}
+
 	/* Free row buffer */
 	if (copy_state->row_buffer != NULL)
 	{
@@ -836,98 +2041,64 @@ tecc_free_copy_state(TeccCopyState *copy_state)
 		tecc_pfree(copy_state->errors);
 	}
 
-	/* Free processor, crypto and formatter contexts */
-	/* Note: Currently these contexts are NULL, but we keep the structure for future use */
-	if (copy_state->processor_ctx != NULL)
-	{
-		/* TODO: Call processor cleanup function when available */
-		/* For now, just set to NULL */
-		copy_state->processor_ctx = NULL;
-	}
+	/* Free crypto context */
 	if (copy_state->crypto_ctx != NULL)
 	{
-		/* Call crypto cleanup function */
 		tecc_copy_state_cleanup_crypto_context((TeccEnhancedCopyState *)copy_state);
-	}
-	if (copy_state->formatter_ctx != NULL)
-	{
-		/* TODO: Call formatter cleanup function when available */
-		/* For now, just set to NULL */
-		copy_state->formatter_ctx = NULL;
-	}
-
-	/* Free memory pool if allocated */
-	if (copy_state->memory_pool != NULL)
-	{
-		/* Note: Memory pool should be managed by specialized memory manager */
 	}
 
 	/* Free COPY state itself */
 	tecc_pfree(copy_state);
 }
 
-#if 0
+
 /*
- * tecc_parse_copy_command - Parse COPY command
+ * ReqID:TECC4.0 - Bug 907：取 FROM 项里最左侧的 RangeVar。
  *
- * Returns: 0 on success, -1 on failure
+ * 显式 JOIN 的 fromClause 首项是 JoinExpr（而不是 RangeVar），原实现只判
+ * 首项类型，导致 \copy (SELECT ... JOIN ...) TO 的 COPY 状态拿不到表名，
+ * 加密列元数据一条也加载不到，导出整行输出密文。
+ * 这里沿 JOIN 左子树递归下降到最左表。
  */
-static int
-tecc_parse_copy_command(const char *command, char **table_name,
-                        char ***column_names, int *column_count,
-                        bool *is_from_stdin, bool *is_to_stdout)
+static const RangeVar *
+tecc_copy_first_rangevar(const Node *node)
 {
-	const char *p;
-	/* TODO: Call processor module for COPY command parsing */
-	/* Processor module should provide: tecc_processor_parse_copy_command() */
+	if (node == NULL)
+		return NULL;
 
-	/* For now, return placeholder values for interface compatibility */
-	*table_name = NULL;
-	*column_names = NULL;
-	*column_count = 0;
-	*is_from_stdin = false;
-	*is_to_stdout = false;
+	if (nodeTag(node) == FE_T_RangeVar)
+		return (const RangeVar *) node;
 
-	/* Basic validation */
-	if (command == NULL)
+	if (nodeTag(node) == FE_T_JoinExpr)
 	{
-		return -1;
+		const JoinExpr *join = (const JoinExpr *) node;
+		const RangeVar *rv = tecc_copy_first_rangevar(join->larg);
+
+		if (rv != NULL)
+			return rv;
+		return tecc_copy_first_rangevar(join->rarg);
 	}
 
-	p = command;
-	while (*p && (*p == '\0' || *p == '\t' || *p == '\n' || *p == '\r'))
-	{
-		p++;
-	}
-
-	if (strncasecmp(p, "COPY", 4) != 0)
-	{
-		return -1;
-	}
-
-	/* Return success with placeholder values */
-	return 0;
+	return NULL;
 }
-#endif
-
-
-/* Begin - ReqID:TECC4.0 - Use frontend parser for COPY command parsing */
 
 /*
- * tecc_parse_copy_with_frontend_parser - Parse COPY command using frontend parser
+ * tecc_parse_copy_subquery - Extract table and column mapping from subquery
  *
- * This function uses the frontend parser to parse COPY commands, which provides
- * full support for all COPY syntax including column lists and format options.
- *
- * Returns: 0 on success, -1 on failure
+ * For \copy (SELECT ...) TO STDOUT: extracts the table name and builds
+ * a column_mapping array (1-based attnums) for encrypted column detection.
  */
 static int
 tecc_parse_copy_with_frontend_parser(PGconn *conn, const char *command, char **table_name,
                                      char ***column_names, int *column_count,
+                                     int **column_mapping, int *mapping_count,
+                                     char ***column_table_names,
                                      bool *is_from_stdin, bool *is_to_stdout,
-                                     bool *csv_mode, char *delimiter,
+                                     bool *csv_mode, bool *binary_mode,
+                                     char *delimiter,
                                      char *quote, char *escape,
-                                     bool *header, char **null_string)
+                                     bool *header, char **null_string,
+                                     char **schema_name)
 {
 	Node *parse_tree = NULL;
 	ParserError *errors = NULL;
@@ -935,11 +2106,16 @@ tecc_parse_copy_with_frontend_parser(PGconn *conn, const char *command, char **t
 
 	/* Initialize output parameters */
 	if (table_name) *table_name = NULL;
+	if (schema_name) *schema_name = NULL;
 	if (column_names) *column_names = NULL;
 	if (column_count) *column_count = 0;
+	if (column_mapping) *column_mapping = NULL;
+	if (mapping_count) *mapping_count = 0;
+	if (column_table_names) *column_table_names = NULL;
 	if (is_from_stdin) *is_from_stdin = false;
 	if (is_to_stdout) *is_to_stdout = false;
 	if (csv_mode) *csv_mode = false;
+	if (binary_mode) *binary_mode = false;
 	if (delimiter) *delimiter = '\t'; /* Default TEXT delimiter */
 	if (quote) *quote = '"'; /* Default quote character */
 	if (escape) *escape = '\\'; /* Default escape character */
@@ -993,19 +2169,49 @@ tecc_parse_copy_with_frontend_parser(PGconn *conn, const char *command, char **t
 
 	copy_stmt = (CopyStmt *)parse_tree;
 
-	/* ReqID:TECC4.0 — COPY (SELECT ...) TO STDOUT 走后端解密，
-	 * 前端解析器无需处理。不报错，直接跳过让后端执行。 */
+
+	/* ReqID:TECC4.0 — Handle \copy (SELECT ...) TO STDOUT with subquery */
 	if (copy_stmt->relation == NULL && copy_stmt->query != NULL && !copy_stmt->is_from)
 	{
-		freeNode(parse_tree);
-		return 0;  /* Not a client-side COPY — let backend handle it */
-	}
+		/* Extract table_name for state initialization (load_encrypted_columns needs it).
+		 * Column mapping is built by the processor (tecc_stmt_processor_process_copy
+		 * → process_select) and propagated to copy_state via the hook. */
+		if (table_name && copy_stmt->query &&
+			nodeTag(copy_stmt->query) == FE_T_SelectStmt)
+		{
+			SelectStmt *sel = (SelectStmt *)copy_stmt->query;
+			if (sel->fromClause != NULL &&
+				list_length(sel->fromClause) > 0)
+			{
+				const RangeVar *rv =
+					tecc_copy_first_rangevar((const Node *)linitial(sel->fromClause));
+				if (rv != NULL && rv->relname != NULL)
+					*table_name = tecc_strdup(rv->relname);
+			}
+		}
+		/* Set output direction */
+		if (is_to_stdout)
+			*is_to_stdout = !copy_stmt->is_from;
+		if (null_string)
+			*null_string = NULL;
+		/* Fall through to parse format options (CSV, delimiter, etc.) */
+ 	}
 
 	/* Extract table name */
 	if (table_name && copy_stmt->relation && copy_stmt->relation->relname)
 	{
 		*table_name = tecc_strdup(copy_stmt->relation->relname);
 		if (*table_name == NULL)
+		{
+			goto cleanup_error;
+		}
+	}
+
+	/* ReqID:TECC4.0 - 提取显式 schema（未限定表名时为 NULL，由调用方按 search_path 解析） */
+	if (schema_name && copy_stmt->relation && copy_stmt->relation->schemaname)
+	{
+		*schema_name = tecc_strdup(copy_stmt->relation->schemaname);
+		if (*schema_name == NULL)
 		{
 			goto cleanup_error;
 		}
@@ -1063,13 +2269,15 @@ tecc_parse_copy_with_frontend_parser(PGconn *conn, const char *command, char **t
 			if (strcmp(def->defname, "format") == 0)
 			{
 				char *format = (char *)((Const *)def->arg)->constvalue.sval;
-				if (csv_mode && format)
+				if (format)
 				{
-					*csv_mode = (strcasecmp(format, "csv") == 0);
-					if (*csv_mode && delimiter)
-					{
-						*delimiter = ','; /* CSV default delimiter */
-					}
+					if (csv_mode)
+						*csv_mode = (strcasecmp(format, "csv") == 0);
+					if (binary_mode)
+						*binary_mode = (strcasecmp(format, "binary") == 0);
+					/* Set CSV defaults if CSV mode */
+					if (csv_mode && *csv_mode && delimiter)
+						*delimiter = ',';
 				}
 			}
 			else if (strcmp(def->defname, "delimiter") == 0 && delimiter)
@@ -1148,6 +2356,14 @@ cleanup_error:
 		*null_string = NULL;
 	}
 
+	if (column_mapping && *column_mapping)
+	{
+		tecc_pfree(*column_mapping);
+		*column_mapping = NULL;
+		if (mapping_count)
+			*mapping_count = 0;
+	}
+
 	if (parse_tree) freeNode(parse_tree);
 	return -1;
 }
@@ -1156,84 +2372,6 @@ cleanup_error:
 
 /* Begin - ReqID:TECC4.0 - Enhanced COPY row processing */
 
-#if 0
-/*
- * tecc_parse_copy_row - Parse a COPY row into fields based on format
- *
- * This function parses a COPY row into fields using the appropriate
- * format parser (CSV or TEXT).
- *
- * Returns: 0 on success, -1 on failure
- */
-static int
-tecc_parse_copy_row(TeccEnhancedCopyState *copy_state, const char *row_data,
-                    int row_len, char ***fields, int **field_lens, int *field_count)
-{
-	if (copy_state == NULL || row_data == NULL || row_len <= 0 ||
-	    fields == NULL || field_lens == NULL || field_count == NULL)
-	{
-		return -1;
-	}
-
-	/* Use appropriate parser based on format */
-	if (copy_state->csv_mode)
-	{
-		/* CSV format parsing */
-		return tecc_copy_parse_csv_row(row_data, row_len,
-		                               copy_state->delimiter,
-		                               copy_state->quote,
-		                               copy_state->escape,
-		                               fields, field_lens, field_count);
-	}
-	else
-	{
-		/* TEXT format parsing */
-		return tecc_copy_parse_text_row(row_data, row_len,
-		                                copy_state->delimiter,
-		                                fields, field_lens, field_count);
-	}
-}
-
-/*
- * tecc_format_copy_row - Format fields into a COPY row based on format
- *
- * This function formats fields into a COPY row using the appropriate
- * format formatter (CSV or TEXT).
- *
- * Returns: 0 on success, -1 on failure
- */
-static int
-tecc_format_copy_row(TeccEnhancedCopyState *copy_state, char **fields,
-                     int *field_lens, int field_count,
-                     char **formatted_row, int *formatted_len)
-{
-	if (copy_state == NULL || fields == NULL || field_lens == NULL ||
-	    field_count <= 0 || formatted_row == NULL || formatted_len == NULL)
-	{
-		return -1;
-	}
-
-	/* Use appropriate formatter based on format */
-	if (copy_state->csv_mode)
-	{
-		/* CSV format formatting */
-		return tecc_copy_format_csv_row(fields, field_lens, field_count,
-		                                copy_state->delimiter,
-		                                copy_state->quote,
-		                                copy_state->escape,
-		                                formatted_row, formatted_len);
-	}
-	else
-	{
-		/* TEXT format formatting */
-		return tecc_copy_format_text_row(fields, field_lens, field_count,
-		                                 copy_state->delimiter,
-		                                 formatted_row, formatted_len);
-	}
-}
-
-
-#endif
 /*
  * tecc_process_copy_row - Process a single COPY row by calling processor module
  *
@@ -1398,7 +2536,11 @@ tecc_process_copy_row_stream(TeccEnhancedCopyState *copy_state, const char *row_
     }
 
     /* 解析行数据为字段 */
-    if (copy_state->csv_mode) {
+    if (copy_state->binary_mode) {
+        /* Binary format: parse using length-prefixed field format */
+        result = tecc_copy_parse_binary_row(row_data, row_len,
+                                           &fields, &field_lens, &field_count);
+    } else if (copy_state->csv_mode) {
         result = tecc_copy_parse_csv_row(row_data, row_len,
                                         copy_state->delimiter,
                                         copy_state->quote,
@@ -1592,7 +2734,10 @@ tecc_process_copy_row_stream(TeccEnhancedCopyState *copy_state, const char *row_
     }
 
     /* 将字段重新格式化为行 */
-    if (copy_state->csv_mode) {
+    if (copy_state->binary_mode) {
+        result = tecc_copy_format_binary_row(fields, field_lens, field_count,
+                                            &formatted_row, &formatted_len);
+    } else if (copy_state->csv_mode) {
         result = tecc_copy_format_csv_row(fields, field_lens, field_count,
                                          copy_state->delimiter,
                                          copy_state->quote,
@@ -1691,11 +2836,15 @@ tecc_copy_state_load_encrypted_columns(TeccEnhancedCopyState *copy_state)
 		database_name = PQdb(copy_state->conn);
 	}
 
-	/* 使用COPY状态中的模式名，如果未设置则使用默认值 */
-	if (copy_state->schema_name != NULL && copy_state->schema_name[0] != '\0') {
-		schema_name = copy_state->schema_name;
-	} else {
-		schema_name = "public";  /* 默认模式名 */
+	/* ReqID:TECC4.0 - 未限定表名按 search_path 解析真实 schema（同 stmt_load_table_metadata）；
+	 * 显式限定名（copy_state->schema_name 非空）直接使用 */
+	{
+		TeccStatementData tmp_data;
+		memset(&tmp_data, 0, sizeof(tmp_data));
+		tmp_data.conn = copy_state->conn;
+		schema_name = tecc_stmt_resolve_table_schema(&tmp_data,
+													 copy_state->schema_name,
+													 copy_state->table_name);
 	}
 
 	/* 如果数据库名为空，使用默认值 */
@@ -1812,6 +2961,7 @@ tecc_copy_state_load_encrypted_columns(TeccEnhancedCopyState *copy_state)
 				column_meta->table_oid = column_name_map[j]->table_oid;
 				column_meta->column_attnum = column_name_map[j]->column_attnum;
 				column_meta->column_name = pg_strdup(column_name_map[j]->column_name);
+				column_meta->table_name = copy_state->table_name ? pg_strdup(copy_state->table_name) : NULL;
 				column_meta->data_type_original_oid = column_name_map[j]->original_type_oid;
 				column_meta->data_type_original_mod = column_name_map[j]->original_type_mod;
 				column_meta->dek_name = NULL;
@@ -1868,6 +3018,7 @@ tecc_copy_state_load_encrypted_columns(TeccEnhancedCopyState *copy_state)
 						column_meta->table_oid = column_name_map[j]->table_oid;
 						column_meta->column_attnum = column_name_map[j]->column_attnum;
 						column_meta->column_name = pg_strdup(column_name_map[j]->column_name);
+						column_meta->table_name = copy_state->table_name ? pg_strdup(copy_state->table_name) : NULL;
 						column_meta->data_type_original_oid = column_name_map[j]->original_type_oid;
 						column_meta->data_type_original_mod = column_name_map[j]->original_type_mod;
 						column_meta->dek_name = NULL;
@@ -1919,6 +3070,199 @@ tecc_copy_state_load_encrypted_columns(TeccEnhancedCopyState *copy_state)
 	return 0;
 }
 
+
+
+/*
+ * tecc_copy_state_load_encrypted_columns_for_table - Load encrypted columns from cache
+ * for a specific table and merge into copy_state.
+ */
+static int
+tecc_copy_state_load_encrypted_columns_for_table(TeccEnhancedCopyState *copy_state,
+                                                  const char *table_name)
+{
+	TeccState *state;
+	const char *database_name = NULL;
+	const char *schema_name;
+	TeccColumnCacheItem **cached_columns;
+	int cached_column_count;
+	int old_count;
+	int i;
+
+	if (copy_state == NULL || table_name == NULL)
+		return -1;
+
+	state = tecc_get_state(copy_state->conn);
+	if (state == NULL)
+		return -1;
+
+	if (copy_state->conn != NULL)
+		database_name = PQdb(copy_state->conn);
+	if (database_name == NULL || database_name[0] == '\0')
+		database_name = "postgres";
+	/* ReqID:TECC4.0 - 未限定表名按 search_path 解析真实 schema（同 stmt_load_table_metadata） */
+	{
+		TeccStatementData tmp_data;
+		memset(&tmp_data, 0, sizeof(tmp_data));
+		tmp_data.conn = copy_state->conn;
+		schema_name = tecc_stmt_resolve_table_schema(&tmp_data,
+													 copy_state->schema_name,
+													 table_name);
+	}
+
+	cached_columns = tecc_cache_get_columns_by_table_name(state, database_name,
+		schema_name, table_name, &cached_column_count);
+	if (cached_columns == NULL || cached_column_count <= 0)
+		return 0;
+
+	old_count = copy_state->encrypted_column_count;
+	{
+		int new_count = old_count + cached_column_count;
+		TeccEncryptedColumnMetadata **new_info;
+		if (old_count == 0)
+			new_info = (TeccEncryptedColumnMetadata **)pg_malloc(
+				new_count * sizeof(TeccEncryptedColumnMetadata *));
+		else
+			new_info = (TeccEncryptedColumnMetadata **)pg_realloc(
+				copy_state->encrypted_column_info,
+				new_count * sizeof(TeccEncryptedColumnMetadata *));
+		if (new_info == NULL)
+			return -1;
+		copy_state->encrypted_column_info = new_info;
+		copy_state->encrypted_column_count = new_count;
+	}
+	for (i = 0; i < cached_column_count; i++)
+	{
+		TeccColumnCacheItem *src = cached_columns[i];
+		TeccEncryptedColumnMetadata *meta;
+		if (src == NULL || src->column_name == NULL)
+		{
+			copy_state->encrypted_column_count--;
+			continue;
+		}
+		meta = (TeccEncryptedColumnMetadata *)
+			pg_malloc(sizeof(TeccEncryptedColumnMetadata));
+		if (meta == NULL)
+		{
+			copy_state->encrypted_column_count--;
+			continue;
+		}
+		memset(meta, 0, sizeof(TeccEncryptedColumnMetadata));
+		meta->table_oid = src->table_oid;
+		meta->column_attnum = src->column_attnum;
+		meta->column_name = pg_strdup(src->column_name);
+		meta->table_name = pg_strdup(table_name);
+		meta->data_type_original_oid = src->original_type_oid;
+		meta->data_type_original_mod = src->original_type_mod;
+		meta->dek_name = NULL;
+		if (state != NULL && src->dek_id != InvalidOid)
+		{
+			TeccDekCacheItem *dek_item = tecc_cache_get_dek_by_oid(state, src->dek_id);
+			if (dek_item == NULL && src->dek_name != NULL)
+				dek_item = tecc_cache_get_dek_by_name_search_path(state, src->dek_name);
+			if (dek_item != NULL && dek_item->key_name != NULL)
+				meta->dek_name = pg_strdup(dek_item->key_name);
+		}
+		meta->encryption_type = src->encryption_type;
+		meta->column_key_id = src->dek_id;
+		meta->enable_det = (src->encryption_type & 0x01) != 0;
+		meta->enable_ope = (src->encryption_type & 0x02) != 0;
+		meta->enable_search = (src->encryption_type & 0x04) != 0;
+		meta->collation_oid = src->collation_oid;
+		meta->collation_locale = src->collation_locale ? pg_strdup(src->collation_locale) : NULL;
+		meta->create_date = src->create_date;
+		meta->creator = 0;
+		copy_state->encrypted_column_info[old_count + i] = meta;
+	}
+	return 0;
+}
+
+/*
+ * ReqID:TECC4.0 - Bug 907：按当前列映射补载"其余来源表"的密态列元数据。
+ *
+ * 多表 JOIN 子查询的来源表名只有 processor（tecc_stmt_processor_process_copy）
+ * 解析 SELECT 才能得到，而 COPY 状态（连同加密列元数据）在它之前就建好了，
+ * 表名经 hook 事后回填。所以 JOIN 右表的元数据只能在这里补载 —— 不补载就
+ * 匹配不到该表的密态列，导出整列输出密文。
+ *
+ * 幂等：已加载过元数据的表直接跳过。返回本次新加载（列数真正增加）的表数。
+ */
+int
+tecc_copy_state_load_mapped_tables(TeccEnhancedCopyState *copy_state)
+{
+	int i;
+	int loaded = 0;
+
+	if (copy_state == NULL || copy_state->column_table_names == NULL ||
+		copy_state->mapping_count <= 0)
+		return 0;
+
+	for (i = 0; i < copy_state->mapping_count; i++)
+	{
+		const char *table_name = copy_state->column_table_names[i];
+		int before = copy_state->encrypted_column_count;
+		bool already = false;
+		int j;
+
+		if (table_name == NULL)
+			continue;
+
+		/* 该表是否已有元数据（主表在 create_copy_state 里已载入） */
+		for (j = 0; j < copy_state->encrypted_column_count; j++)
+		{
+			TeccEncryptedColumnMetadata *meta = copy_state->encrypted_column_info[j];
+			if (meta != NULL && meta->table_name != NULL &&
+				pg_strcasecmp(meta->table_name, table_name) == 0)
+			{
+				already = true;
+				break;
+			}
+		}
+		if (already)
+			continue;
+
+		if (tecc_copy_state_load_encrypted_columns_for_table(copy_state,
+		                                                     table_name) != 0)
+		{
+			TeccState *state = (copy_state->conn != NULL)
+			                   ? tecc_get_state(copy_state->conn) : NULL;
+			tecc_record_debug(state,
+				"Failed to load encrypted columns for mapped table: %s", table_name);
+			continue;
+		}
+		if (copy_state->encrypted_column_count > before)
+			loaded++;
+	}
+
+	return loaded;
+}
+
+/*
+ * ReqID:TECC4.0 - Bug 907：补载映射表，并把"按列数定长分配"的加解密上下文重建。
+ *
+ * encrypted_column_info 之外，crypto_ctx / 流式上下文数组的长度都是
+ * encrypted_column_count，销毁时也按该值遍历；补载会让列数变大，所以必须先
+ * 按旧列数销毁、后按新列数重建，否则销毁时会越过原数组末尾读。
+ */
+int
+tecc_copy_state_reload_mapped_columns(TeccEnhancedCopyState *copy_state)
+{
+	int loaded;
+
+	if (copy_state == NULL)
+		return 0;
+
+	tecc_copy_state_cleanup_crypto_context(copy_state);
+	tecc_copy_state_cleanup_stream_contexts(copy_state);
+
+	loaded = tecc_copy_state_load_mapped_tables(copy_state);
+
+	if (loaded > 0)
+		(void)tecc_copy_state_init_crypto_context(copy_state);
+
+	return loaded;
+}
+
+
 /*
  * tecc_copy_state_init_column_mapping - 初始化列映射
  *
@@ -1947,10 +3291,10 @@ tecc_copy_state_init_column_mapping(TeccEnhancedCopyState *copy_state)
 		return -1;
 	}
 
-	/* 初始化列映射：默认情况下，文件列i映射到表列i */
+	/* 初始化列映射：文件列i映射到表列(i+1)（attnum是1-based） */
 	for (i = 0; i < copy_state->column_count; i++)
 	{
-		column_mapping[i] = i;
+		column_mapping[i] = i + 1;
 	}
 
 	/* 更新COPY状态 */
@@ -1959,28 +3303,6 @@ tecc_copy_state_init_column_mapping(TeccEnhancedCopyState *copy_state)
 
 	/* 记录调试信息 */
 	tecc_record_debug(NULL, "Initialized column mapping (identity mapping)");
-
-	return 0;
-}
-
-/*
- * tecc_copy_state_init_processor_context - 初始化处理器上下文
- *
- * 参数:
- *   copy_state - COPY状态
- *
- * 返回:
- *   0 - 成功
- *   -1 - 失败
- */
-int
-tecc_copy_state_init_processor_context(TeccEnhancedCopyState *copy_state)
-{
-	/* 目前处理器上下文初始化为NULL，未来可以添加实际的初始化逻辑 */
-	copy_state->processor_ctx = NULL;
-
-	/* 记录调试信息 */
-	tecc_record_debug(NULL, "Initialized processor context (placeholder)");
 
 	return 0;
 }
@@ -3071,6 +4393,174 @@ tecc_copy_free_parsed_fields(char **fields, int *field_lens, int field_count)
 	}
 }
 
+/*
+ * tecc_copy_parse_binary_row - Parse a binary COPY row into fields
+ *
+ * In PostgreSQL binary COPY format, each row consists of:
+ *   - int16 field_count (network byte order)
+ *   - for each field: int32 length (network byte order, -1 = NULL) followed by data
+ *
+ * Returns: 0 on success, -1 on failure
+ */
+static int
+tecc_copy_parse_binary_row(const char *row_data, int row_len,
+                           char ***fields, int **field_lens, int *field_count)
+{
+	const char *pos = row_data;
+	const char *end = row_data + row_len;
+	char **field_array = NULL;
+	int *len_array = NULL;
+	int max_fields = 64;
+	int field_idx = 0;
+	uint16 fld_count_net;
+	int16 fld_count;
+
+	if (row_data == NULL || row_len <= 0 || fields == NULL ||
+		field_lens == NULL || field_count == NULL)
+		return -1;
+
+	if (row_len < 2)
+		return -1;
+
+	/* Read field count (int16, network byte order) */
+	memcpy(&fld_count_net, pos, 2);
+	fld_count = (int16) pg_ntoh16(fld_count_net);
+	pos += 2;
+
+	/* -1 field count means end-of-data marker */
+	if (fld_count == -1)
+	{
+		*fields = NULL;
+		*field_lens = NULL;
+		*field_count = 0;
+		return 0;
+	}
+
+	max_fields = (fld_count > 0) ? fld_count : 64;
+
+	field_array = (char **)pg_malloc(max_fields * sizeof(char *));
+	len_array = (int *)pg_malloc(max_fields * sizeof(int));
+	if (field_array == NULL || len_array == NULL)
+	{
+		if (field_array) tecc_pfree(field_array);
+		if (len_array) tecc_pfree(len_array);
+		return -1;
+	}
+	memset(field_array, 0, max_fields * sizeof(char *));
+
+	/* Read each field */
+	while (field_idx < fld_count && pos + 4 <= end)
+	{
+		uint32 field_len_net;
+		int32 field_len;
+
+		memcpy(&field_len_net, pos, 4);
+		field_len = (int32) pg_ntoh32(field_len_net);
+		pos += 4;
+
+		if (field_len == -1)
+		{
+			len_array[field_idx] = -1;
+			field_array[field_idx] = NULL;
+			field_idx++;
+			continue;
+		}
+
+		if (field_len < 0 || pos + field_len > end)
+		{
+			tecc_copy_free_parsed_fields(field_array, len_array, field_idx);
+			return -1;
+		}
+
+		field_array[field_idx] = (char *)pg_malloc(field_len);
+		if (field_array[field_idx] == NULL)
+		{
+			tecc_copy_free_parsed_fields(field_array, len_array, field_idx);
+			return -1;
+		}
+		memcpy(field_array[field_idx], pos, field_len);
+		len_array[field_idx] = field_len;
+
+		pos += field_len;
+		field_idx++;
+	}
+
+	if (field_idx != fld_count)
+	{
+		tecc_copy_free_parsed_fields(field_array, len_array, field_idx);
+		return -1;
+	}
+
+	*fields = field_array;
+	*field_lens = len_array;
+	*field_count = fld_count;
+	return 0;
+}
+
+/*
+ * tecc_copy_format_binary_row - Format fields into binary COPY row
+ *
+ * Returns: 0 on success, -1 on failure
+ */
+static int
+tecc_copy_format_binary_row(char **fields, int *field_lens, int field_count,
+                            char **row_data, int *row_len)
+{
+	char *result;
+	int pos = 0;
+	int total_size;
+	int i;
+
+	if (fields == NULL || field_lens == NULL || field_count < 0 ||
+		row_data == NULL || row_len == NULL)
+		return -1;
+
+	/* Calculate total size */
+	total_size = 2;
+	for (i = 0; i < field_count; i++)
+	{
+		total_size += 4;
+		if (field_lens[i] > 0)
+			total_size += field_lens[i];
+	}
+
+	result = (char *)pg_malloc(total_size);
+	if (result == NULL)
+		return -1;
+
+	/* Write field count (int16, network byte order) */
+	{
+		uint16 fld_count_net = pg_hton16((uint16) field_count);
+		memcpy(result + pos, &fld_count_net, 2);
+		pos += 2;
+	}
+
+	/* Write each field */
+	for (i = 0; i < field_count; i++)
+	{
+		uint32 field_len_net;
+
+		if (field_lens[i] == -1 || fields[i] == NULL)
+		{
+			field_len_net = pg_hton32((uint32) -1);
+			memcpy(result + pos, &field_len_net, 4);
+			pos += 4;
+		}
+		else
+		{
+			field_len_net = pg_hton32((uint32) field_lens[i]);
+			memcpy(result + pos, &field_len_net, 4);
+			pos += 4;
+			memcpy(result + pos, fields[i], field_lens[i]);
+			pos += field_lens[i];
+		}
+	}
+
+	*row_data = result;
+	*row_len = total_size;
+	return 0;
+}
+
 /* ==================== Batch Processing Functions ==================== */
 
 /* Begin - ReqID:TECC4.0 - Batch processing functions for import/export module */
@@ -3115,7 +4605,7 @@ tecc_copy_enable_batch_processing(PGconn *conn, int batch_size)
 		 * by a prior call (e.g., copy.c:471 before SendQuery/PQexec).
 		 * Keeping it allows PQputCopyData encryption to still work.
 		 */
-		return NULL;
+		return -1;
 	}
 
 	/* Enable batch processing */
@@ -3181,7 +4671,7 @@ tecc_copy_disable_batch_processing(PGconn *conn)
 		 * by a prior call (e.g., copy.c:471 before SendQuery/PQexec).
 		 * Keeping it allows PQputCopyData encryption to still work.
 		 */
-		return NULL;
+		return -1;
 	}
 
 	/* Disable batch processing */
@@ -3231,7 +4721,7 @@ tecc_copy_set_batch_size(PGconn *conn, int batch_size)
 		 * by a prior call (e.g., copy.c:471 before SendQuery/PQexec).
 		 * Keeping it allows PQputCopyData encryption to still work.
 		 */
-		return NULL;
+		return -1;
 	}
 
 	/* Set batch size */
@@ -3281,7 +4771,7 @@ tecc_copy_set_max_errors(PGconn *conn, int max_errors)
 		 * by a prior call (e.g., copy.c:471 before SendQuery/PQexec).
 		 * Keeping it allows PQputCopyData encryption to still work.
 		 */
-		return NULL;
+		return -1;
 	}
 
 	/* Set max errors */
@@ -3331,7 +4821,7 @@ tecc_copy_set_stop_on_error(PGconn *conn, bool stop_on_error)
 		 * by a prior call (e.g., copy.c:471 before SendQuery/PQexec).
 		 * Keeping it allows PQputCopyData encryption to still work.
 		 */
-		return NULL;
+		return -1;
 	}
 
 	/* Set stop on error flag */
@@ -3871,7 +5361,7 @@ tecc_copy_get_batch_statistics(PGconn *conn, int *total_rows,
 		 * by a prior call (e.g., copy.c:471 before SendQuery/PQexec).
 		 * Keeping it allows PQputCopyData encryption to still work.
 		 */
-		return NULL;
+		return -1;
 	}
 
 	/* Calculate statistics */
@@ -3952,7 +5442,7 @@ tecc_copy_get_batch_errors(PGconn *conn, TeccCopyError **errors,
 		 * by a prior call (e.g., copy.c:471 before SendQuery/PQexec).
 		 * Keeping it allows PQputCopyData encryption to still work.
 		 */
-		return NULL;
+		return -1;
 	}
 
 	/* Copy errors */
@@ -4014,7 +5504,7 @@ tecc_copy_reset_batch_statistics(PGconn *conn)
 		 * by a prior call (e.g., copy.c:471 before SendQuery/PQexec).
 		 * Keeping it allows PQputCopyData encryption to still work.
 		 */
-		return NULL;
+		return -1;
 	}
 
 	/* Reset statistics */

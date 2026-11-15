@@ -17,7 +17,6 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
- *
  * IDENTIFICATION
  *	  src/backend/postmaster/pgarch.c
  *
@@ -57,6 +56,7 @@
 
 WalFileUpdateChecksum_type WalFileUpdateChecksum = NULL; /* ReqID: SRS-SECURITY-EAL4-WAL_MD5 */
 														 /* ReqID: SRS-SECURITY-AUTHENTICATION-METHOD */
+WalFileUpdatemd5_type WalFileUpdatemd5 = NULL; /* ReqID: SRS-SECURITY-EAL4-WAL_MD5 */
 /* ----------
  * Timer definitions.
  * ----------
@@ -485,6 +485,12 @@ pgarch_ArchiverCopyLoop(void)
 					(*WalFileUpdateChecksum)(xlog, XLogArchiveCommand);
 				}
 				/* End - ReqID: SRS-SECURITY-EAL4-WAL_MD5 */ /*SRS-SECURITY-AUTHENTICATION-METHOD */
+				/* Begin - ReqID: SRS-SECURITY-EAL4-WAL_MD5 */
+				if (WalFileUpdatemd5 && (XLogArchiveMode > ARCHIVE_MODE_OFF) )
+				{
+					(*WalFileUpdatemd5)(xlog, XLogArchiveCommand);
+				}
+				/* End - ReqID: SRS-SECURITY-EAL4-WAL_MD5 */
 
 				break;			/* out of inner retry loop */
 			}

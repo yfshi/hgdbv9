@@ -1,0 +1,56 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+=== Setup OK ===
+DROP TABLE
+DROP TABLE
+DROP VIEW
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+=== 1 Nested levels ===
+1a_2level_nomatch|0
+1b_3level_nomatch|0
+1c_3level_match|2
+1d_4level_nomatch|0
+1e_3level_ope|2
+=== 2 Alias and CTE ===
+2a_alias_outer_nomatch|0
+2b_alias_outer_match|2
+2c_alias_inner|2
+2d_3level_alias_outer|0
+2e_cte_count|2
+2f_cte_empty_tlist|2
+2g_cte_name_qualified|2
+=== 3 Batch ===
+3a_leading_txn_batch|2
+NOTICE:  table "t_nbr_drop" does not exist, skipping
+3b_drop_table_batch|2
+NOTICE:  view "v_nbr" does not exist, skipping
+3c_view_batch|2
+3d_show_batch|2
+3e_comment_batch|2
+3f_analyze_batch|2
+3g_truncate_batch|2
+3h_middle_batch|1
+WARNING:  there is no transaction in progress
+COMMIT
+DROP VIEW
+BEGIN
+3k_empty_stmt_batch|a;b|2
+=== 4 Cleanup ===
+DROP VIEW
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP KEK
+psql:/.../nested_batch_rewrite.sql:17: NOTICE:  key encryption key "kek_nbr" does not exist, skipping
+psql:/.../nested_batch_rewrite.sql:28: NOTICE:  table "t_nbr" does not exist, skipping
+psql:/.../nested_batch_rewrite.sql:29: NOTICE:  table "t_nbr_probe" does not exist, skipping
+psql:/.../nested_batch_rewrite.sql:30: NOTICE:  view "v_nbr" does not exist, skipping
+psql:/.../nested_batch_rewrite.sql:120: NOTICE:  view "v_nbr" does not exist, skipping
+psql:/.../nested_batch_rewrite.sql:123: NOTICE:  table "t_nbr_drop" does not exist, skipping
+psql:/.../nested_batch_rewrite.sql:124: NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to data encryption key dek_det_nbr
+drop cascades to data encryption key dek_ope_nbr

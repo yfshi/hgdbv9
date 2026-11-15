@@ -1,0 +1,233 @@
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+========== 1. 整数格 int2→int4→int8→numeric (可比较) ==========
+   ?column?   | greatest | least | greatest | least 
+--------------+----------+-------+----------+-------
+ XG-int2xint4 | 4000     | 100   |     4000 |   100
+ XG-int2xint4 | 30000    | -700  |    30000 |  -700
+(2 rows)
+
+   ?column?   | greatest | least | greatest | least 
+--------------+----------+-------+----------+-------
+ XG-int2xint8 | 5000000  | 100   |  5000000 |   100
+ XG-int2xint8 | 30000    | 40    |    30000 |    40
+(2 rows)
+
+    ?column?     | greatest | least | greatest | least 
+-----------------+----------+-------+----------+-------
+ XG-int2xnumeric | 1000.5   | 100   |   1000.5 |   100
+ XG-int2xnumeric | 30000    | 0.25  |    30000 |  0.25
+(2 rows)
+
+   ?column?   | greatest | least | greatest | least 
+--------------+----------+-------+----------+-------
+ XG-int4xint8 | 5000000  | 4000  |  5000000 |  4000
+ XG-int4xint8 | 40       | -700  |       40 |  -700
+(2 rows)
+
+    ?column?     | greatest | least  | greatest | least  
+-----------------+----------+--------+----------+--------
+ XG-int4xnumeric | 4000     | 1000.5 |     4000 | 1000.5
+ XG-int4xnumeric | 0.25     | -700   |     0.25 |   -700
+(2 rows)
+
+    ?column?     | greatest | least  | greatest | least  
+-----------------+----------+--------+----------+--------
+ XG-int8xnumeric | 5000000  | 1000.5 |  5000000 | 1000.5
+ XG-int8xnumeric | 40       | 0.25   |       40 |   0.25
+(2 rows)
+
+========== 2. 浮点格 float4→float8→numeric (可比较) ==========
+     ?column?     | greatest | least | greatest | least 
+------------------+----------+-------+----------+-------
+ XG-float4xfloat8 | 6.25     | 3.5   |     6.25 |   3.5
+ XG-float4xfloat8 | 99.5     | 1.5   |     99.5 |   1.5
+(2 rows)
+
+     ?column?      | greatest | least | greatest | least 
+-------------------+----------+-------+----------+-------
+ XG-float4xnumeric | 1000.5   | 3.5   |   1000.5 |   3.5
+ XG-float4xnumeric | 99.5     | 0.25  |     99.5 |  0.25
+(2 rows)
+
+     ?column?      | greatest | least | greatest | least 
+-------------------+----------+-------+----------+-------
+ XG-float8xnumeric | 1000.5   | 6.25  |   1000.5 |  6.25
+ XG-float8xnumeric | 1.5      | 0.25  |      1.5 |  0.25
+(2 rows)
+
+========== 3. 跨 int/float 有拓宽路径 (可比较) ==========
+    ?column?    | greatest | least | greatest | least 
+----------------+----------+-------+----------+-------
+ XG-int2xfloat4 | 100      | 3.5   |      100 |   3.5
+ XG-int2xfloat4 | 30000    | 99.5  |    30000 |  99.5
+(2 rows)
+
+    ?column?    | greatest | least | greatest | least 
+----------------+----------+-------+----------+-------
+ XG-int2xfloat8 | 100      | 6.25  |      100 |  6.25
+ XG-int2xfloat8 | 30000    | 1.5   |    30000 |   1.5
+(2 rows)
+
+    ?column?    | greatest | least | greatest | least 
+----------------+----------+-------+----------+-------
+ XG-int4xfloat8 | 4000     | 6.25  |     4000 |  6.25
+ XG-int4xfloat8 | 1.5      | -700  |      1.5 |  -700
+(2 rows)
+
+========== 4. 字符格 text↔varchar↔bpchar (两两双向可比较) ==========
+    ?column?     | greatest | least | greatest | least 
+-----------------+----------+-------+----------+-------
+ XG-textxvarchar | banana   | apple | banana   | apple
+ XG-textxvarchar | zebra    | apple | zebra    | apple
+(2 rows)
+
+    ?column?    | greatest | least | greatest | least 
+----------------+----------+-------+----------+-------
+ XG-textxbpchar | cherry   | apple | cherry   | apple
+ XG-textxbpchar | zebra    | mango | zebra    | mango
+(2 rows)
+
+     ?column?      | greatest | least  | greatest | least  
+-------------------+----------+--------+----------+--------
+ XG-varcharxbpchar | cherry   | banana | cherry   | banana
+ XG-varcharxbpchar | mango    | apple  | mango    | apple
+(2 rows)
+
+    ?column?     | greatest | least | greatest | least 
+-----------------+----------+-------+----------+-------
+ XG-varcharxtext | banana   | apple | banana   | apple
+ XG-varcharxtext | zebra    | apple | zebra    | apple
+(2 rows)
+
+========== 5. 三参数混合 (共同类型 = 格顶端) ==========
+  ?column?   | greatest | least | greatest | least 
+-------------+----------+-------+----------+-------
+ XG-3way-int | 5000000  | 100   |  5000000 |   100
+ XG-3way-int | 30000    | -700  |    30000 |  -700
+(2 rows)
+
+   ?column?    | greatest | least | greatest | least 
+---------------+----------+-------+----------+-------
+ XG-3way-mixed | 4000     | 6.25  |     4000 |  6.25
+ XG-3way-mixed | 1.5      | -700  |      1.5 |  -700
+(2 rows)
+
+   ?column?   | greatest | least | greatest | least 
+--------------+----------+-------+----------+-------
+ XG-3way-char | cherry   | apple | cherry   | apple
+ XG-3way-char | zebra    | apple | zebra    | apple
+(2 rows)
+
+========== 6. 公共类型断言 pg_typeof (共同类型 = 最宽者) ==========
+     ?column?     | pg_typeof 
+------------------+-----------
+ TYPEOF-int2xint8 | int8_enc
+(1 row)
+
+      ?column?      | pg_typeof  
+--------------------+------------
+ TYPEOF-int4xfloat8 | float8_enc
+(1 row)
+
+      ?column?       |  pg_typeof  
+---------------------+-------------
+ TYPEOF-int8xnumeric | numeric_enc
+(1 row)
+
+       ?column?        |  pg_typeof  
+-----------------------+-------------
+ TYPEOF-float8xnumeric | numeric_enc
+(1 row)
+
+      ?column?       | pg_typeof 
+---------------------+-----------
+ TYPEOF-textxvarchar | text_enc
+(1 row)
+
+      ?column?       |  pg_typeof  
+---------------------+-------------
+ TYPEOF-varcharxtext | varchar_enc
+(1 row)
+
+========== 7. 洞: int×float 有损组合 (应报错: 无隐式转换路径) ==========
+========== 8. 数值×字符 (应报错: 不同类别不可比较) ==========
+========== 9. 密态列×普通数据列 (应报错) ==========
+========== 10. 跨 DEK (应报错: 客户端 DEK 一致性校验) ==========
+========== 11. 常量类型与列原始类型不兼容 (应报错) ==========
+    ?column?     |  greatest  |   least    |  greatest  |   least    
+-----------------+------------+------------+------------+------------
+ XG-charconst-ok | banana-ish | apple      | banana-ish | apple
+ XG-charconst-ok | zebra      | banana-ish | zebra      | banana-ish
+(2 rows)
+
+========== 11b. 显式 cast 常量 (按声明 enc 类型加密, 接入拓宽格) ==========
+   ?column?   | greatest | least | greatest | least 
+--------------+----------+-------+----------+-------
+ XG-cast-same | 4000     | 0     |     4000 |     0
+ XG-cast-same | 0        | -700  |        0 |  -700
+(2 rows)
+
+      ?column?      | greatest | least | greatest | least 
+--------------------+----------+-------+----------+-------
+ XG-cast-int8onint4 | 4000     | 0     |     4000 |     0
+ XG-cast-int8onint4 | 0        | -700  |        0 |  -700
+(2 rows)
+
+      ?column?      | greatest | least | greatest | least 
+--------------------+----------+-------+----------+-------
+ XG-cast-int4onint8 | 5000000  | 100   |  5000000 |   100
+ XG-cast-int4onint8 | 100      | 40    |      100 |    40
+(2 rows)
+
+        ?column?        | greatest | least | greatest | least 
+------------------------+----------+-------+----------+-------
+ XG-cast-numeric-onint4 | 4000     | 0     |     4000 |     0
+ XG-cast-numeric-onint4 | 0        | -700  |        0 |  -700
+(2 rows)
+
+  ?column?   | greatest | least | greatest | least 
+-------------+----------+-------+----------+-------
+ XG-cast-neg | 4000     | -1    |     4000 |    -1
+ XG-cast-neg | -1       | -700  |       -1 |  -700
+(2 rows)
+
+        ?column?        |  greatest  |   least    |  greatest  |   least    
+------------------------+------------+------------+------------+------------
+ XG-cast-varchar-ontext | cherry-ish | apple      | cherry-ish | apple
+ XG-cast-varchar-ontext | zebra      | cherry-ish | zebra      | cherry-ish
+(2 rows)
+
+========== 12. 清理 ==========
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+psql:/.../scalar_func_crosstype.sql:19: NOTICE:  table "enc_pgfunc_xg_ope" does not exist, skipping
+psql:/.../scalar_func_crosstype.sql:20: NOTICE:  data encryption key "enc_pgfunc_xg_dek2" does not exist, skipping
+psql:/.../scalar_func_crosstype.sql:21: NOTICE:  data encryption key "enc_pgfunc_xg_dek" does not exist, skipping
+psql:/.../scalar_func_crosstype.sql:22: NOTICE:  key encryption key "enc_pgfunc_xg_kek" does not exist, skipping
+psql:/.../scalar_func_crosstype.sql:142: TECC query preprocessing failed: GREATEST does not support this argument combination: this combination of encrypted types is not supported
+psql:/.../scalar_func_crosstype.sql:143: TECC query preprocessing failed: GREATEST does not support this argument combination: this combination of encrypted types is not supported
+psql:/.../scalar_func_crosstype.sql:144: TECC query preprocessing failed: GREATEST does not support this argument combination: this combination of encrypted types is not supported
+psql:/.../scalar_func_crosstype.sql:145: TECC query preprocessing failed: LEAST does not support this argument combination: this combination of encrypted types is not supported
+psql:/.../scalar_func_crosstype.sql:149: TECC query preprocessing failed: GREATEST does not support this argument combination: this combination of encrypted types is not supported
+psql:/.../scalar_func_crosstype.sql:150: TECC query preprocessing failed: LEAST does not support this argument combination: this combination of encrypted types is not supported
+psql:/.../scalar_func_crosstype.sql:154: TECC query preprocessing failed: GREATEST does not support this argument combination: encrypted columns and plain columns cannot be mixed
+psql:/.../scalar_func_crosstype.sql:155: TECC query preprocessing failed: LEAST does not support this argument combination: encrypted columns and plain columns cannot be mixed
+psql:/.../scalar_func_crosstype.sql:157: TECC query preprocessing failed: GREATEST does not support this argument combination: encrypted columns and plain columns cannot be mixed
+psql:/.../scalar_func_crosstype.sql:158: TECC query preprocessing failed: LEAST does not support this argument combination: encrypted columns and plain columns cannot be mixed
+psql:/.../scalar_func_crosstype.sql:162: TECC query preprocessing failed: function "GREATEST" has encrypted columns with different DEKs: "enc_pgfunc_xg_dek" and "enc_pgfunc_xg_dek2"
+psql:/.../scalar_func_crosstype.sql:163: TECC query preprocessing failed: function "LEAST" has encrypted columns with different DEKs: "enc_pgfunc_xg_dek" and "enc_pgfunc_xg_dek2"
+psql:/.../scalar_func_crosstype.sql:168: TECC query preprocessing failed: GREATEST does not support this argument combination: the constant type does not match the encrypted column type
+psql:/.../scalar_func_crosstype.sql:169: TECC query preprocessing failed: GREATEST does not support this argument combination: the constant type does not match the encrypted column type
+psql:/.../scalar_func_crosstype.sql:193: TECC query preprocessing failed: GREATEST does not support this argument combination: this combination of encrypted types is not supported
+psql:/.../scalar_func_crosstype.sql:195: TECC query preprocessing failed: GREATEST does not support this argument combination: the constant type does not match the encrypted column type

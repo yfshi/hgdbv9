@@ -1,0 +1,64 @@
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+CREATE KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE DEK
+=== 1 CREATE TABLE（纯 he-add + 声明对称 DEK） ===
+CREATE TABLE
+=== 2 常量写入 ===
+INSERT 0 2
+1|7
+2|8
+=== 3 同态结果回写 c = c + c ===
+UPDATE 2
+1|14
+2|16
+=== 4 标量运算 c + 1 ===
+1|15
+2|17
+=== 5 同态聚合 sum(c) ===
+30
+=== 6 混合身份共存：常量写入 + 同态运算 ===
+INSERT 0 1
+1|14
+2|16
+3|9
+39
+1|15
+2|17
+3|10
+UPDATE 3
+1|15
+2|17
+3|10
+=== 7 混合身份下的排序（比较路径） ===
+=== 8 异 DEK 赋值应被拒绝 ===
+CREATE TABLE
+INSERT 0 1
+1|
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+psql:/.../he_assign_pure_col.sql:20: NOTICE:  table "he_apc_t" does not exist, skipping
+psql:/.../he_assign_pure_col.sql:21: NOTICE:  table "he_apc_neg" does not exist, skipping
+psql:/.../he_assign_pure_col.sql:22: NOTICE:  data encryption key "dek_apc_sym" does not exist, skipping
+psql:/.../he_assign_pure_col.sql:23: NOTICE:  data encryption key "dek_apc_add" does not exist, skipping
+psql:/.../he_assign_pure_col.sql:24: NOTICE:  data encryption key "dek_apc_add2" does not exist, skipping
+psql:/.../he_assign_pure_col.sql:25: NOTICE:  key encryption key "kek_apc_sym" does not exist, skipping
+psql:/.../he_assign_pure_col.sql:26: NOTICE:  key encryption key "kek_apc_he" does not exist, skipping
+psql:/.../he_assign_pure_col.sql:85: ERROR:  cannot compare encrypted values for ordering: no comparable ciphertext available
+HINT:  Enable DET or OPE encryption on the column to support comparison.
+psql:/.../he_assign_pure_col.sql:96: ERROR:  cannot store ciphertext encrypted with a different DEK into column "c"
+DETAIL:  The value ciphertext carries DEK distributed ID 2790381135, but the column is configured with DEK distributed ID 559857858.
+HINT:  Encrypt the source value with the DEK the target column uses, or assign it to a column that uses the same DEK.

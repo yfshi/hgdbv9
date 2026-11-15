@@ -1,0 +1,77 @@
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP VIEW
+DROP MATERIALIZED VIEW
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE KEK
+CREATE DEK
+=== 0 对照：普通列 + INSERT ===
+(1 row)
+CREATE TABLE
+INSERT 0 1
+5|t|5
+(1 row)
+=== 1a CTAS：混合 det,he-add ===
+(1 row)
+SELECT 1
+5|t|5
+(1 row)
+=== 1b CTAS：纯同态（无 DEK=，只有 HE_ADD_DEK）===
+(1 row)
+SELECT 1
+5
+(1 row)
+=== 2a 视图定义（混合）===
+(1 row)
+CREATE VIEW
+5
+(1 row)
+=== 2b 物化视图定义（混合）===
+(1 row)
+SELECT 1
+5|5
+(1 row)
+=== 3a DEFAULT：混合 det,he-add ===
+(1 row)
+CREATE TABLE
+INSERT 0 1
+5|t|5
+(1 row)
+=== 3b DEFAULT：纯同态 ===
+(1 row)
+CREATE TABLE
+INSERT 0 1
+7
+(1 row)
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP VIEW
+DROP MATERIALIZED VIEW
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+NOTICE: table "hencp_plain" does not exist, skipping
+NOTICE: table "hencp_ctas" does not exist, skipping
+NOTICE: table "hencp_ctas_pure" does not exist, skipping
+NOTICE: table "hencp_dflt" does not exist, skipping
+NOTICE: table "hencp_dflt_pure" does not exist, skipping
+NOTICE: view "hencp_view" does not exist, skipping
+NOTICE: materialized view "hencp_mview" does not exist, skipping
+NOTICE: data encryption key "hencp_dek_add" does not exist, skipping
+NOTICE: data encryption key "hencp_dek_sym" does not exist, skipping
+NOTICE: key encryption key "hencp_kek_asym" does not exist, skipping
+NOTICE: key encryption key "hencp_kek_sym" does not exist, skipping
+WARNING: could not determine encryption metadata for column "a" in CTAS result table
+DETAIL:  The column will have encrypted type but no encryption metadata. Consider creating the table with an explicit ENCRYPTED WITH clause.

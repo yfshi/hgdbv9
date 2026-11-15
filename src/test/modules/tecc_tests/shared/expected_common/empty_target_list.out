@@ -1,0 +1,38 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+=== Setup OK ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+=== 1 Top-level empty target list ===
+(1 row)
+1a_empty_tlist_count|2
+(1 row)
+1b_empty_tlist_nomatch_count|1
+(1 row)
+1c_empty_tlist_ope_count|3
+(1 row)
+=== 2 Empty target list in subquery ===
+(1 row)
+2a_subquery_empty_tlist_count|2
+(1 row)
+2b_subquery_where_count|2
+(1 row)
+=== 3 Projection control ===
+(1 row)
+3a_projection|2|1
+(1 row)
+3b_projection|4|Carol|40
+(1 row)
+=== 4 Cleanup ===
+(1 row)
+DROP TABLE
+DROP KEK
+NOTICE: key encryption key "kek_etl" does not exist, skipping
+NOTICE: table "t_etl" does not exist, skipping
+NOTICE: drop cascades to 2 other objects
+DETAIL:  drop cascades to data encryption key dek_det_etl
+drop cascades to data encryption key dek_ope_etl

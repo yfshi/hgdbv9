@@ -151,6 +151,8 @@ static void dumpCompositeType(Archive *fout, const TypeInfo *tyinfo);
 static void dumpCompositeTypeColComments(Archive *fout, const TypeInfo *tyinfo);
 static void dumpShellType(Archive *fout, const ShellTypeInfo *stinfo);
 static void dumpProcLang(Archive *fout, const ProcLangInfo *plang);
+static void dumpKek(Archive *fout, const KekInfo *kekinfo);
+static void dumpDek(Archive *fout, const DekInfo *dekinfo);
 static void dumpFunc(Archive *fout, const FuncInfo *finfo);
 static void dumpCast(Archive *fout, const CastInfo *cast);
 static void dumpTransform(Archive *fout, const TransformInfo *transform);
@@ -308,7 +310,8 @@ static EventTriggerInfo *getEventTriggers(Archive *fout, int *numEventTriggers);
 
 TableInfo *getSchemaDataNative(Archive *fout, int *numTablesPtr);
 
-
+static KekInfo *getKekInfo(Archive *fout, int *numKeks);
+static DekInfo *getDekInfo(Archive *fout, int *numDeks);
 
 
 struct dumpMethods dumpMethodsNative = {
@@ -4944,6 +4947,264 @@ getCollations(Archive *fout, int *numCollations)
 	destroyPQExpBuffer(query);
 
 	return collinfo;
+}
+/*
+ * getKekInfo:
+ *	  read all KEKs in the system catalogs and return them in the
+ * KekInfo* structure
+ *
+ *	numKeks is set to the number of KEKs read in
+ */
+KekInfo *
+getKekInfo(Archive *fout, int *numKeks)
+{
+	PGresult   *res;
+	int			ntups;
+	int			i;
+	PQExpBuffer query;
+	KekInfo    *kekinfo;
+	int			i_tableoid;
+	int			i_oid;
+	int			i_kekname;
+	int			i_namespace;
+	int			i_rolname;
+	int			i_arg_key;
+	int			i_arg_value;
+	int			curr_keks;
+	Oid			prev_oid;
+
+	query = createPQExpBuffer();
+
+	appendPQExpBuffer(query, "SELECT k.tableoid, k.oid, k.kek_name, "
+					  "k.key_namespace, "
+					  "(%s k.key_owner) AS rolname, "
+					  "COALESCE(ka.key, '') AS arg_key, "
+					  "COALESCE(CASE WHEN upper(ka.key) = 'PUBLIC_KEY' "
+					  "THEN encode(ka.value, 'hex') "
+					  "ELSE encode(ka.value, 'escape') END, '') AS arg_value "
+					  "FROM hg_kek k "
+					  "LEFT JOIN hg_kek_args ka ON k.oid = ka.kek_id "
+					  " AND ka.function_name = 'kek_config' "
+					  "ORDER BY k.oid, ka.key",
+					  username_subquery);
+
+	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
+
+	/* First pass: count KEKs (each KEK may have multiple arg rows) */
+	ntups = PQntuples(res);
+	if (ntups > 0)
+	{
+		/* ReqID:TECC4.0 - use i_oid (col 1) NOT col 0 (tableoid) */
+		i_oid = PQfnumber(res, "oid");
+		prev_oid = InvalidOid;
+		*numKeks = 0;
+		for (i = 0; i < ntups; i++)
+		{
+			Oid cur_oid = atooid(PQgetvalue(res, i, i_oid));
+			if (cur_oid != prev_oid)
+			{
+				(*numKeks)++;
+				prev_oid = cur_oid;
+			}
+		}
+	}
+	else
+	{
+		*numKeks = 0;
+		PQclear(res);
+		destroyPQExpBuffer(query);
+		return NULL;
+	}
+
+	kekinfo = (KekInfo *) pg_malloc(*numKeks * sizeof(KekInfo));
+
+	i_tableoid = PQfnumber(res, "tableoid");
+	i_oid = PQfnumber(res, "oid");
+	i_kekname = PQfnumber(res, "kek_name");
+	i_namespace = PQfnumber(res, "key_namespace");
+	i_rolname = PQfnumber(res, "rolname");
+	i_arg_key = PQfnumber(res, "arg_key");
+	i_arg_value = PQfnumber(res, "arg_value");
+
+	curr_keks = 0;
+	prev_oid = InvalidOid;
+
+	for (i = 0; i < ntups; i++)
+	{
+		Oid cur_oid = atooid(PQgetvalue(res, i, i_oid));
+
+		if (cur_oid != prev_oid)
+		{
+			/* Start new KEK entry */
+			KekInfo *cur = &kekinfo[curr_keks];
+
+			cur->dobj.objType = DO_KEK;
+			cur->dobj.catId.tableoid = atooid(PQgetvalue(res, i, i_tableoid));
+			cur->dobj.catId.oid = cur_oid;
+			AssignDumpId(&cur->dobj);
+			cur->dobj.name = pg_strdup(PQgetvalue(res, i, i_kekname));
+			cur->dobj.namespace = findNamespace(atooid(PQgetvalue(res, i, i_namespace)));
+
+			cur->rolname = pg_strdup(PQgetvalue(res, i, i_rolname));
+			cur->nargs = 0;
+			cur->arg_keys = NULL;
+			cur->arg_values = NULL;
+
+			selectDumpableObject(&cur->dobj, fout);
+
+			curr_keks++;
+			prev_oid = cur_oid;
+		}
+
+		/* Collect args (skip empty rows from LEFT JOIN) */
+		if (PQgetvalue(res, i, i_arg_key)[0] != '\0')
+		{
+			KekInfo *cur = &kekinfo[curr_keks - 1];
+			cur->nargs++;
+			cur->arg_keys = (char **) pg_realloc(cur->arg_keys,
+										cur->nargs * sizeof(char *));
+			cur->arg_values = (char **) pg_realloc(cur->arg_values,
+										  cur->nargs * sizeof(char *));
+			cur->arg_keys[cur->nargs - 1] = pg_strdup(PQgetvalue(res, i, i_arg_key));
+			cur->arg_values[cur->nargs - 1] = pg_strdup(PQgetvalue(res, i, i_arg_value));
+		}
+	}
+
+	PQclear(res);
+	destroyPQExpBuffer(query);
+
+	return kekinfo;
+}
+
+/*
+ * getDekInfo:
+ *	  read all DEKs in the system catalogs and return them in the
+ * DekInfo* structure
+ *
+ *	numDeks is set to the number of DEKs read in
+ */
+DekInfo *
+getDekInfo(Archive *fout, int *numDeks)
+{
+	PGresult   *res;
+	int			ntups;
+	int			i;
+	PQExpBuffer query;
+	DekInfo    *dekinfo;
+	int			i_tableoid;
+	int			i_oid;
+	int			i_dekname;
+	int			i_namespace;
+	int			i_rolname;
+	int			i_kek_oid;
+	int			i_kek_name;
+	int			i_arg_key;
+	int			i_arg_value;
+	int			curr_deks;
+	Oid			prev_oid;
+
+	query = createPQExpBuffer();
+
+	appendPQExpBuffer(query, "SELECT d.tableoid, d.oid, d.dek_name, "
+					  "d.key_namespace, "
+					  "(%s d.key_owner) AS rolname, "
+					  "k.oid AS ref_kek_oid, "
+					  "k.kek_name AS ref_kek_name, "
+					  "COALESCE(da.key, '') AS arg_key, "
+					  "COALESCE(encode(da.value, 'escape'), '') AS arg_value "
+					  "FROM hg_dek d "
+					  "JOIN hg_kek k ON d.kek_id = k.oid "
+					  "LEFT JOIN hg_dek_args da ON d.oid = da.dek_id "
+					  " AND da.function_name = 'dek_config' "
+					  "ORDER BY d.oid, da.key",
+					  username_subquery);
+
+	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
+
+	ntups = PQntuples(res);
+	if (ntups > 0)
+	{
+		/* ReqID:TECC4.0 - use i_oid (col 1) NOT col 0 (tableoid) */
+		i_oid = PQfnumber(res, "oid");
+		prev_oid = InvalidOid;
+		*numDeks = 0;
+		for (i = 0; i < ntups; i++)
+		{
+			Oid cur_oid = atooid(PQgetvalue(res, i, i_oid));
+			if (cur_oid != prev_oid)
+			{
+				(*numDeks)++;
+				prev_oid = cur_oid;
+			}
+		}
+	}
+	else
+	{
+		*numDeks = 0;
+		PQclear(res);
+		destroyPQExpBuffer(query);
+		return NULL;
+	}
+
+	dekinfo = (DekInfo *) pg_malloc(*numDeks * sizeof(DekInfo));
+
+	i_tableoid = PQfnumber(res, "tableoid");
+	i_oid = PQfnumber(res, "oid");
+	i_dekname = PQfnumber(res, "dek_name");
+	i_namespace = PQfnumber(res, "key_namespace");
+	i_rolname = PQfnumber(res, "rolname");
+	i_kek_oid = PQfnumber(res, "ref_kek_oid");
+	i_kek_name = PQfnumber(res, "ref_kek_name");
+	i_arg_key = PQfnumber(res, "arg_key");
+	i_arg_value = PQfnumber(res, "arg_value");
+
+	curr_deks = 0;
+	prev_oid = InvalidOid;
+
+	for (i = 0; i < ntups; i++)
+	{
+		Oid cur_oid = atooid(PQgetvalue(res, i, i_oid));
+
+		if (cur_oid != prev_oid)
+		{
+			DekInfo *cur = &dekinfo[curr_deks];
+
+			cur->dobj.objType = DO_DEK;
+			cur->dobj.catId.tableoid = atooid(PQgetvalue(res, i, i_tableoid));
+			cur->dobj.catId.oid = cur_oid;
+			AssignDumpId(&cur->dobj);
+			cur->dobj.name = pg_strdup(PQgetvalue(res, i, i_dekname));
+			cur->dobj.namespace = findNamespace(atooid(PQgetvalue(res, i, i_namespace)));
+			cur->rolname = pg_strdup(PQgetvalue(res, i, i_rolname));
+			cur->kek_oid = atooid(PQgetvalue(res, i, i_kek_oid));
+			cur->kek_name = pg_strdup(PQgetvalue(res, i, i_kek_name));
+			cur->nargs = 0;
+			cur->arg_keys = NULL;
+			cur->arg_values = NULL;
+
+			selectDumpableObject(&cur->dobj, fout);
+
+			curr_deks++;
+			prev_oid = cur_oid;
+		}
+
+		if (PQgetvalue(res, i, i_arg_key)[0] != '\0')
+		{
+			DekInfo *cur = &dekinfo[curr_deks - 1];
+			cur->nargs++;
+			cur->arg_keys = (char **) pg_realloc(cur->arg_keys,
+										cur->nargs * sizeof(char *));
+			cur->arg_values = (char **) pg_realloc(cur->arg_values,
+										  cur->nargs * sizeof(char *));
+			cur->arg_keys[cur->nargs - 1] = pg_strdup(PQgetvalue(res, i, i_arg_key));
+			cur->arg_values[cur->nargs - 1] = pg_strdup(PQgetvalue(res, i, i_arg_value));
+		}
+	}
+
+	PQclear(res);
+	destroyPQExpBuffer(query);
+
+	return dekinfo;
 }
 
 /*
@@ -9851,6 +10112,12 @@ dumpDumpableObjectNative(Archive *fout, const DumpableObject *dobj)
 		case DO_COLLATION:
 			dumpCollation(fout, (const CollInfo *) dobj);
 			break;
+		case DO_KEK:
+			dumpKek(fout, (const KekInfo *) dobj);
+			break;
+		case DO_DEK:
+			dumpDek(fout, (const DekInfo *) dobj);
+			break;
 		case DO_CONVERSION:
 			dumpConversion(fout, (const ConvInfo *) dobj);
 			break;
@@ -13537,7 +13804,305 @@ dumpCollation(Archive *fout, const CollInfo *collinfo)
 	destroyPQExpBuffer(delq);
 	free(qcollname);
 }
+/*
+ * dumpKek
+ *	  write out a single KEK definition
+ */
+static void
+dumpKek(Archive *fout, const KekInfo *kekinfo)
+{
+	DumpOptions *dopt = fout->dopt;
+	PQExpBuffer q;
+	PQExpBuffer delq;
+	int			i;
+	int			outcnt = 0;
 
+	/* Skip if not to be dumped */
+	if (!kekinfo->dobj.dump || dopt->dataOnly)
+		return;
+
+	q = createPQExpBuffer();
+	delq = createPQExpBuffer();
+
+	appendPQExpBuffer(delq, "DROP KEK %s;\n",
+					  fmtQualifiedDumpable(kekinfo));
+
+	appendPQExpBuffer(q, "CREATE KEK %s (\n",
+					  fmtQualifiedDumpable(kekinfo));
+
+	for (i = 0; i < kekinfo->nargs; i++)
+	{
+		if (pg_strcasecmp(kekinfo->arg_keys[i], "key_store") == 0)
+		{
+			if (outcnt > 0) appendPQExpBufferStr(q, ",\n");
+			appendPQExpBufferStr(q, "    key_store = ");
+			appendStringLiteralAH(q, kekinfo->arg_values[i], fout);
+			outcnt++;
+		}
+		else if (pg_strcasecmp(kekinfo->arg_keys[i], "key_type") == 0 ||
+				 pg_strcasecmp(kekinfo->arg_keys[i], "key_algo") == 0)
+		{
+			/* ReqID:TECC4.0 - KEY_ALGO (was KEY_TYPE).  Normalize legacy
+			 * stored values (sym/asym) to canonical (sm4/sm2). */
+			const char *val = kekinfo->arg_values[i];
+
+			if (outcnt > 0) appendPQExpBufferStr(q, ",\n");
+			appendPQExpBufferStr(q, "    key_algo = ");
+			if (val != NULL && strcmp(val, "sym") == 0)
+				appendStringLiteralAH(q, "sm4", fout);
+			else if (val != NULL && strcmp(val, "asym") == 0)
+				appendStringLiteralAH(q, "sm2", fout);
+			else
+				appendStringLiteralAH(q, val, fout);
+			outcnt++;
+		}
+		else if (pg_strcasecmp(kekinfo->arg_keys[i], "key_path") == 0)
+		{
+			if (outcnt > 0) appendPQExpBufferStr(q, ",\n");
+			appendPQExpBufferStr(q, "    key_path = ");
+			appendStringLiteralAH(q, kekinfo->arg_values[i], fout);
+			outcnt++;
+		}
+		else if (pg_strcasecmp(kekinfo->arg_keys[i], "public_key") == 0)
+		{
+			if (outcnt > 0) appendPQExpBufferStr(q, ",\n");
+			appendPQExpBufferStr(q, "    public_key = '");
+			appendPQExpBufferStr(q, kekinfo->arg_values[i]);
+			appendPQExpBufferStr(q, "'");
+			outcnt++;
+		}
+	}
+
+	/* add _tecc_processed = 'on' to bypass frontend encryption check */
+	if (outcnt > 0)
+		appendPQExpBufferStr(q, ",\n");
+	appendPQExpBufferStr(q, "    _tecc_processed = 'on'\n");
+	appendPQExpBufferStr(q, ");\n");
+
+	ArchiveEntry(fout, kekinfo->dobj.catId, kekinfo->dobj.dumpId,
+				 ARCHIVE_OPTS(.tag = kekinfo->dobj.name,
+							  .namespace = kekinfo->dobj.namespace->dobj.name,
+							  .owner = kekinfo->rolname,
+							  .description = "KEY ENCRYPTION KEY",
+							  .section = SECTION_PRE_DATA,
+							  .createStmt = q->data,
+							  .dropStmt = delq->data));
+
+	/* Dump KEK Comments */
+	if (kekinfo->dobj.dump & DUMP_COMPONENT_COMMENT)
+		dumpComment(fout, "KEY ENCRYPTION KEY", kekinfo->dobj.name,
+					kekinfo->dobj.namespace->dobj.name,
+					kekinfo->rolname,
+					kekinfo->dobj.catId, 0, kekinfo->dobj.dumpId);
+
+	destroyPQExpBuffer(q);
+	destroyPQExpBuffer(delq);
+}
+
+/*
+ * dumpDek
+ *	  write out a single DEK definition
+ */
+static void
+dumpDek(Archive *fout, const DekInfo *dekinfo)
+{
+	DumpOptions *dopt = fout->dopt;
+	PQExpBuffer q;
+	PQExpBuffer delq;
+	int			i;
+	int			outcnt = 0;
+	char	   *kek_val = NULL;
+	char	   *enc_val = NULL;
+	char	   *keylen_val = NULL;
+	char	   *keytype_val = NULL;
+	/* ReqID:TECC4.0 - HE key pair material (problem 2/3) */
+	char	   *he_ec_pub = NULL;
+	char	   *he_ec_priv = NULL;
+	char	   *he_eg_pub = NULL;
+	char	   *he_eg_priv = NULL;
+
+	/* Skip if not to be dumped */
+	if (!dekinfo->dobj.dump || dopt->dataOnly)
+		return;
+
+	q = createPQExpBuffer();
+	delq = createPQExpBuffer();
+
+	appendPQExpBuffer(delq, "DROP DEK %s;\n",
+					  fmtQualifiedDumpable(dekinfo));
+
+	appendPQExpBuffer(q, "CREATE DEK %s WITH VALUES(\n",
+					  fmtQualifiedDumpable(dekinfo));
+
+	/* Collect values from args */
+	for (i = 0; i < dekinfo->nargs; i++)
+	{
+		if (strcmp(dekinfo->arg_keys[i], "kek") == 0)
+			kek_val = dekinfo->arg_values[i];
+		else if (strcmp(dekinfo->arg_keys[i], "encrypted_value") == 0)
+			enc_val = dekinfo->arg_values[i];
+		else if (strcmp(dekinfo->arg_keys[i], "key_length") == 0)
+			keylen_val = dekinfo->arg_values[i];
+		else if (strcmp(dekinfo->arg_keys[i], "key_type") == 0 ||
+				 strcmp(dekinfo->arg_keys[i], "key_algo") == 0)
+			keytype_val = dekinfo->arg_values[i];
+		else if (strcmp(dekinfo->arg_keys[i], "he_ec_pubkey") == 0)
+			he_ec_pub = dekinfo->arg_values[i];
+		else if (strcmp(dekinfo->arg_keys[i], "he_ec_privkey") == 0)
+			he_ec_priv = dekinfo->arg_values[i];
+		else if (strcmp(dekinfo->arg_keys[i], "he_eg_pubkey") == 0)
+			he_eg_pub = dekinfo->arg_values[i];
+		else if (strcmp(dekinfo->arg_keys[i], "he_eg_privkey") == 0)
+			he_eg_priv = dekinfo->arg_values[i];
+	}
+
+	/* Output in fixed order: KEK, key_type, encrypted_value, key_length */
+	if (kek_val != NULL)
+	{
+		appendPQExpBufferStr(q, "    KEK = ");
+		/*
+		 * Use schema-qualified KEK name so restore works even under
+		 * empty search_path (pg_dump sets search_path='').
+		 *
+		 * ReqID:TECC4.0 - The name part must come from the KEK catalog
+		 * (hg_kek.kek_name, kept in dekinfo->kek_name), NOT from the raw
+		 * 'kek' option string in hg_dek_args: that string may already be
+		 * schema-qualified (e.g. stored by an older restore), and
+		 * prepending the namespace again would emit "schema.schema.kek",
+		 * which cannot be restored.  Fall back to the raw string only if
+		 * the KEK object or its namespace cannot be resolved.
+		 */
+		if (OidIsValid(dekinfo->kek_oid))
+		{
+			int			numObjs;
+			DumpableObject **objs;
+			int			i;
+			bool		kek_ns_found = false;
+
+			getDumpableObjects(&objs, &numObjs);
+			for (i = 0; i < numObjs; i++)
+			{
+				if (objs[i]->objType == DO_KEK &&
+					objs[i]->catId.oid == dekinfo->kek_oid &&
+					objs[i]->namespace != NULL)
+				{
+					appendPQExpBufferStr(q, objs[i]->namespace->dobj.name);
+					appendPQExpBufferStr(q, ".");
+					kek_ns_found = true;
+					break;
+				}
+			}
+			if (kek_ns_found && dekinfo->kek_name != NULL)
+				appendPQExpBufferStr(q, dekinfo->kek_name);
+			else
+				appendPQExpBufferStr(q, kek_val);
+		}
+		else
+			appendPQExpBufferStr(q, kek_val);
+		outcnt++;
+	}
+	if (keytype_val != NULL)
+	{
+		/* ReqID:TECC4.0 - KEY_ALGO (was KEY_TYPE).  Normalize legacy values. */
+		const char *norm = keytype_val;
+
+		if (strcmp(norm, "he_ecelgamal") == 0)
+			norm = "he-add";
+		else if (strcmp(norm, "he_elgamal") == 0)
+			norm = "he-mul";
+
+		if (outcnt > 0) appendPQExpBufferStr(q, ",\n");
+		appendPQExpBufferStr(q, "    key_algo = '");
+		appendPQExpBufferStr(q, norm);
+		appendPQExpBufferStr(q, "'");
+		outcnt++;
+	}
+	if (enc_val != NULL)
+	{
+		if (outcnt > 0) appendPQExpBufferStr(q, ",\n");
+		appendPQExpBufferStr(q, "    encrypted_value = '");
+		appendPQExpBufferStr(q, enc_val);
+		appendPQExpBufferStr(q, "'");
+		outcnt++;
+	}
+	if (keylen_val != NULL)
+	{
+		if (outcnt > 0) appendPQExpBufferStr(q, ",\n");
+		appendPQExpBufferStr(q, "    key_length = '");
+		appendPQExpBufferStr(q, keylen_val);
+		appendPQExpBufferStr(q, "'");
+		outcnt++;
+	}
+
+	/* ReqID:TECC4.0 - Export HE key pair material (problem 2/3) so a dumped
+	 * DEK stays usable after restore. Key names must match the frontend
+	 * injection keys in stmt_processor.c and the backend gram.y rules. */
+	if (he_ec_pub != NULL)
+	{
+		if (outcnt > 0) appendPQExpBufferStr(q, ",\n");
+		appendPQExpBufferStr(q, "    he_ec_pubkey = '");
+		appendPQExpBufferStr(q, he_ec_pub);
+		appendPQExpBufferStr(q, "'");
+		outcnt++;
+	}
+	if (he_ec_priv != NULL)
+	{
+		if (outcnt > 0) appendPQExpBufferStr(q, ",\n");
+		appendPQExpBufferStr(q, "    he_ec_privkey = '");
+		appendPQExpBufferStr(q, he_ec_priv);
+		appendPQExpBufferStr(q, "'");
+		outcnt++;
+	}
+	if (he_eg_pub != NULL)
+	{
+		if (outcnt > 0) appendPQExpBufferStr(q, ",\n");
+		appendPQExpBufferStr(q, "    he_eg_pubkey = '");
+		appendPQExpBufferStr(q, he_eg_pub);
+		appendPQExpBufferStr(q, "'");
+		outcnt++;
+	}
+	if (he_eg_priv != NULL)
+	{
+		if (outcnt > 0) appendPQExpBufferStr(q, ",\n");
+		appendPQExpBufferStr(q, "    he_eg_privkey = '");
+		appendPQExpBufferStr(q, he_eg_priv);
+		appendPQExpBufferStr(q, "'");
+		outcnt++;
+	}
+
+	appendPQExpBufferStr(q, "\n");
+	if (outcnt > 0)
+		appendPQExpBufferStr(q, ",\n");
+	appendPQExpBufferStr(q, "    _tecc_processed = 'on'\n");
+	appendPQExpBufferStr(q, ");\n");
+
+	/* Add dependency on referenced KEK for correct restore ordering */
+	if (OidIsValid(dekinfo->kek_oid))
+	{
+		DumpableObject *kekobj = findObjectByCatalogId(
+			(CatalogId){InvalidOid, dekinfo->kek_oid});
+		if (kekobj != NULL)
+			addObjectDependency((DumpableObject *)&dekinfo->dobj, kekobj->dumpId);
+	}
+
+	ArchiveEntry(fout, dekinfo->dobj.catId, dekinfo->dobj.dumpId,
+				 ARCHIVE_OPTS(.tag = dekinfo->dobj.name,
+							  .namespace = dekinfo->dobj.namespace->dobj.name,
+							  .owner = dekinfo->rolname,
+							  .description = "DATA ENCRYPTION KEY",
+							  .section = SECTION_PRE_DATA,
+							  .createStmt = q->data,
+							  .dropStmt = delq->data));
+
+	if (dekinfo->dobj.dump & DUMP_COMPONENT_COMMENT)
+		dumpComment(fout, "DATA ENCRYPTION KEY", dekinfo->dobj.name,
+					dekinfo->dobj.namespace->dobj.name,
+					dekinfo->rolname,
+					dekinfo->dobj.catId, 0, dekinfo->dobj.dumpId);
+
+	destroyPQExpBuffer(q);
+	destroyPQExpBuffer(delq);
+}
 /*
  * dumpConversion
  *	  write out a single conversion definition
@@ -18354,6 +18919,9 @@ addBoundaryDependenciesNative(DumpableObject **dobjs, int numObjs,
 				/* must come after the pre-data boundary */
 				addObjectDependency(dobj, preDataBound->dumpId);
 				break;
+			case DO_KEK:
+			case DO_DEK:
+				break;
 			case DO_PACKAGE:
 			case DO_OBJECT_TYPE_SPEC:
 			case DO_OBJECT_TYPE_BODY:
@@ -18632,6 +19200,8 @@ getSchemaDataNative(Archive *fout, int *numTablesPtr)
 	int			numTransforms;
 	int			numOpclasses;
 	int			numOpfamilies;
+	int			numKeks;
+	int			numDeks;
 	int			numConversions;
 	int			numTSParsers;
 	int			numTSTemplates;
@@ -18728,6 +19298,12 @@ getSchemaDataNative(Archive *fout, int *numTablesPtr)
 	pg_log_info("reading user-defined collations");
 	collinfo = getCollations(fout, &numCollations);
 	collinfoindex = buildIndexArray(collinfo, numCollations, sizeof(CollInfo));
+
+	pg_log_info("reading TECC KEKs");
+	getKekInfo(fout, &numKeks);
+
+	pg_log_info("reading TECC DEKs");
+	getDekInfo(fout, &numDeks);
 
 	pg_log_info("reading user-defined conversions");
 	getConversions(fout, &numConversions);

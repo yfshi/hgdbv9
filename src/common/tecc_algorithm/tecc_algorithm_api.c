@@ -31,30 +31,6 @@
 #include <sys/time.h>
 #endif
 
-/* Global performance statistics */
-static TeccAlgoPerfStats g_perf_stats[TECC_ALGO_MAX] = {0};
-
-/* Simple time measurement function */
-#ifdef _WIN32
-static __inline uint64_t get_time_us(void)
-{
-    FILETIME ft;
-    ULARGE_INTEGER li;
-    GetSystemTimeAsFileTime(&ft);
-    li.LowPart = ft.dwLowDateTime;
-    li.HighPart = ft.dwHighDateTime;
-    return (uint64_t)((li.QuadPart - 116444736000000000ULL) / 10);
-}
-#else
-static inline uint64_t get_time_us(void)
-{
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (uint64_t)tv.tv_sec * 1000000 + (uint64_t)tv.tv_usec;
-}
-#endif
-static TeccAlgoMemoryStats g_memory_stats = {0};
-
 /* Forward declarations for buffer size calculation functions */
 size_t tecc_algo_calc_encrypt_buffer_size(TeccAlgorithmType algo_type, size_t plain_len);
 size_t tecc_algo_calc_decrypt_buffer_size(TeccAlgorithmType algo_type, size_t cipher_len);
@@ -92,7 +68,7 @@ static const struct {
 } g_algo_capabilities[] = {
     {TECC_ALGO_RND, TECC_ALGO_CAP_ENCRYPT | TECC_ALGO_CAP_DECRYPT | TECC_ALGO_CAP_AUTH},
     {TECC_ALGO_DET, TECC_ALGO_CAP_ENCRYPT | TECC_ALGO_CAP_DECRYPT},
-    {TECC_ALGO_OPE, TECC_ALGO_CAP_ENCRYPT | TECC_ALGO_CAP_COMPARE},
+    {TECC_ALGO_OPE, TECC_ALGO_CAP_ENCRYPT | TECC_ALGO_CAP_COMPARE | TECC_ALGO_CAP_DECRYPT},
     {TECC_ALGO_SEARCH, TECC_ALGO_CAP_ENCRYPT},
     {0, 0}
 };
@@ -128,109 +104,6 @@ tecc_algo_get_error_string(int error_code)
     return "Unknown error";
 }
 
-
-
-
-/*
- * Calculate buffer sizes for algorithm
- */
-int
-tecc_algo_calculate_buffer_sizes(TeccAlgorithmType algo_type,
-                                size_t input_size,
-                                size_t *input_size_needed,
-                                size_t *output_size_needed,
-                                size_t *work_size_needed)
-{
-    if (!input_size_needed || !output_size_needed || !work_size_needed)
-        return TECC_ALGO_NULL_POINTER;
-
-    if (input_size == 0 || input_size > TECC_MAX_DATA_SIZE)
-        return TECC_ALGO_INVALID_DATA_LENGTH;
-
-    /* Calculate buffer sizes based on algorithm */
-    switch (algo_type) {
-        case TECC_ALGO_RND:
-            *input_size_needed = input_size;
-            /* PKCS#7 padding + header */
-            *output_size_needed = ((input_size + TECC_SM4_BLOCK_SIZE - 1) / TECC_SM4_BLOCK_SIZE) *
-                                 TECC_SM4_BLOCK_SIZE + SM4_RND_HEADER_SIZE;
-            *work_size_needed = 0;  /* No work buffer needed */
-            break;
-
-        case TECC_ALGO_DET:
-            *input_size_needed = input_size;
-            /* PKCS#7 padding + header */
-            *output_size_needed = ((input_size + TECC_SM4_BLOCK_SIZE - 1) / TECC_SM4_BLOCK_SIZE) *
-                                 TECC_SM4_BLOCK_SIZE + DET_SM4_HEADER_SIZE;
-            *work_size_needed = 0;  /* No work buffer needed */
-            break;
-
-        case TECC_ALGO_OPE:
-            *input_size_needed = input_size;
-            /* OPE output is twice the input size (SM4-OPE internal format) */
-            *output_size_needed = input_size * 2;
-            *work_size_needed = 0;  /* No work buffer needed */
-            break;
-
-        case TECC_ALGO_SEARCH:
-            *input_size_needed = input_size;
-            /* SEARCH format: data_len(4 bytes) + plain_len * 3 bytes */
-            *output_size_needed = sizeof(int32) + input_size * 3;
-            *work_size_needed = 0;  /* No work buffer needed */
-            break;
-
-        default:
-            return TECC_ALGO_INVALID_ALGORITHM;
-    }
-
-    return TECC_ALGO_SUCCESS;
-}
-
-/*
- * Get performance statistics
- */
-void
-tecc_algo_get_perf_stats(TeccAlgorithmType algo_type,
-                        TeccAlgoPerfStats *stats)
-{
-    if (!stats || algo_type <= 0 || algo_type >= TECC_ALGO_MAX)
-        return;
-
-    *stats = g_perf_stats[algo_type - 1];
-}
-
-/*
- * Reset performance statistics
- */
-void
-tecc_algo_reset_perf_stats(TeccAlgorithmType algo_type)
-{
-    if (algo_type <= 0 || algo_type >= TECC_ALGO_MAX)
-        return;
-
-    memset(&g_perf_stats[algo_type - 1], 0, sizeof(TeccAlgoPerfStats));
-}
-
-/*
- * Get memory statistics
- */
-void
-tecc_algo_get_memory_stats(TeccAlgoMemoryStats *stats)
-{
-    if (!stats)
-        return;
-
-    *stats = g_memory_stats;
-}
-
-/*
- * Reset memory statistics
- */
-void
-tecc_algo_reset_memory_stats(void)
-{
-    memset(&g_memory_stats, 0, sizeof(TeccAlgoMemoryStats));
-}
 
 
 
@@ -361,10 +234,10 @@ tecc_algo_encrypt_zero_copy(TeccAlgorithmType algo_type,
                            unsigned char *output_buffer,
                            size_t buffer_size,
                            size_t *output_len,
-                           bool is_wildcard_pattern)
+                           bool is_wildcard_pattern,
+                           char escape_char)
 {
     int ret;
-    uint64 start_time = 0;
     size_t required_size;
 
     /* Parameter validation */
@@ -386,9 +259,6 @@ tecc_algo_encrypt_zero_copy(TeccAlgorithmType algo_type,
         return TECC_ALGO_BUFFER_OVERFLOW;
     }
 
-    /* Start performance timing */
-    start_time = get_time_us();
-
     /* Call specific algorithm implementation */
     /* Use only first TECC_SM4_KEY_SIZE bytes - SM4 accepts 16-byte keys */
     switch (algo_type) {
@@ -409,30 +279,15 @@ tecc_algo_encrypt_zero_copy(TeccAlgorithmType algo_type,
             break;
 
         case TECC_ALGO_SEARCH:
-            /* SEARCH expects exactly SM4_SEARCH_KEY_SIZE (16) bytes */
+            /* SEARCH expects exactly SM4_SEARCH_KEY_SIZE (16) bytes.
+             * ReqID:TECC4.0 - escape_char passed through from caller. */
             ret = tecc_search_sm4_encrypt(key, TECC_SM4_KEY_SIZE, plaintext, plain_len,
                                          output_buffer, buffer_size, output_len,
-                                         is_wildcard_pattern);
+                                         is_wildcard_pattern, escape_char);
             break;
 
         default:
             return TECC_ALGO_INVALID_ALGORITHM;
-    }
-
-    /* Update performance statistics */
-    if (start_time > 0) {
-        uint64 elapsed = get_time_us() - start_time;
-        g_perf_stats[algo_type - 1].encrypt_count++;
-        g_perf_stats[algo_type - 1].total_encrypt_time_us += elapsed;
-
-        if (elapsed < g_perf_stats[algo_type - 1].min_encrypt_time_us ||
-            g_perf_stats[algo_type - 1].min_encrypt_time_us == 0) {
-            g_perf_stats[algo_type - 1].min_encrypt_time_us = elapsed;
-        }
-
-        if (elapsed > g_perf_stats[algo_type - 1].max_encrypt_time_us) {
-            g_perf_stats[algo_type - 1].max_encrypt_time_us = elapsed;
-        }
     }
 
     return ret;
@@ -452,7 +307,6 @@ tecc_algo_decrypt_zero_copy(TeccAlgorithmType algo_type,
                            size_t *output_len)
 {
     int ret;
-    uint64 start_time = 0;
     size_t required_size;
 
     /* Parameter validation */
@@ -474,9 +328,6 @@ tecc_algo_decrypt_zero_copy(TeccAlgorithmType algo_type,
         return TECC_ALGO_BUFFER_OVERFLOW;
     }
 
-    /* Start performance timing */
-    start_time = get_time_us();
-
     /* Call specific algorithm implementation */
     /* Use only first TECC_SM4_KEY_SIZE bytes - SM4 accepts 16-byte keys */
     switch (algo_type) {
@@ -491,8 +342,9 @@ tecc_algo_decrypt_zero_copy(TeccAlgorithmType algo_type,
             break;
 
         case TECC_ALGO_OPE:
-            /* OPE does not support decryption */
-            ret = TECC_ALGO_OPERATION_NOT_SUPPORTED;
+            /* ReqID:TECC4.0 - Recover normalized OPE input (debug / raw segment). */
+            ret = tecc_sm4_ope_decrypt(key, TECC_SM4_KEY_SIZE, ciphertext, cipher_len,
+                                       output_buffer, buffer_size, output_len);
             break;
 
         case TECC_ALGO_SEARCH:
@@ -502,22 +354,6 @@ tecc_algo_decrypt_zero_copy(TeccAlgorithmType algo_type,
 
         default:
             return TECC_ALGO_INVALID_ALGORITHM;
-    }
-
-    /* Update performance statistics */
-    if (start_time > 0 && ret == TECC_ALGO_SUCCESS) {
-        uint64 elapsed = get_time_us() - start_time;
-        g_perf_stats[algo_type - 1].decrypt_count++;
-        g_perf_stats[algo_type - 1].total_decrypt_time_us += elapsed;
-
-        if (elapsed < g_perf_stats[algo_type - 1].min_decrypt_time_us ||
-            g_perf_stats[algo_type - 1].min_decrypt_time_us == 0) {
-            g_perf_stats[algo_type - 1].min_decrypt_time_us = elapsed;
-        }
-
-        if (elapsed > g_perf_stats[algo_type - 1].max_decrypt_time_us) {
-            g_perf_stats[algo_type - 1].max_decrypt_time_us = elapsed;
-        }
     }
 
     return ret;
@@ -592,7 +428,7 @@ tecc_algo_encrypt_zero_copy_ex(TeccAlgorithmType algo_type,
     (void)op_type;
     return tecc_algo_encrypt_zero_copy(algo_type, key, key_len, plaintext,
                                       plain_len, output_buffer, buffer_size,
-                                      output_len, false);
+                                      output_len, false, 0);
 }
 
 /*

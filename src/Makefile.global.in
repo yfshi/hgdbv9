@@ -441,6 +441,20 @@ ifeq ($(MAKELEVEL),0)
 	$(MKDIR_P) '$(abs_top_builddir)'/tmp_install/log
 	$(MAKE) -C '$(top_builddir)' DESTDIR='$(abs_top_builddir)'/tmp_install install >'$(abs_top_builddir)'/tmp_install/log/install.log 2>&1
 	$(MAKE) -j1 $(if $(CHECKPREP_TOP),-C $(CHECKPREP_TOP),) checkprep >>'$(abs_top_builddir)'/tmp_install/log/install.log 2>&1
+	@# ReqID:TECC4.0 - hgdde（Rust/pgrx）同样要进 tmp_install：回归 t/009 以
+	@# shared_preload_libraries='hgdde' 起实例，缺 .so 时实例直接起不来。
+	@if [ -f '$(abs_top_builddir)'/contrib/hgdde/Cargo.toml ]; then \
+		echo "  [TECC] 安装 hgdde 到 tmp_install ..."; \
+		( cd '$(abs_top_builddir)'/contrib/hgdde && \
+		  PATH="$(HOME)/rust/bin:$(HOME)/cargo/bin:$$PATH" \
+		  LD_LIBRARY_PATH="/usr/local/lib64:/usr/local/lib:/usr/lib:/usr/lib64/clang-private:/usr/lib64/llvm" \
+		  CC=/usr/local/bin/gcc CXX=/usr/local/bin/g++ CFLAGS="-O2 -fPIC" \
+		  HGDDE_PG_ROOT='$(abs_top_builddir)'/tmp_install'$(prefix)' \
+		  cargo pgrx install -p hgdde-pg --release \
+			--pg-config '$(abs_top_builddir)'/tmp_install'$(prefix)'/bin/pg_config ) \
+			>>'$(abs_top_builddir)'/tmp_install/log/install.log 2>&1 \
+			|| { echo "  [TECC] 安装 hgdde 失败" >&2; exit 1; }; \
+	fi
 	$(MAKE) -j1 $(if $(CHECKPREP_TOP),-C $(CHECKPREP_TOP),) oracle-checkprep >>'$(abs_top_builddir)'/tmp_install/log/install.log 2>&1
 	$(MAKE) -j1 $(if $(CHECKPREP_TOP),-C $(CHECKPREP_TOP),) mysql-checkprep >>'$(abs_top_builddir)'/tmp_install/log/install.log 2>&1
 endif

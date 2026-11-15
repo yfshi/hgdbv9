@@ -26,6 +26,17 @@
 #include "../tecc_hsm_adapter/fe-hsm-adapter.h"  /* HSM adapter for SM4 encryption */
 #include <string.h>
 #include <stdlib.h>
+/* ReqID:TECC4.0 - HE 批量解密多线程并发：pthread_once 保护惰性初始化、每线程 BN_CTX */
+#include <pthread.h>
+
+/* ReqID:TECC4.0 - KEK/DEK unwrap for HE private key decryption (problem 3) */
+#undef VARSIZE
+#undef SET_VARSIZE
+#include "../../../common/tecc_key/security.h"
+#include "../../../common/tecc_key/high_level_api.h"
+/* Modify - ReqID:TECC4.0: HE 私钥信封解密（tecc_sm2_envelope_decrypt）需显式
+ * 包含 tecc_sm2.h（TECC_SM2_SUCCESS / tecc_sm2_envelope_decrypt 声明） */
+#include "../../../src/include/common/tecc_key/tecc_sm2.h"
 
 /* ReqID:TECC4.0 - SM4-RND with pre-derived keys (avoid per-row HKDF) */
 extern int tecc_sm4_rnd_encrypt_with_keys(const unsigned char *key, size_t key_len,
@@ -41,7 +52,9 @@ static const char *algorithm_names[] = {
     "SM4-RND",
     "DET-SM4",
     "SM4-OPE",
-    "SEARCH-SM4"
+    "SEARCH-SM4",
+    "EC-ELGAMAL",    /* ReqID:TECC4.0 - EC-ElGamal additive homomorphic */
+    "ELGAMAL"        /* ReqID:TECC4.0 - Finite field ElGamal multiplicative */
 };
 
 /* Algorithm capabilities */
@@ -50,57 +63,14 @@ static const TeccAlgorithmCaps algorithm_caps[] = {
     {true, true, false, false, 65536, 32},                 /* RND */
     {true, true, false, false, 65536, 16},                 /* DET */
     {true, false, true, false, 65536, 64},                 /* OPE */
-    {true, false, false, true, 65536, 256}                 /* SEARCH */
+    {true, false, false, true, 65536, 256},                /* SEARCH */
+    {true, false, false, false, 65536, 0},                 /* EC-ELGAMAL (ReqID:TECC4.0) */
+    {true, false, false, false, 65536, 0}                 /* ELGAMAL (ReqID:TECC4.0) */
 };
 
 /* LIKE pattern types */
 /* Pattern type classification - now defined in tecc_pattern.h */
 #include "../../../src/include/common/tecc_algorithm/tecc_pattern.h"
-
-/* Parsed LIKE pattern structure */
-typedef struct TeccSearchPattern
-{
-    TeccPatternType pattern_type;   /* Pattern type */
-    char *pattern;                  /* Original pattern */
-    size_t pattern_len;             /* Pattern length */
-
-    /* Pattern components */
-    char *prefix;                   /* Prefix for prefix patterns */
-    size_t prefix_len;              /* Prefix length */
-    char *suffix;                   /* Suffix for suffix patterns */
-    size_t suffix_len;              /* Suffix length */
-    char *infix;                    /* Infix for infix patterns */
-    size_t infix_len;               /* Infix length */
-
-    /* Wildcard information */
-    bool has_wildcards;             /* Whether pattern contains wildcards */
-    int wildcard_count;             /* Number of wildcard characters */
-
-    /* ESCAPE semantics support */
-    char escape_char;               /* ESCAPE character (0 if no ESCAPE) */
-    bool has_escape;                /* Whether pattern has ESCAPE semantics */
-} TeccSearchPattern;
-
-#if 0
-/* Helper function to clean up parsed pattern */
-static void
-tecc_cleanup_parsed_pattern(TeccSearchPattern *parsed_pattern)
-{
-    if (!parsed_pattern)
-        return;
-
-    if (parsed_pattern->pattern)
-        pg_free(parsed_pattern->pattern);
-    if (parsed_pattern->prefix)
-        pg_free(parsed_pattern->prefix);
-    if (parsed_pattern->suffix)
-        pg_free(parsed_pattern->suffix);
-    if (parsed_pattern->infix)
-        pg_free(parsed_pattern->infix);
-
-    memset(parsed_pattern, 0, sizeof(TeccSearchPattern));
-}
-#endif
 
 /* New unified version of SEARCH-LIKE execution */
 static int tecc_execute_algo_search_like_unified(TeccCryptoContextExtended *context,
@@ -125,14 +95,16 @@ static int tecc_algo_search_encrypt_prefix(const unsigned char *key,
                                           const char *prefix,
                                           size_t prefix_len,
                                           unsigned char **ciphertext,
-                                          size_t *cipher_len);
+                                          size_t *cipher_len,
+                                          char escape_char);
 
 static int tecc_algo_search_encrypt_exact(const unsigned char *key,
                                          size_t key_len,
                                          const char *pattern,
                                          size_t pattern_len,
                                          unsigned char **ciphertext,
-                                         size_t *cipher_len);
+                                         size_t *cipher_len,
+                                         char escape_char);
 
 /*
  * normalize_data_for_algorithm - Normalize data based on algorithm and data type
@@ -679,14 +651,13 @@ tecc_execute_algo_rnd(TeccCryptoContext *context,
             size_t enc_len;
             HsmErrorCode hsm_ret;
             unsigned char iv_save[16];
-            int i;
 
             actual_key_len = (ext_context->dek_key_len >= TECC_SM4_KEY_SIZE) ?
                              TECC_SM4_KEY_SIZE : ext_context->dek_key_len;
             memcpy(sm4_key, ext_context->dek_key, actual_key_len);
 
-            for (i = 0; i < 16; i++)
-                iv[i] = rand() % 256;
+            /* ReqID:TECC4.0 - 使用密码学安全随机数生成IV */
+            security_generate_random_bytes(iv, 16);
             memcpy(iv_save, iv, 16);
 
             enc_len = required_size - 16;
@@ -739,7 +710,7 @@ tecc_execute_algo_rnd(TeccCryptoContext *context,
             ret = tecc_algo_encrypt_zero_copy(TECC_ALGO_RND,
                                              sm4_key, actual_key_len,
                                              context->plaintext, context->plaintext_len,
-                                             output_buffer, required_size, &output_len, false);
+                                             output_buffer, required_size, &output_len, false, 0);
         }
         memset(sm4_key, 0, sizeof(sm4_key));
 
@@ -885,7 +856,7 @@ tecc_execute_algo_det(TeccCryptoContext *context)
     ret = tecc_algo_encrypt_zero_copy(TECC_ALGO_DET,
                                      ext_context->dek_key, ext_context->dek_key_len,
                                      normalized_data, normalized_len,
-                                     output_buffer, required_size, &output_len, false);
+                                     output_buffer, required_size, &output_len, false, 0);
 
     if (ret != TECC_ALGO_SUCCESS)
     {
@@ -1114,7 +1085,7 @@ tecc_execute_algo_ope(TeccCryptoContext *context)
     ret = tecc_algo_encrypt_zero_copy(TECC_ALGO_OPE,
                                      ext_context->dek_key, ext_context->dek_key_len,
                                      normalized_data, normalized_len,
-                                     output_buffer, required_size, &output_len, false);
+                                     output_buffer, required_size, &output_len, false, 0);
 
     if (ret != TECC_ALGO_SUCCESS)
     {
@@ -1252,13 +1223,23 @@ tecc_execute_algo_search(TeccCryptoContext *context)
         return TECC_ALGO_MEMORY_ERROR;
     }
 
-    /* Call zero-copy algorithm API with real DEK key */
+    /* Call zero-copy algorithm API with real DEK key.
+     * ReqID:TECC4.0 - Use rtrimmed plaintext length for SEARCH to avoid
+     * encrypting bpchar padding spaces. BPCHAR pads to declared length before
+     * encryption, but SEARCH should only encrypt meaningful content. The >=
+     * guard prevents size_t underflow when WHERE path already rtrimmed
+     * plaintext_len (text_space_count > plaintext_len after rtrim). */
     output_len = 0;
-    ret = tecc_algo_encrypt_zero_copy(TECC_ALGO_SEARCH,
-                                     ext_context->dek_key, ext_context->dek_key_len,
-                                     context->plaintext, context->plaintext_len,
-                                     output_buffer, required_size, &output_len,
-                                     false);
+    {
+        size_t effective_len = context->plaintext_len;
+        if (context->plaintext_len >= context->text_space_count)
+            effective_len = context->plaintext_len - context->text_space_count;
+        ret = tecc_algo_encrypt_zero_copy(TECC_ALGO_SEARCH,
+                                         ext_context->dek_key, ext_context->dek_key_len,
+                                         context->plaintext, effective_len,
+                                         output_buffer, required_size, &output_len,
+                                         false, 0);
+    }
 
     if (ret != TECC_ALGO_SUCCESS)
     {
@@ -1286,6 +1267,401 @@ tecc_execute_algo_search(TeccCryptoContext *context)
     return TECC_ALGO_SUCCESS;
 }
 
+/*********************************************************************
+ * HE algorithm execution functions (EC-ElGamal / finite field ElGamal)
+ *********************************************************************/
+
+/* ReqID:TECC4.0 */
+#include "../../../src/include/common/tecc_algorithm/tecc_ec_elgamal.h"
+#include "../../../src/include/common/tecc_key/tecc_sm2.h"
+#include "../../../src/include/common/tecc_algorithm/tecc_elgamal.h"
+
+/* ReqID:TECC4.0 - Cached HE crypto contexts (process-local, single-user mode) */
+static EC_GROUP *he_ec_group = NULL;
+static EC_POINT *he_ec_pubkey = NULL;
+static BIGNUM *he_ec_privkey = NULL;
+static TeccECCRTParams he_crt_params;
+static TeccECBSGSTable *he_bsgs_tables[TECC_EC_CRT_NUM_PRIMES];
+static bool he_crypto_initialized = false;
+
+/*
+ * ReqID:TECC4.0 - 不再使用硬编码 EC-ElGamal 测试私钥。
+ *
+ * EC-ElGamal 私钥/公钥同样来自每个 DEK 自己的密钥对（CREATE DEK
+ * KEY_ALGO='he-add' 时由 tecc_he_gen_ec_keypair() 生成，私钥经 KEK 的 SM2
+ * 信封加密后入库），解密时由 tecc_he_load_dek_privkey() 解开。he_ec_pubkey /
+ * he_ec_privkey 保持 NULL：若某 DEK 无法加载到私钥则解密显式失败，绝不自动
+ * 回退到公开已知的硬编码密钥。
+ */
+
+/* Forward declaration for atexit cleanup */
+static void he_global_cleanup(void);
+
+/* ReqID:TECC4.0 - pthread_once 保证惰性初始化只执行一次（并发安全） */
+static pthread_once_t he_crypto_once = PTHREAD_ONCE_INIT;
+
+/* ReqID:TECC4.0 - HE crypto 初始化主体（由 pthread_once 调用，失败仅保持标志 false） */
+static void he_crypto_init_once(void)
+{
+    int ret;
+    int i;
+
+    /* Create P-256 EC group */
+    he_ec_group = tecc_ec_elgamal_create_group();
+    if (!he_ec_group) return;
+
+    /* Private/public keys are per-DEK (loaded via key-management interfaces),
+     * never cached here.  he_ec_pubkey/he_ec_privkey stay NULL. */
+
+    /* Initialize CRT params (8×12-bit partitions for int2/4/8 coverage) */
+    ret = tecc_ec_crt_params_init_ex(&he_crt_params, TECC_EC_CRT_NUM_PRIMES);
+    if (ret != 0) return;
+
+    /* Initialize BSGS tables for each partition（并行建表，缩短冷启动） */
+    memset(he_bsgs_tables, 0, sizeof(he_bsgs_tables));
+    for (i = 0; i < TECC_EC_CRT_NUM_PRIMES; i++)
+    {
+        he_bsgs_tables[i] = (TeccECBSGSTable *)pg_malloc(sizeof(TeccECBSGSTable));
+        if (!he_bsgs_tables[i]) return;
+    }
+    /* ReqID:TECC4.0 - 8 表并行初始化（各表独立，多线程加速约 8 倍），
+     * 控制 HE 客户端一次性冷启动开销。 */
+    ret = tecc_ec_bsgs_tables_init_parallel(he_bsgs_tables, he_ec_group,
+                                            TECC_EC_BSGS_TABLE_SIZE,
+                                            TECC_EC_CRT_NUM_PRIMES);
+    if (ret != 0) return;
+
+    he_crypto_initialized = true;
+    atexit(he_global_cleanup);
+}
+
+/* ReqID:TECC4.0 - Initialize HE crypto context（pthread_once 包装，并发安全） */
+static int he_crypto_init(void)
+{
+    pthread_once(&he_crypto_once, he_crypto_init_once);
+    return he_crypto_initialized ? TECC_ALGO_SUCCESS : TECC_ALGO_ENCRYPTION_FAILED;
+}
+
+/* ReqID:TECC4.0 - EC-ElGamal encryption */
+int
+tecc_execute_algo_he_add(TeccCryptoContext *context)
+{
+    TeccCryptoContextExtended *ext_ctx;
+    int ret;
+    int64 int_value;
+    BIGNUM *bn_value = NULL;
+    TeccECCRTCiphertext ct;
+    uint8_t serialized[TECC_EC_CRT_MAX_CIPHERTEXT_SIZE];
+    int serialized_len;
+
+    if (context == NULL) return TECC_ALGO_INVALID_PARAM;
+    ext_ctx = TECC_CONTEXT_EXTENDED(context);
+    if (ext_ctx == NULL) return TECC_ALGO_INVALID_PARAM;
+
+    /* Ensure HE crypto is initialized */
+    ret = he_crypto_init();
+    if (ret != TECC_ALGO_SUCCESS)
+    {
+        tecc_processor_debug(TECC_LOG_ERROR,
+            "HE_ADD: crypto init failed: %d", ret);
+        return ret;
+    }
+
+    /* Parse plaintext as int64 */
+    if (context->plaintext == NULL || context->plaintext_len == 0)
+        return TECC_ALGO_INVALID_PARAM;
+
+    tecc_processor_debug(TECC_LOG_DEBUG1,
+        "HE_ADD: plaintext='%.*s' len=%zu",
+        (int)context->plaintext_len, (const char *)context->plaintext,
+        context->plaintext_len);
+
+    int_value = strtoll((const char *)context->plaintext, NULL, 10);
+
+    /* Convert to BIGNUM */
+    bn_value = BN_new();
+    if (!bn_value) return TECC_ALGO_MEMORY_ERROR;
+    BN_set_word(bn_value, (BN_ULONG)(int_value >= 0 ? int_value : -int_value));
+    if (int_value < 0)
+    {
+        BN_set_negative(bn_value, 1);
+    }
+
+	/* ReqID:TECC4.0 - CRT 加密必须使用 per-DEK 公钥；缺失或加密失败时报错，
+	 * 不再回退到硬编码测试密钥。 */
+	memset(&ct, 0, sizeof(ct));
+	ret = tecc_ec_crt_ciphertext_init(&ct, he_ec_group, he_crt_params.num_primes);
+	if (ret != 0)
+	{
+		tecc_processor_debug(TECC_LOG_ERROR,
+			"HE_ADD: ciphertext init failed: %d", ret);
+		BN_free(bn_value);
+		return TECC_ALGO_ENCRYPTION_FAILED;
+	}
+	if (ext_ctx->he_ec_pubkey_hex == NULL)
+	{
+		tecc_ec_crt_ciphertext_free(&ct, he_ec_group);
+		BN_free(bn_value);
+		tecc_processor_debug(TECC_LOG_ERROR,
+			"HE_ADD: per-DEK EC public key not loaded, cannot encrypt");
+		return TECC_ALGO_ENCRYPTION_FAILED;
+	}
+	{
+		EC_POINT *per_dek_pub = EC_POINT_new(he_ec_group);
+		unsigned char *pub_bin = NULL;
+		size_t pub_bin_len = strlen(ext_ctx->he_ec_pubkey_hex) / 2;
+		int j;
+
+		if (per_dek_pub != NULL && pub_bin_len > 0)
+		{
+			pub_bin = (unsigned char *)pg_malloc(pub_bin_len);
+			for (j = 0; j < (int)pub_bin_len; j++)
+			{
+				char c1 = ext_ctx->he_ec_pubkey_hex[j * 2];
+				char c2 = ext_ctx->he_ec_pubkey_hex[j * 2 + 1];
+				unsigned char n1, n2;
+				n1 = (c1 >= '0' && c1 <= '9') ? (unsigned char)(c1 - '0') :
+					(c1 >= 'a' && c1 <= 'f') ? (unsigned char)(c1 - 'a' + 10) :
+					(c1 >= 'A' && c1 <= 'F') ? (unsigned char)(c1 - 'A' + 10) : 0;
+				n2 = (c2 >= '0' && c2 <= '9') ? (unsigned char)(c2 - '0') :
+					(c2 >= 'a' && c2 <= 'f') ? (unsigned char)(c2 - 'a' + 10) :
+					(c2 >= 'A' && c2 <= 'F') ? (unsigned char)(c2 - 'A' + 10) : 0;
+				pub_bin[j] = (n1 << 4) | n2;
+			}
+			if (EC_POINT_oct2point(he_ec_group, per_dek_pub, pub_bin,
+								   pub_bin_len, NULL) == 1)
+			{
+				ret = tecc_ec_crt_encrypt(&ct, he_ec_group, per_dek_pub,
+										  bn_value, &he_crt_params, NULL);
+			}
+			else
+				ret = -1;
+			pg_free(pub_bin);
+		}
+		else
+			ret = -1;
+		EC_POINT_free(per_dek_pub);
+
+		if (ret != 0)
+		{
+			tecc_ec_crt_ciphertext_free(&ct, he_ec_group);
+			BN_free(bn_value);
+			tecc_processor_debug(TECC_LOG_ERROR,
+				"HE_ADD: per-DEK pubkey encrypt failed: %d", ret);
+			return TECC_ALGO_ENCRYPTION_FAILED;
+		}
+	}
+    BN_free(bn_value);
+    if (ret != 0)
+    {
+        tecc_processor_debug(TECC_LOG_ERROR,
+            "HE_ADD: CRT encrypt failed: %d", ret);
+        tecc_ec_crt_ciphertext_free(&ct, he_ec_group);
+        return TECC_ALGO_ENCRYPTION_FAILED;
+    }
+
+    /* Serialize */
+    serialized_len = tecc_ec_crt_serialize(serialized, sizeof(serialized),
+                                            &ct, he_ec_group);
+    tecc_ec_crt_ciphertext_free(&ct, he_ec_group);
+    if (serialized_len <= 0) return TECC_ALGO_ENCRYPTION_FAILED;
+
+    /* Store in context */
+    ext_ctx->he_add_ciphertext = (unsigned char *)pg_malloc(serialized_len);
+    memcpy(ext_ctx->he_add_ciphertext, serialized, serialized_len);
+    ext_ctx->he_add_cipher_len = serialized_len;
+
+    return TECC_ALGO_SUCCESS;
+}
+
+/* ReqID:TECC4.0 - Cached ElGamal contexts (process-local) */
+static TeccElGamalCRTParams he_eg_crt_params;
+static BIGNUM *he_eg_privkey = NULL;
+static BIGNUM *he_eg_pubkey1 = NULL;
+static BIGNUM *he_eg_pubkey2 = NULL;
+static BIGNUM *he_eg_pubkey = NULL;	/* non-CRT pubkey = g^x mod p */
+static bool he_eg_initialized = false;
+static BIGNUM *he_eg_p = NULL;
+static BIGNUM *he_eg_q = NULL;
+static BIGNUM *he_eg_g = NULL;
+
+/*
+ * ReqID:TECC4.0 - 不再使用硬编码测试私钥。
+ *
+ * FF ElGamal 私钥必须来自每个 DEK 自己生成的密钥对（CREATE DEK KEY_ALGO='he-mul'
+ * 时由 tecc_he_gen_ff_keypair() 生成，私钥经 KEK 的 SM2 信封加密后入库），解密时由
+ * tecc_he_load_dek_privkey() 解开。he_eg_privkey / he_eg_pubkey1 / he_eg_pubkey2 /
+ * he_eg_pubkey 保持 NULL，若某 DEK 无法加载到私钥则解密显式失败，绝不自动回退到
+ * 公开已知的硬编码密钥（否则任何受害者私钥都被公开，he-mul 无语义安全）。
+ */
+
+/* ReqID:TECC4.0 - pthread_once 保证惰性初始化只执行一次（并发安全） */
+static pthread_once_t he_eg_once = PTHREAD_ONCE_INIT;
+
+/* ReqID:TECC4.0 - ElGamal crypto 初始化主体（由 pthread_once 调用，失败仅保持标志 false） */
+static void he_eg_init_once(void)
+{
+    int ret;
+
+    /* Get default 2048-bit parameters (RFC 5114 §2.3, validated at load) */
+    ret = tecc_elgamal_get_default_params(&he_eg_p, &he_eg_q, &he_eg_g);
+    if (ret != TECC_ELGAMAL_SUCCESS)
+    {
+        TECC_LOG(TECC_LOG_INFO, "HE: failed to load ElGamal default params (%d), "
+                 "homomorphic operations will be unavailable", ret);
+        return;
+    }
+
+    /* Initialize CRT params (legacy parallel-group scaffolding, not on the
+     * live he-mul path; kept for tecc_elgamal_crt_params_free symmetry). */
+    ret = tecc_elgamal_crt_params_init(&he_eg_crt_params);
+    if (ret != TECC_ELGAMAL_SUCCESS)
+    {
+        TECC_LOG(TECC_LOG_INFO, "HE: failed to init ElGamal CRT params (%d), "
+                 "homomorphic operations will be unavailable", ret);
+        return;
+    }
+
+    /* Private/public keys are per-DEK (loaded via the key-management
+     * interfaces), never cached here.  he_eg_privkey/pubkey* stay NULL. */
+    he_eg_initialized = true;
+    atexit(he_global_cleanup);
+}
+
+/* ReqID:TECC4.0 - Initialize ElGamal crypto context（pthread_once 包装，并发安全） */
+static int he_eg_init(void)
+{
+    pthread_once(&he_eg_once, he_eg_init_once);
+    return he_eg_initialized ? TECC_ALGO_SUCCESS : TECC_ALGO_ENCRYPTION_FAILED;
+}
+
+/* ReqID:TECC4.0 - Finite field ElGamal encryption */
+int
+tecc_execute_algo_he_mul(TeccCryptoContext *context)
+{
+    TeccCryptoContextExtended *ext_ctx;
+    int ret;
+    int64 int_value;
+    BIGNUM *bn_value = NULL;
+    BIGNUM *c1, *c2;
+    uint8_t serialized[TECC_ELGAMAL_CIPHERTEXT_SIZE];
+
+    if (context == NULL) return TECC_ALGO_INVALID_PARAM;
+    ext_ctx = TECC_CONTEXT_EXTENDED(context);
+    if (ext_ctx == NULL) return TECC_ALGO_INVALID_PARAM;
+
+    /* Ensure ElGamal crypto is initialized */
+    ret = he_eg_init();
+    if (ret != TECC_ALGO_SUCCESS) return ret;
+
+    /* Parse plaintext as int64 */
+    if (context->plaintext == NULL || context->plaintext_len == 0)
+        return TECC_ALGO_INVALID_PARAM;
+
+    int_value = strtoll((const char *)context->plaintext, NULL, 10);
+
+    /* Convert to BIGNUM */
+    bn_value = BN_new();
+    if (!bn_value) return TECC_ALGO_MEMORY_ERROR;
+    if (int_value >= 0)
+        BN_set_word(bn_value, (BN_ULONG)int_value);
+    else
+    {
+        BN_set_word(bn_value, (BN_ULONG)(-int_value));
+        BN_set_negative(bn_value, 1);
+    }
+
+    /* Non-CRT ElGamal encrypt (matching server-side he_mul_generic deserialize).
+     * Use per-DEK public key if loaded, else hardcoded test key. */
+    c1 = BN_new(); c2 = BN_new();
+    if (!c1 || !c2)
+    {
+        BN_free(c1); BN_free(c2); BN_free(bn_value);
+        return TECC_ALGO_MEMORY_ERROR;
+    }
+    if (ext_ctx->he_eg_pubkey_hex != NULL)
+    {
+        BIGNUM *per_dek_pub = BN_bin2bn((const unsigned char *)ext_ctx->he_eg_pubkey_hex,
+                                        (int)strlen(ext_ctx->he_eg_pubkey_hex), NULL);
+        if (per_dek_pub != NULL)
+        {
+            /* he_pubkey stored as ASCII hex of 256-byte h — decode properly */
+            unsigned char pub_bin[256];
+            size_t pub_bin_len = strlen(ext_ctx->he_eg_pubkey_hex) / 2;
+            int j;
+
+            if (pub_bin_len > 0 && pub_bin_len <= sizeof(pub_bin))
+            {
+                for (j = 0; j < (int)pub_bin_len; j++)
+                {
+                    char ch1 = ext_ctx->he_eg_pubkey_hex[j * 2];
+                    char ch2 = ext_ctx->he_eg_pubkey_hex[j * 2 + 1];
+                    unsigned char h1, h2;
+                    h1 = (ch1 >= '0' && ch1 <= '9') ? (unsigned char)(ch1 - '0') :
+                         (ch1 >= 'a' && ch1 <= 'f') ? (unsigned char)(ch1 - 'a' + 10) :
+                         (ch1 >= 'A' && ch1 <= 'F') ? (unsigned char)(ch1 - 'A' + 10) : 0;
+                    h2 = (ch2 >= '0' && ch2 <= '9') ? (unsigned char)(ch2 - '0') :
+                         (ch2 >= 'a' && ch2 <= 'f') ? (unsigned char)(ch2 - 'a' + 10) :
+                         (ch2 >= 'A' && ch2 <= 'F') ? (unsigned char)(ch2 - 'A' + 10) : 0;
+                    pub_bin[j] = (h1 << 4) | h2;
+                }
+                BN_free(per_dek_pub);
+                per_dek_pub = BN_bin2bn(pub_bin, (int)pub_bin_len, NULL);
+            }
+
+            if (per_dek_pub != NULL)
+            {
+                ret = tecc_elgamal_encrypt(he_eg_p, he_eg_q, he_eg_g, per_dek_pub,
+                                           bn_value, c1, c2, NULL);
+                BN_free(per_dek_pub);
+            }
+            else
+                ret = -1;
+
+            if (ret != TECC_ELGAMAL_SUCCESS)
+            {
+                BN_free(c1); BN_free(c2); BN_free(bn_value);
+                tecc_processor_debug(TECC_LOG_ERROR,
+                    "HE_MUL: per-DEK pubkey encrypt failed: %d", ret);
+                return TECC_ALGO_ENCRYPTION_FAILED;
+            }
+        }
+        else
+        {
+            BN_free(c1); BN_free(c2); BN_free(bn_value);
+            tecc_processor_debug(TECC_LOG_ERROR,
+                "HE_MUL: per-DEK ElGamal public key decode failed, cannot encrypt");
+            return TECC_ALGO_ENCRYPTION_FAILED;
+        }
+    }
+    else
+    {
+        BN_free(c1); BN_free(c2); BN_free(bn_value);
+        tecc_processor_debug(TECC_LOG_ERROR,
+            "HE_MUL: per-DEK ElGamal public key not loaded, cannot encrypt");
+        return TECC_ALGO_ENCRYPTION_FAILED;
+    }
+    BN_free(bn_value);
+    if (ret != TECC_ELGAMAL_SUCCESS)
+    {
+        BN_free(c1); BN_free(c2);
+        tecc_processor_debug(TECC_LOG_ERROR, "HE_MUL: encrypt failed: %d", ret);
+        return TECC_ALGO_ENCRYPTION_FAILED;
+    }
+
+    /* Serialize */
+    memset(serialized, 0, sizeof(serialized));
+    ret = tecc_elgamal_serialize(serialized, sizeof(serialized), c1, c2);
+    BN_free(c1); BN_free(c2);
+    if (ret <= 0) return TECC_ALGO_ENCRYPTION_FAILED;
+
+    /* Store in context */
+    ext_ctx->he_mul_ciphertext = (unsigned char *)pg_malloc(TECC_ELGAMAL_CIPHERTEXT_SIZE);
+    memcpy(ext_ctx->he_mul_ciphertext, serialized, TECC_ELGAMAL_CIPHERTEXT_SIZE);
+    ext_ctx->he_mul_cipher_len = TECC_ELGAMAL_CIPHERTEXT_SIZE;
+
+    return TECC_ALGO_SUCCESS;
+}
 
 /*
  * Get algorithm name
@@ -1639,7 +2015,7 @@ tecc_algorithm_scheduler_encrypt_search_with_operator(
                                          output_buffer,
                                          required_size,
                                          &output_len,
-                                         false);
+                                         false, 0);
     }
 
     if (ret != TECC_ALGO_SUCCESS)
@@ -1732,7 +2108,7 @@ tecc_algorithm_scheduler_encrypt_rnd(
                                          context->plaintext_len,
                                          output_buffer,
                                          required_size,
-                                         &output_len, false);
+                                         &output_len, false, 0);
     }
 
     if (ret != TECC_ALGO_SUCCESS)
@@ -1755,30 +2131,6 @@ tecc_algorithm_scheduler_encrypt_rnd(
 }
 
 /* Begin - ReqID:TECC4.0 - SEARCH算法LIKE模式处理函数 */
-
-#if 0
-/*
- * tecc_execute_algo_search_like - Execute SEARCH algorithm for LIKE patterns
- * (Legacy implementation - kept for backward compatibility)
- */
-static int
-tecc_execute_algo_search_like(TeccCryptoContextExtended *context,
-                             TeccOperatorType operator_type,
-                             unsigned char **search_ciphertext,
-                             size_t *search_cipher_len)
-{
-    /* Suppress unused parameter warnings */
-    (void)context;
-    (void)operator_type;
-    (void)search_ciphertext;
-    (void)search_cipher_len;
-
-    /* This function is kept for backward compatibility but not used */
-    tecc_processor_debug(TECC_LOG_DEBUG1,
-                       "Legacy tecc_execute_algo_search_like called - using unified implementation");
-    return TECC_ALGO_NOT_IMPLEMENTED;
-}
-#endif
 
 /*
  * tecc_execute_algo_search_equal - Execute SEARCH algorithm for equality comparisons
@@ -1821,180 +2173,9 @@ tecc_execute_algo_search_equal(TeccCryptoContextExtended *context,
                                          (const char *)context->plaintext,
                                          context->plaintext_len,
                                          search_ciphertext,
-                                         search_cipher_len);
+                                         search_cipher_len,
+                                         0);
 }
-
-#if 0
-/*
- * tecc_parse_like_pattern - Parse LIKE pattern into components
- */
-static int
-tecc_parse_like_pattern(const char *pattern,
-                       size_t pattern_len,
-                       char escape_char,
-                       TeccSearchPattern *parsed_pattern)
-{
-    int i;
-    bool has_percent = false;
-    bool has_underscore = false;
-    int percent_count = 0;
-    int first_percent = -1;
-    int last_percent = -1;
-
-    if (!pattern || pattern_len == 0 || !parsed_pattern)
-    {
-        return TECC_ALGO_INVALID_PARAM;
-    }
-
-    /* Initialize parsed pattern */
-    memset(parsed_pattern, 0, sizeof(TeccSearchPattern));
-    parsed_pattern->pattern_type = TECC_PATTERN_UNKNOWN;
-    parsed_pattern->has_wildcards = false;
-    parsed_pattern->wildcard_count = 0;
-    parsed_pattern->escape_char = escape_char;
-    parsed_pattern->has_escape = (escape_char != 0);
-
-    /* Copy pattern for analysis */
-    parsed_pattern->pattern = pg_malloc(pattern_len + 1);
-    if (!parsed_pattern->pattern)
-    {
-        return TECC_ALGO_MEMORY_ERROR;
-    }
-    memcpy(parsed_pattern->pattern, pattern, pattern_len);
-    parsed_pattern->pattern[pattern_len] = '\0';
-    parsed_pattern->pattern_len = pattern_len;
-
-    /* Analyze pattern for wildcards with ESCAPE semantics */
-    for (i = 0; i < (int)pattern_len; i++)
-    {
-        /* Check for escape character */
-        if (escape_char != 0 && pattern[i] == escape_char)
-        {
-            /* Skip the next character - it's escaped */
-            i++;
-            if (i >= (int)pattern_len)
-            {
-                /* Escape character at end of pattern is invalid */
-                tecc_cleanup_parsed_pattern(parsed_pattern);
-                return TECC_ALGO_DATA_FORMAT_ERROR;
-            }
-            continue;
-        }
-
-        if (pattern[i] == '%')
-        {
-            has_percent = true;
-            percent_count++;
-            if (first_percent == -1)
-                first_percent = i;
-            last_percent = i;
-        }
-        else if (pattern[i] == '_')
-        {
-            has_underscore = true;
-            parsed_pattern->wildcard_count++;
-        }
-    }
-
-    parsed_pattern->has_wildcards = has_percent || has_underscore;
-
-    /* Determine pattern type */
-    if (!has_percent && !has_underscore)
-    {
-        /* No wildcards - exact match */
-        parsed_pattern->pattern_type = TECC_PATTERN_EXACT;
-    }
-    else if (has_underscore)
-    {
-        /* Contains '_' wildcard */
-        parsed_pattern->pattern_type = TECC_PATTERN_WILDCARD;
-    }
-    else if (percent_count == 1)
-    {
-        /* Single '%' wildcard */
-        if (first_percent == 0)
-        {
-            /* '%xyz' - suffix pattern */
-            parsed_pattern->pattern_type = TECC_PATTERN_SUFFIX;
-            parsed_pattern->suffix_len = pattern_len - 1;
-            parsed_pattern->suffix = pg_malloc(parsed_pattern->suffix_len + 1);
-            if (!parsed_pattern->suffix)
-            {
-                tecc_cleanup_parsed_pattern(parsed_pattern);
-                return TECC_ALGO_MEMORY_ERROR;
-            }
-            memcpy(parsed_pattern->suffix, pattern + 1, parsed_pattern->suffix_len);
-            parsed_pattern->suffix[parsed_pattern->suffix_len] = '\0';
-        }
-        else if (first_percent == (int)pattern_len - 1)
-        {
-            /* 'abc%' - prefix pattern */
-            parsed_pattern->pattern_type = TECC_PATTERN_PREFIX;
-            parsed_pattern->prefix_len = pattern_len - 1;
-            parsed_pattern->prefix = pg_malloc(parsed_pattern->prefix_len + 1);
-            if (!parsed_pattern->prefix)
-            {
-                tecc_cleanup_parsed_pattern(parsed_pattern);
-                return TECC_ALGO_MEMORY_ERROR;
-            }
-            memcpy(parsed_pattern->prefix, pattern, parsed_pattern->prefix_len);
-            parsed_pattern->prefix[parsed_pattern->prefix_len] = '\0';
-        }
-        else
-        {
-            /* 'a%c' - treated as infix for simplicity */
-            parsed_pattern->pattern_type = TECC_PATTERN_INFIX;
-            /* Extract the part before '%' as infix for simplicity */
-            parsed_pattern->infix_len = first_percent;
-            parsed_pattern->infix = pg_malloc(parsed_pattern->infix_len + 1);
-            if (!parsed_pattern->infix)
-            {
-                tecc_cleanup_parsed_pattern(parsed_pattern);
-                return TECC_ALGO_MEMORY_ERROR;
-            }
-            memcpy(parsed_pattern->infix, pattern, parsed_pattern->infix_len);
-            parsed_pattern->infix[parsed_pattern->infix_len] = '\0';
-        }
-    }
-    else if (percent_count == 2 && first_percent == 0 && last_percent == (int)pattern_len - 1)
-    {
-        /* '%middle%' - infix pattern */
-        parsed_pattern->pattern_type = TECC_PATTERN_INFIX;
-        parsed_pattern->infix_len = pattern_len - 2;
-        parsed_pattern->infix = pg_malloc(parsed_pattern->infix_len + 1);
-        if (!parsed_pattern->infix)
-        {
-            tecc_cleanup_parsed_pattern(parsed_pattern);
-            return TECC_ALGO_MEMORY_ERROR;
-        }
-        memcpy(parsed_pattern->infix, pattern + 1, parsed_pattern->infix_len);
-        parsed_pattern->infix[parsed_pattern->infix_len] = '\0';
-    }
-    else
-    {
-        /* Complex pattern with multiple '%' */
-        parsed_pattern->pattern_type = TECC_PATTERN_INFIX;
-        /* For complex patterns, use the entire pattern as infix for simplicity */
-        parsed_pattern->infix_len = pattern_len;
-        parsed_pattern->infix = pg_malloc(parsed_pattern->infix_len + 1);
-        if (!parsed_pattern->infix)
-        {
-            tecc_cleanup_parsed_pattern(parsed_pattern);
-            return TECC_ALGO_MEMORY_ERROR;
-        }
-        memcpy(parsed_pattern->infix, pattern, parsed_pattern->infix_len);
-        parsed_pattern->infix[parsed_pattern->infix_len] = '\0';
-    }
-
-    tecc_processor_debug(TECC_LOG_DEBUG1,
-                        "Parsed LIKE pattern: type=%d, has_wildcards=%d, wildcard_count=%d",
-                        parsed_pattern->pattern_type,
-                        parsed_pattern->has_wildcards,
-                        parsed_pattern->wildcard_count);
-
-    return TECC_ALGO_SUCCESS;
-}
-#endif
 
 /*
  * tecc_algo_search_encrypt_prefix - Encrypt prefix for SEARCH algorithm
@@ -2005,7 +2186,8 @@ tecc_algo_search_encrypt_prefix(const unsigned char *key,
                                const char *prefix,
                                size_t prefix_len,
                                unsigned char **ciphertext,
-                               size_t *cipher_len)
+                               size_t *cipher_len,
+                               char escape_char)
 {
     /* For now, use the standard zero-copy interface */
     /* In a real implementation, this would use special prefix encryption */
@@ -2038,16 +2220,22 @@ tecc_algo_search_encrypt_prefix(const unsigned char *key,
         return TECC_ALGO_MEMORY_ERROR;
     }
 
-    /* Use basic zero-copy interface for now */
-    ret = tecc_algo_encrypt_zero_copy(TECC_ALGO_SEARCH,
-                                     key,
-                                     key_len,
-                                     (const unsigned char *)prefix,
-                                     prefix_len,
-                                     output_buffer,
-                                     required_size,
-                                     &output_len,
-                                     true);
+    /* Use basic zero-copy interface for now.
+     * ReqID:TECC4.0 - LIKE patterns with escape_char need it passed through
+     * to tecc_search_sm4_encrypt so escaped wildcards are hashed, not treated
+     * as wildcards.  Get escape_char from the extended context if available. */
+    {
+        ret = tecc_algo_encrypt_zero_copy(TECC_ALGO_SEARCH,
+                                         key,
+                                         key_len,
+                                         (const unsigned char *)prefix,
+                                         prefix_len,
+                                         output_buffer,
+                                         required_size,
+                                         &output_len,
+                                         true,
+                                         escape_char);
+    }
 
     if (ret != TECC_ALGO_SUCCESS)
     {
@@ -2061,40 +2249,6 @@ tecc_algo_search_encrypt_prefix(const unsigned char *key,
     return TECC_ALGO_SUCCESS;
 }
 
-#if 0
-/*
- * tecc_algo_search_encrypt_suffix - Encrypt suffix for SEARCH algorithm
- */
-static int
-tecc_algo_search_encrypt_suffix(const unsigned char *key,
-                               size_t key_len,
-                               const char *suffix,
-                               size_t suffix_len,
-                               unsigned char **ciphertext,
-                               size_t *cipher_len)
-{
-    /* Similar to prefix encryption */
-    return tecc_algo_search_encrypt_prefix(key, key_len, suffix, suffix_len,
-                                          ciphertext, cipher_len);
-}
-
-/*
- * tecc_algo_search_encrypt_infix - Encrypt infix for SEARCH algorithm
- */
-static int
-tecc_algo_search_encrypt_infix(const unsigned char *key,
-                              size_t key_len,
-                              const char *infix,
-                              size_t infix_len,
-                              unsigned char **ciphertext,
-                              size_t *cipher_len)
-{
-    /* Similar to prefix encryption */
-    return tecc_algo_search_encrypt_prefix(key, key_len, infix, infix_len,
-                                          ciphertext, cipher_len);
-}
-#endif
-
 /*
  * tecc_algo_search_encrypt_exact - Encrypt exact pattern for SEARCH algorithm
  */
@@ -2104,11 +2258,12 @@ tecc_algo_search_encrypt_exact(const unsigned char *key,
                               const char *pattern,
                               size_t pattern_len,
                               unsigned char **ciphertext,
-                              size_t *cipher_len)
+                              size_t *cipher_len,
+                              char escape_char)
 {
     /* Similar to prefix encryption */
     return tecc_algo_search_encrypt_prefix(key, key_len, pattern, pattern_len,
-                                          ciphertext, cipher_len);
+                                          ciphertext, cipher_len, escape_char);
 }
 
 /* End - ReqID:TECC4.0 - SEARCH算法LIKE模式处理函数 */
@@ -2227,17 +2382,17 @@ tecc_execute_algo_search_like_unified(TeccCryptoContextExtended *context,
                                              context->dek_key_len,
                                              "", 0,
                                              search_ciphertext,
-                                             search_cipher_len);
+                                             search_cipher_len,
+                                             0);
     }
 
     /* Parse LIKE pattern using unified parser */
     pattern = (const char *)context->plaintext;
     pattern_len = context->plaintext_len;
 
-    /* Get escape character from context if available */
-    escape_char = 0;
-    /* TODO: Extract escape character from context if available */
-    /* For now, use default (no escape) */
+    /* Get escape character from context (set by WHERE clause processor) */
+    /* ReqID:TECC4.0 */
+    escape_char = context->like_escape_char;
 
     pattern_ret = tecc_parse_pattern_unified(pattern, pattern_len, escape_char, &parsed_pattern);
     if (pattern_ret != TECC_PATTERN_SUCCESS)
@@ -2245,19 +2400,6 @@ tecc_execute_algo_search_like_unified(TeccCryptoContextExtended *context,
         tecc_processor_debug(TECC_LOG_ERROR,
                            "Failed to parse LIKE pattern with unified parser: error=%d, pattern=%.*s",
                            pattern_ret, (int)pattern_len, pattern);
-        return tecc_convert_error_code(pattern_ret);
-    }
-
-    /* Encrypt pattern segments */
-    pattern_ret = tecc_encrypt_pattern_segments(parsed_pattern,
-                                               context->dek_key,
-                                               context->dek_key_len);
-    if (pattern_ret != TECC_PATTERN_SUCCESS)
-    {
-        tecc_processor_debug(TECC_LOG_ERROR,
-                           "Failed to encrypt pattern segments: error=%d",
-                           pattern_ret);
-        tecc_free_parsed_pattern(parsed_pattern);
         return tecc_convert_error_code(pattern_ret);
     }
 
@@ -2275,7 +2417,7 @@ tecc_execute_algo_search_like_unified(TeccCryptoContextExtended *context,
                                                     (const char *)segment->data.fixed_string,
                                                     segment->length,
                                                     search_ciphertext,
-                                                    search_cipher_len);
+                                                    search_cipher_len, context->like_escape_char);
             }
             else
             {
@@ -2294,7 +2436,7 @@ tecc_execute_algo_search_like_unified(TeccCryptoContextExtended *context,
                                                     pattern,
                                                     pattern_len,
                                                     search_ciphertext,
-                                                    search_cipher_len);
+                                                    search_cipher_len, context->like_escape_char);
             }
             else
             {
@@ -2306,7 +2448,7 @@ tecc_execute_algo_search_like_unified(TeccCryptoContextExtended *context,
                                                     pattern,
                                                     pattern_len,
                                                     search_ciphertext,
-                                                    search_cipher_len);
+                                                    search_cipher_len, context->like_escape_char);
             }
             break;
 
@@ -2319,7 +2461,7 @@ tecc_execute_algo_search_like_unified(TeccCryptoContextExtended *context,
                                                     pattern,
                                                     pattern_len,
                                                     search_ciphertext,
-                                                    search_cipher_len);
+                                                    search_cipher_len, context->like_escape_char);
             }
             else
             {
@@ -2331,7 +2473,7 @@ tecc_execute_algo_search_like_unified(TeccCryptoContextExtended *context,
                                                     pattern,
                                                     pattern_len,
                                                     search_ciphertext,
-                                                    search_cipher_len);
+                                                    search_cipher_len, context->like_escape_char);
             }
             break;
 
@@ -2346,7 +2488,7 @@ tecc_execute_algo_search_like_unified(TeccCryptoContextExtended *context,
                                                     pattern,
                                                     pattern_len,
                                                     search_ciphertext,
-                                                    search_cipher_len);
+                                                    search_cipher_len, context->like_escape_char);
             }
             else
             {
@@ -2358,7 +2500,7 @@ tecc_execute_algo_search_like_unified(TeccCryptoContextExtended *context,
                                                     pattern,
                                                     pattern_len,
                                                     search_ciphertext,
-                                                    search_cipher_len);
+                                                    search_cipher_len, context->like_escape_char);
             }
             break;
 
@@ -2425,7 +2567,7 @@ tecc_execute_algo_search_like_unified(TeccCryptoContextExtended *context,
                                                 expanded_pattern,
                                                 expanded_len,
                                                 search_ciphertext,
-                                                search_cipher_len);
+                                                search_cipher_len, context->like_escape_char);
             pg_free(expanded_pattern);
             break;
         }
@@ -2440,7 +2582,7 @@ tecc_execute_algo_search_like_unified(TeccCryptoContextExtended *context,
                                                 pattern,
                                                 pattern_len,
                                                 search_ciphertext,
-                                                search_cipher_len);
+                                                search_cipher_len, context->like_escape_char);
             break;
 
         default:
@@ -2467,3 +2609,390 @@ tecc_execute_algo_search_like_unified(TeccCryptoContextExtended *context,
 }
 
 /* End - ReqID:TECC4.0 */
+
+/* ReqID:TECC4.0 - Load a DEK's real HE private key (EC for he-add, FF for he-mul),
+ * unwrapped with the KEK via SM2 envelope decryption.  Returns 0 on success with
+ * *out_priv allocated (caller frees with BN_free); -1 on error.  Used by batch
+ * decrypt to load the key once per DEK instead of per row. */
+int
+tecc_he_load_dek_privkey(void *tecc_state, const char *dek_name,
+                         int is_ec, BIGNUM **out_priv)
+{
+    char *he_priv_hex = NULL;
+    char *kek_name_hex = NULL;
+    const char *priv_key_name;
+    BIGNUM *per_dek_priv = NULL;
+
+    if (out_priv == NULL) return -1;
+    *out_priv = NULL;
+    if (tecc_state == NULL || dek_name == NULL) return -1;
+
+    priv_key_name = is_ec ? "he_ec_privkey" : "he_eg_privkey";
+
+    if (tecc_he_load_dek_key_hex(tecc_state, dek_name, priv_key_name, &he_priv_hex) != 0 ||
+        he_priv_hex == NULL)
+        return -1;
+
+    if (tecc_he_load_dek_key_hex(tecc_state, dek_name, "kek", &kek_name_hex) != 0 ||
+        kek_name_hex == NULL)
+    {
+        pg_free(he_priv_hex);
+        return -1;
+    }
+
+    {
+        unsigned char *enc_priv = NULL;
+        size_t enc_priv_len;
+        unsigned char *plain_priv = NULL;
+        size_t plain_priv_len = 0;
+        unsigned char *plain_acc = NULL;
+        size_t plain_acc_len = 0;
+        unsigned char *kek = NULL;
+        size_t kek_len = 0;
+        int nchunks;
+        int ci;
+        int j;
+
+        /* ReqID:TECC4.0 - 逐块解封后拼接：KEK 托管在密码机时 he-mul 的 256
+         * 字节 FF-ElGamal 私钥被拆成 ≤128 字节的多块分别封装（设备
+         * ECCCipher.C 上限 136 字节，真机实测）；legacy 单信封（无 'v2:'
+         * 前缀）按 1 块处理，路径与原来完全一致。 */
+        nchunks = tecc_sm2_env_chunk_count(he_priv_hex);
+        if (nchunks <= 0)
+        {
+            pg_free(he_priv_hex);
+            pg_free(kek_name_hex);
+            return -1;
+        }
+
+        for (ci = 0; ci < nchunks; ci++)
+        {
+        char       *chunk_hex = NULL;
+
+        if (tecc_sm2_env_chunk_hex(he_priv_hex, ci, &chunk_hex) != TECC_SM2_SUCCESS)
+            break;
+
+        enc_priv_len = strlen(chunk_hex) / 2;
+        enc_priv = (unsigned char *)pg_malloc(enc_priv_len);
+        if (enc_priv != NULL)
+        {
+            for (j = 0; j < (int)enc_priv_len; j++)
+            {
+                char c1 = chunk_hex[j * 2];
+                char c2 = chunk_hex[j * 2 + 1];
+                unsigned char n1, n2;
+                n1 = (c1 >= '0' && c1 <= '9') ? (unsigned char)(c1 - '0') :
+                     (c1 >= 'a' && c1 <= 'f') ? (unsigned char)(c1 - 'a' + 10) :
+                     (c1 >= 'A' && c1 <= 'F') ? (unsigned char)(c1 - 'A' + 10) : 0;
+                n2 = (c2 >= '0' && c2 <= '9') ? (unsigned char)(c2 - '0') :
+                     (c2 >= 'a' && c2 <= 'f') ? (unsigned char)(c2 - 'a' + 10) :
+                     (c2 >= 'A' && c2 <= 'F') ? (unsigned char)(c2 - 'A' + 10) : 0;
+                enc_priv[j] = (n1 << 4) | n2;
+            }
+
+			/* ReqID:TECC4.0 - Scheme B: unwrap HE private key with the KEK's
+			 * SM2 private key (PKCS#8 DER). */
+		kek = tecc_key_get_kek_with_state(tecc_state, kek_name_hex, &kek_len);
+		if (kek != NULL)
+		{
+			/* ReqID:TECC4.0 - HSM-hosted SM2 KEK: unwrap via device sm2_decrypt,
+			 * so the SM2 private key never leaves the device. */
+				if (kek_len == 16 &&
+					(memcmp(kek + 4, "HSM_KEY", 7) == 0 ||
+					 memcmp(kek + 4, "SWXAKEY", 7) == 0))
+				{
+					bool is_swxa = (memcmp(kek + 4, "SWXAKEY", 7) == 0);
+					unsigned int key_index = (unsigned int)kek[0] |
+						((unsigned int)kek[1] << 8) |
+						((unsigned int)kek[2] << 16) |
+						((unsigned int)kek[3] << 24);
+					HsmAdapterInterface *hsm_adapter =
+						is_swxa ? get_swxa_adapter() : get_tzhsm_adapter();
+					HsmDevice *device = NULL;
+
+					if (hsm_adapter != NULL && hsm_adapter->sm2_decrypt != NULL &&
+						hsm_adapter->init(&device, NULL) == HSM_SUCCESS)
+					{
+						if (hsm_adapter->connect(device) == HSM_SUCCESS)
+						{
+							if (hsm_adapter->sm2_decrypt(device, key_index,
+														 enc_priv, enc_priv_len,
+														 (void **)&plain_priv,
+														 &plain_priv_len) == HSM_SUCCESS &&
+								plain_priv != NULL && plain_priv_len > 0)
+							{
+								per_dek_priv = BN_bin2bn(plain_priv, (int)plain_priv_len, NULL);
+								tecc_processor_debug(TECC_LOG_DEBUG1,
+									"HE decrypt: unwrapped per-DEK private key via HSM sm2_decrypt (len=%zu)",
+									plain_priv_len);
+							}
+							hsm_adapter->disconnect(device);
+						}
+						hsm_adapter->cleanup(device);
+					}
+				}
+				else
+				{
+					if (tecc_sm2_envelope_decrypt(kek, kek_len,
+												  enc_priv, enc_priv_len,
+												  &plain_priv, &plain_priv_len) == TECC_SM2_SUCCESS &&
+						plain_priv != NULL && plain_priv_len > 0)
+					{
+						per_dek_priv = BN_bin2bn(plain_priv, (int)plain_priv_len, NULL);
+						tecc_processor_debug(TECC_LOG_DEBUG1,
+							"HE decrypt: loaded per-DEK private key for '%s' (len=%zu)",
+							dek_name, plain_priv_len);
+					}
+				}
+				tecc_key_free_key_data(kek, kek_len);
+			}
+            pg_free(enc_priv);
+        }
+        pg_free(chunk_hex);
+        chunk_hex = NULL;
+
+        if (plain_priv == NULL || plain_priv_len == 0)
+        {
+            if (plain_priv != NULL)
+                OPENSSL_free(plain_priv);
+            break;
+        }
+
+        /* 追加本块明文，得到完整私钥 */
+        plain_acc = (unsigned char *)pg_realloc(plain_acc, plain_acc_len + plain_priv_len);
+        if (plain_acc == NULL)
+        {
+            OPENSSL_free(plain_priv);
+            plain_acc_len = 0;
+            break;
+        }
+        memcpy(plain_acc + plain_acc_len, plain_priv, plain_priv_len);
+        plain_acc_len += plain_priv_len;
+        OPENSSL_cleanse(plain_priv, plain_priv_len);
+        OPENSSL_free(plain_priv);
+        plain_priv = NULL;
+        plain_priv_len = 0;
+        }
+
+        /* kek 已在每轮循环内解封后释放（见上），此处不得再释放，
+         * 否则是对已释放指针的二次释放。 */
+        if (per_dek_priv != NULL)
+        {
+            /* 循环内按「单块明文」建过 BIGNUM，分块情形下那是中间结果 */
+            BN_free(per_dek_priv);
+            per_dek_priv = NULL;
+        }
+        if (plain_acc != NULL && plain_acc_len > 0)
+            per_dek_priv = BN_bin2bn(plain_acc, (int)plain_acc_len, NULL);
+        if (plain_acc != NULL)
+        {
+            OPENSSL_cleanse(plain_acc, plain_acc_len);
+            pg_free(plain_acc);
+        }
+    }
+    pg_free(he_priv_hex);
+    pg_free(kek_name_hex);
+
+    if (per_dek_priv == NULL) return -1;
+    *out_priv = per_dek_priv;
+    return 0;
+}
+
+/* ReqID:TECC4.0 - Pure HE decrypt core (no private-key load, no BN_CTX create/free).
+ * Accepts an externally owned BN_CTX and a pre-loaded per-DEK private key, so
+ * batch decrypt can reuse one BN_CTX and one private key across all rows.
+ * The private key MUST be provided: no hardcoded/test-key fallback exists for
+ * the FF ElGamal (he-mul) path.  If it is absent, decryption fails explicitly. */
+int
+tecc_he_decrypt_cipherdata_ex(const unsigned char *eg_add_data, size_t eg_add_len,
+                              const unsigned char *eg_mul_data, size_t eg_mul_len,
+                              const BIGNUM *per_dek_priv, BN_CTX *bn_ctx,
+                              char **plaintext, size_t *plain_len)
+{
+    int ret;
+    BIGNUM *bn_result;
+    char *dec_str;
+
+    if (plaintext == NULL || plain_len == NULL || bn_ctx == NULL)
+        return TECC_ALGO_INVALID_PARAM;
+    *plaintext = NULL;
+    *plain_len = 0;
+
+    bn_result = BN_new();
+    if (!bn_result) return TECC_ALGO_MEMORY_ERROR;
+
+    if (eg_add_data && eg_add_len > 0)
+    {
+        TeccECCRTCiphertext ct;
+        ret = he_crypto_init();
+        if (ret) { BN_free(bn_result); return ret; }
+        memset(&ct, 0, sizeof(ct));
+        /* Skip the 4-byte per-segment DEK ID prefix */
+        if (eg_add_len <= CIPHERDATA_HE_DEK_ID_SIZE)
+        { BN_free(bn_result); return TECC_ALGO_DECRYPTION_FAILED; }
+        ret = tecc_ec_crt_deserialize(&ct, eg_add_data + CIPHERDATA_HE_DEK_ID_SIZE,
+                                      eg_add_len - CIPHERDATA_HE_DEK_ID_SIZE, he_ec_group);
+        if (ret) { tecc_ec_crt_ciphertext_free(&ct, he_ec_group); BN_free(bn_result); return TECC_ALGO_DECRYPTION_FAILED; }
+        /* ReqID:TECC4.0 - EC-ElGamal 私钥必须来自密钥管理（per-DEK）。无回退到
+         * 硬编码密钥：per_dek_priv 为空则显式失败。 */
+        if (per_dek_priv == NULL)
+        {
+            tecc_ec_crt_ciphertext_free(&ct, he_ec_group);
+            BN_free(bn_result);
+            return TECC_ALGO_DECRYPTION_FAILED;
+        }
+        ret = tecc_ec_crt_decrypt(bn_result, he_ec_group,
+                                  per_dek_priv,
+                                  &ct, &he_crt_params, he_bsgs_tables, bn_ctx);
+        tecc_ec_crt_ciphertext_free(&ct, he_ec_group);
+        if (ret) { BN_free(bn_result); return TECC_ALGO_DECRYPTION_FAILED; }
+    }
+    else if (eg_mul_data && eg_mul_len > 0)
+    {
+        BIGNUM *eg_c1, *eg_c2;
+        ret = he_eg_init();
+        if (ret) { BN_free(bn_result); return ret; }
+        eg_c1 = BN_new(); eg_c2 = BN_new();
+        if (!eg_c1 || !eg_c2)
+        {
+            BN_free(eg_c1); BN_free(eg_c2);
+            BN_free(bn_result);
+            return TECC_ALGO_MEMORY_ERROR;
+        }
+        /* Skip the 4-byte per-segment DEK ID prefix */
+        if (eg_mul_len <= CIPHERDATA_HE_DEK_ID_SIZE)
+        {
+            BN_free(eg_c1); BN_free(eg_c2);
+            BN_free(bn_result);
+            return TECC_ALGO_DECRYPTION_FAILED;
+        }
+        ret = tecc_elgamal_deserialize(eg_c1, eg_c2,
+                                       eg_mul_data + CIPHERDATA_HE_DEK_ID_SIZE,
+                                       (int)(eg_mul_len - CIPHERDATA_HE_DEK_ID_SIZE));
+        if (ret != TECC_ELGAMAL_SUCCESS)
+        {
+            BN_free(eg_c1); BN_free(eg_c2);
+            BN_free(bn_result);
+            return TECC_ALGO_DECRYPTION_FAILED;
+        }
+        /* ReqID:TECC4.0 - he-mul 私钥必须来自密钥管理（per-DEK）。无回退到硬编码
+         * 密钥：per_dek_priv 为空则显式失败，避免用公开私钥解密产生错误明文。 */
+        if (per_dek_priv == NULL)
+        {
+            BN_free(eg_c1); BN_free(eg_c2);
+            BN_free(bn_result);
+            return TECC_ALGO_DECRYPTION_FAILED;
+        }
+        ret = tecc_elgamal_decrypt(he_eg_p, per_dek_priv,
+                                   eg_c1, eg_c2, bn_result, bn_ctx);
+        BN_free(eg_c1); BN_free(eg_c2);
+        if (ret != TECC_ELGAMAL_SUCCESS)
+        {
+            BN_free(bn_result);
+            return TECC_ALGO_DECRYPTION_FAILED;
+        }
+    }
+    else
+    {
+        BN_free(bn_result);
+        return TECC_ALGO_INVALID_PARAM;
+    }
+
+    /* Convert BIGNUM to decimal string (avoids int64 overflow) */
+    dec_str = BN_bn2dec(bn_result);
+    BN_free(bn_result);
+    if (!dec_str) return TECC_ALGO_MEMORY_ERROR;
+
+    *plain_len = strlen(dec_str);
+    *plaintext = (char *)pg_malloc(*plain_len + 1);
+    memcpy(*plaintext, dec_str, *plain_len + 1);
+    OPENSSL_free(dec_str);
+    return TECC_ALGO_SUCCESS;
+}
+
+/* ReqID:TECC4.0 - Decrypt HE-only cipherdata (EG_ADD or EG_MUL slot).  Wrapper that
+ * loads the DEK private key and owns a BN_CTX for single-row callers. */
+int
+tecc_he_decrypt_cipherdata(const unsigned char *eg_add_data, size_t eg_add_len,
+                           const unsigned char *eg_mul_data, size_t eg_mul_len,
+                           const char *dek_name, void *tecc_state,
+                           char **plaintext, size_t *plain_len)
+{
+    int ret;
+    BIGNUM *per_dek_priv = NULL;
+    BN_CTX *bn_ctx;
+    int is_ec;
+
+    if (plaintext == NULL || plain_len == NULL) return TECC_ALGO_INVALID_PARAM;
+
+    is_ec = (eg_add_data && eg_add_len > 0) ? 1 : 0;
+    if (dek_name != NULL && tecc_state != NULL)
+    {
+        /* ReqID:TECC4.0 - 无私钥客户端解封 HE 私钥信封失败（如本地无 .priv
+         * 文件）时，必须明确返回解密失败，不能静默回退到硬编码测试密钥
+         * （否则会返回错误明文，造成静默数据错误）。 */
+        if (tecc_he_load_dek_privkey(tecc_state, dek_name, is_ec, &per_dek_priv) != 0)
+            return TECC_ALGO_DECRYPTION_FAILED;
+    }
+
+    bn_ctx = BN_CTX_new();
+    if (!bn_ctx)
+    {
+        if (per_dek_priv) BN_free(per_dek_priv);
+        return TECC_ALGO_MEMORY_ERROR;
+    }
+
+    ret = tecc_he_decrypt_cipherdata_ex(eg_add_data, eg_add_len,
+                                        eg_mul_data, eg_mul_len,
+                                        per_dek_priv, bn_ctx,
+                                        plaintext, plain_len);
+
+    BN_CTX_free(bn_ctx);
+    if (per_dek_priv) BN_free(per_dek_priv);
+    return ret;
+}
+
+/* End - ReqID:TECC4.0 */
+/* ReqID:TECC4.0 - Cleanup HE EC crypto resources */
+static void he_crypto_cleanup(void)
+{
+    int i;
+    if (!he_crypto_initialized) return;
+    he_crypto_initialized = false;
+    for (i = 0; i < TECC_EC_CRT_NUM_PRIMES; i++)
+    {
+        if (he_bsgs_tables[i])
+        {
+            tecc_ec_bsgs_table_free(he_bsgs_tables[i]);
+            pg_free(he_bsgs_tables[i]);
+            he_bsgs_tables[i] = NULL;
+        }
+    }
+    tecc_ec_crt_params_free(&he_crt_params);
+    EC_POINT_free(he_ec_pubkey); he_ec_pubkey = NULL;
+    BN_free(he_ec_privkey); he_ec_privkey = NULL;
+    EC_GROUP_free(he_ec_group); he_ec_group = NULL;
+}
+
+/* ReqID:TECC4.0 - Cleanup FF ElGamal crypto resources */
+static void he_eg_cleanup(void)
+{
+    if (!he_eg_initialized) return;
+    he_eg_initialized = false;
+    BN_free(he_eg_pubkey1); he_eg_pubkey1 = NULL;
+    BN_free(he_eg_pubkey2); he_eg_pubkey2 = NULL;
+    BN_free(he_eg_pubkey); he_eg_pubkey = NULL;
+    BN_free(he_eg_privkey); he_eg_privkey = NULL;
+    BN_free(he_eg_p); he_eg_p = NULL;
+    BN_free(he_eg_q); he_eg_q = NULL;
+    BN_free(he_eg_g); he_eg_g = NULL;
+    tecc_elgamal_crt_params_free(&he_eg_crt_params);
+}
+
+/* atexit handler for both HE subsystems */
+static void he_global_cleanup(void)
+{
+    he_crypto_cleanup();
+    he_eg_cleanup();
+}
+

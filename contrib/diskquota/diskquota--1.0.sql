@@ -75,6 +75,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 -- End Bug#z8704
+CREATE FUNCTION hg_security.delete_role_quota(username text)
+RETURNS void STRICT
+AS 'delete FROM
+		hg_security.quota_config
+	where
+		targetoid=(select oid from pg_roles where rolname=$1);'
+LANGUAGE SQL;
+
+CREATE FUNCTION hg_security.delete_schema_quota(schemaname text)
+RETURNS void STRICT
+AS 'delete FROM
+		hg_security.quota_config
+	where
+		targetoid=( select oid from pg_namespace where nspname=$1);'
+LANGUAGE SQL;
 
 CREATE FUNCTION hg_security.diskquota_start_worker()
 RETURNS void STRICT

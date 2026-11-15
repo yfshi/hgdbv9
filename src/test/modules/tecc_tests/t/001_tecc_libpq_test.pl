@@ -14,9 +14,9 @@
 use strict;
 use warnings;
 use Config;
+use Test::More;
 use PostgresNode;
 use TestLib;
-use Test::More;
 
 # 加载公共工具
 use FindBin;
@@ -37,13 +37,21 @@ note("");
 # 启动PG节点
 print $TAP "# Starting PostgreSQL node for TECC libpq tests...\n";
 my $node = get_new_node('tecc_libpq');
-$ENV{LC_ALL} = 'zh_CN.UTF-8';
+
+delete $ENV{LC_ALL};
+$ENV{LC_CTYPE} = 'zh_CN.UTF-8';
+$ENV{LC_COLLATE} = 'zh_CN.UTF-8';
+$ENV{LC_MESSAGES} = 'C';
+$ENV{LANG} = 'C';
+#$ENV{LC_ALL} = 'zh_CN.UTF-8';
+
+init_sdf_mode($module_dir);
 $node->init;
 setup_swsds_ini($node, $module_dir);
 $node->start;
 
 # 创建 postgres 超级用户角色（部分测试用例需要）
-my ($setup_out, $setup_err) = $node->psql('postgres',
+my ($setup_rc, $setup_out, $setup_err) = $node->psql('postgres',
     "CREATE ROLE postgres LOGIN SUPERUSER;");
 if ($setup_err) {
     # postgres 角色可能已存在，忽略错误
@@ -52,6 +60,9 @@ if ($setup_err) {
 # ---- 打印 TECC 临时目录信息 ----
 {
     my ($key_dir, $tmp_dir) = setup_tecc_regress_env();
+    # ReqID:TECC4.0 - 预生成 localkms KEK 文件（CREATE KEK 不生成文件，
+    # 密钥文件须由 tecc_ktool generate 提供；见 Review 问题10）
+    pregen_localkms_kek_files($module_dir, $key_dir);
     print $TAP "# \n";
     print $TAP "# TECC 回归测试临时目录:\n";
     print $TAP "#   KEK key 目录:  $key_dir\n";
@@ -77,7 +88,6 @@ if (-d "$module_dir/libpq/sql") {
         1);
 }
 
-restore_swxa_tests($module_dir);
 $node->stop('fast');
 
 my $t_pass = $sp + $lp;
@@ -98,4 +108,14 @@ if ($t_fail > 0) {
     print $TAP "\n";
 }
 print_failure_summary();
-print $TAP "1..$t_total\n";
+
+# ReqID:TECC4.0 - 一个用例都没跑时，把原因打进报告（裸 `1..0` 只会显示
+# "skipped: (no reason given)"，看不出是被跳过还是 TECC_TEST 没匹配上）
+if ($t_total == 0) {
+    my $reason = empty_run_reason(get_tecc_test_filter());
+    print $TAP "# $reason\n";
+    print $TAP "1..0 # SKIP $reason\n";
+}
+else {
+    print $TAP "1..$t_total\n";
+}

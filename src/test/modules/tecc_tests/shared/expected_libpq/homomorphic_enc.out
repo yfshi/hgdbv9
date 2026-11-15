@@ -1,0 +1,1705 @@
+DROP KEK
+CREATE KEK
+     ?column?     | pub_ok 
+------------------+--------
+ 0_kek_public_key | t
+(1 row)
+
+CREATE DEK
+CREATE DEK
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+        ?column?        
+------------------------
+ === 1 CREATE TABLE ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+     ?column?     
+------------------
+ === 2 INSERT ===
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+         ?column?          
+---------------------------
+ === 3 round-trip int4 ===
+(1 row)
+
+ id | i4_a | i4_m | i4_x 
+----+------+------+------
+  1 | 10   | 2    | 3
+  2 | 100  | 5    | 7
+  3 | 0    | 0    | 0
+  4 | -5   | -3   | -2
+(4 rows)
+
+         ?column?          
+---------------------------
+ === 3 round-trip int2 ===
+(1 row)
+
+ id | i2_a | i2_m 
+----+------+------
+  1 | 100  | 3
+  2 | 200  | 4
+  3 | 0    | 0
+  4 | -10  | -2
+(4 rows)
+
+         ?column?          
+---------------------------
+ === 3 round-trip int8 ===
+(1 row)
+
+ id | i8_a | i8_m 
+----+------+------
+  1 | 1000 | 2
+  2 | 2000 | 3
+  3 | 0    | 0
+  4 | -100 | -2
+(4 rows)
+
+        ?column?        
+------------------------
+ === 4 ADD same col ===
+(1 row)
+
+ id | a_self 
+----+--------
+  1 | t
+  2 | t
+  3 | t
+  4 | t
+(4 rows)
+
+        ?column?         
+-------------------------
+ === 4 ADD cross col ===
+(1 row)
+
+ id | a_cross 
+----+---------
+  1 | t
+  2 | t
+  3 | t
+  4 | t
+(4 rows)
+
+      ?column?      
+--------------------
+ === 5 SUB diff ===
+(1 row)
+
+ id | a_sub 
+----+-------
+  1 | t
+  2 | t
+  3 | t
+  4 | t
+(4 rows)
+
+         ?column?          
+---------------------------
+ === 5 SUB self (zero) ===
+(1 row)
+
+ id | a_self_sub 
+----+------------
+  1 | t
+  2 | t
+  3 | t
+  4 | t
+(4 rows)
+
+        ?column?        
+------------------------
+ === 6 MUL same col ===
+(1 row)
+
+ id | m_self 
+----+--------
+  1 | t
+  2 | t
+  3 | t
+  4 | t
+(4 rows)
+
+        ?column?         
+-------------------------
+ === 6 MUL cross col ===
+(1 row)
+
+ id | m_cross 
+----+---------
+  1 | t
+  2 | t
+  3 | t
+  4 | t
+(4 rows)
+
+    ?column?     
+-----------------
+ === 7 x ADD ===
+(1 row)
+
+ id | x_add 
+----+-------
+  1 | t
+  2 | t
+  3 | t
+  4 | t
+(4 rows)
+
+    ?column?     
+-----------------
+ === 7 x MUL ===
+(1 row)
+
+ id | x_mul 
+----+-------
+  1 | t
+  2 | t
+  3 | t
+  4 | t
+(4 rows)
+
+    ?column?     
+-----------------
+ === 7 x SUB ===
+(1 row)
+
+ id | x_sub 
+----+-------
+  1 | t
+  2 | t
+  3 | t
+  4 | t
+(4 rows)
+
+      ?column?      
+--------------------
+ === 8 int2 ADD ===
+(1 row)
+
+ id | i2_add 
+----+--------
+  1 | t
+  2 | t
+  3 | t
+  4 | t
+(4 rows)
+
+      ?column?      
+--------------------
+ === 8 int2 MUL ===
+(1 row)
+
+ id | i2_mul 
+----+--------
+  1 | t
+  2 | t
+  3 | t
+  4 | t
+(4 rows)
+
+      ?column?      
+--------------------
+ === 9 int8 ADD ===
+(1 row)
+
+ id | i8_add 
+----+--------
+  1 | t
+  2 | t
+  3 | t
+  4 | t
+(4 rows)
+
+      ?column?      
+--------------------
+ === 9 int8 MUL ===
+(1 row)
+
+ id | i8_mul 
+----+--------
+  1 | t
+  2 | t
+  3 | t
+  4 | t
+(4 rows)
+
+       ?column?       
+----------------------
+ === 10 chain ADD ===
+(1 row)
+
+ id | add3 
+----+------
+  1 | t
+  2 | t
+  3 | t
+  4 | t
+(4 rows)
+
+       ?column?       
+----------------------
+ === 10 chain MUL ===
+(1 row)
+
+ id | mul3 
+----+------
+  1 | t
+  2 | t
+  3 | t
+  4 | t
+(4 rows)
+
+      ?column?      
+--------------------
+ === 11 x chain ===
+(1 row)
+
+ id | x_add3 | x_mul3 
+----+--------+--------
+  1 | t      | t
+  2 | t      | t
+  3 | t      | t
+  4 | t      | t
+(4 rows)
+
+         ?column?          
+---------------------------
+ === 13 SCALAR ADD a+5 ===
+(1 row)
+
+ id | s_add 
+----+-------
+  1 | 15
+  2 | 105
+  3 | 5
+  4 | 0
+(4 rows)
+
+         ?column?          
+---------------------------
+ === 13 SCALAR SUB a-3 ===
+(1 row)
+
+ id | s_sub 
+----+-------
+  1 | 7
+  2 | 97
+  3 | -3
+  4 | -8
+(4 rows)
+
+         ?column?          
+---------------------------
+ === 13 SCALAR MUL a*3 ===
+(1 row)
+
+ id | s_mul 
+----+-------
+  1 | 30
+  2 | 300
+  3 | 0
+  4 | -15
+(4 rows)
+
+          ?column?           
+-----------------------------
+ === 13 SCALAR MUL-L 3*a ===
+(1 row)
+
+ id | s_mull 
+----+--------
+  1 | 30
+  2 | 300
+  3 | 0
+  4 | -15
+(4 rows)
+
+             ?column?             
+----------------------------------
+ === 13 SCALAR MUL-NEG a*(-1) ===
+(1 row)
+
+ id | s_muln1 | s_muln2 | s_muln3 
+----+---------+---------+---------
+  1 | -10     | -20     | -30
+  2 | -100    | -200    | -300
+  3 | 0       | 0       | 0
+  4 | 5       | 10      | 15
+(4 rows)
+
+              ?column?              
+------------------------------------
+ === 13 SCALAR MUL-NEG-L (-1)*a ===
+(1 row)
+
+ id | s_mulnl1 | s_mulnl2 
+----+----------+----------
+  1 | -10      | -20
+  2 | -100     | -200
+  3 | 0        | 0
+  4 | 5        | 10
+(4 rows)
+
+                ?column?                
+----------------------------------------
+ === 13 SCALAR MUL-NEG-EXPR a*(0-2) ===
+(1 row)
+
+ id | s_mulne | s_mulnel 
+----+---------+----------
+  1 | -20     | -30
+  2 | -200    | -300
+  3 | 0       | 0
+  4 | 10      | 15
+(4 rows)
+
+              ?column?               
+-------------------------------------
+ === 13 SCALAR MUL-NEG int8/int2 ===
+(1 row)
+
+ id | s_muln8 | s_muln2i 
+----+---------+----------
+  1 | -2000   | -200
+  2 | -4000   | -400
+  3 | 0       | 0
+  4 | 200     | 20
+(4 rows)
+
+               ?column?                
+---------------------------------------
+ === 13 SCALAR MUL-NEG consistency ===
+(1 row)
+
+ id | s_mulncan | s_mulnzero | s_mulnbig 
+----+-----------+------------+-----------
+  1 | 0         | 0          | -10000
+  2 | 0         | 0          | -100000
+  3 | 0         | 0          | 0
+  4 | 0         | 0          | 5000
+(4 rows)
+
+          ?column?           
+-----------------------------
+ === 13 SCALAR ADD-L 5+a ===
+(1 row)
+
+ id | s_addl 
+----+--------
+  1 | 15
+  2 | 105
+  3 | 5
+  4 | 0
+(4 rows)
+
+          ?column?           
+-----------------------------
+ === 13 SCALAR SUB-L 3-a ===
+(1 row)
+
+ id | s_subl 
+----+--------
+  1 | -7
+  2 | -97
+  3 | 3
+  4 | 8
+(4 rows)
+
+           ?column?           
+------------------------------
+ === 13 SCALAR SUB-L 30-a ===
+(1 row)
+
+ id | s_subl2 
+----+---------
+  1 | 20
+  2 | -70
+  3 | 30
+  4 | 35
+(4 rows)
+
+           ?column?           
+------------------------------
+ === 13 SCALAR SUB-L -3-a ===
+(1 row)
+
+ id | s_subln 
+----+---------
+  1 | -13
+  2 | -103
+  3 | -3
+  4 | 2
+(4 rows)
+
+              ?column?              
+------------------------------------
+ === 13 SCALAR SUB-L int8 3-i8a ===
+(1 row)
+
+ id | s_subl8 
+----+---------
+  1 | -997
+  2 | -1997
+  3 | 3
+  4 | 103
+(4 rows)
+
+          ?column?          
+----------------------------
+ === 13 UNARY NEG -i4_a ===
+(1 row)
+
+ id | s_uneg 
+----+--------
+  1 | -10
+  2 | -100
+  3 | 0
+  4 | 5
+(4 rows)
+
+          ?column?          
+----------------------------
+ === 13 UNARY NEG -i8_a ===
+(1 row)
+
+ id | s_uneg8 
+----+---------
+  1 | -1000
+  2 | -2000
+  3 | 0
+  4 | 100
+(4 rows)
+
+          ?column?          
+----------------------------
+ === 13 UNARY NEG -i2_a ===
+(1 row)
+
+ id | s_uneg2 
+----+---------
+  1 | -100
+  2 | -200
+  3 | 0
+  4 | 10
+(4 rows)
+
+           ?column?           
+------------------------------
+ === 13 UNARY NEG -i4_a+3 ===
+(1 row)
+
+ id | s_unegp 
+----+---------
+  1 | -7
+  2 | -97
+  3 | 3
+  4 | 8
+(4 rows)
+
+             ?column?             
+----------------------------------
+ === 13 SUB-L-EXPR (3*2)-i4_a ===
+(1 row)
+
+ id | s_suble 
+----+---------
+  1 | -4
+  2 | -94
+  3 | 6
+  4 | 11
+(4 rows)
+
+            ?column?            
+--------------------------------
+ === 13 SUB-L-COMP 10-(a+1) ===
+(1 row)
+
+ id | s_sublc 
+----+---------
+  1 | -1
+  2 | -91
+  3 | 9
+  4 | 14
+(4 rows)
+
+           ?column?           
+------------------------------
+ === 13 SUB-L-COMP 10-a*2 ===
+(1 row)
+
+ id | s_sublc2 
+----+----------
+  1 | -10
+  2 | -190
+  3 | 10
+  4 | 20
+(4 rows)
+
+              ?column?              
+------------------------------------
+ === 13 SUB-L-COMP 100-(a+10)*2 ===
+(1 row)
+
+ id | s_sublc3 
+----+----------
+  1 | 60
+  2 | -120
+  3 | 80
+  4 | 90
+(4 rows)
+
+           ?column?           
+------------------------------
+ === 13 SCALAR NEG a+(-5) ===
+(1 row)
+
+ id | s_neg 
+----+-------
+  1 | 5
+  2 | 95
+  3 | -5
+  4 | -10
+(4 rows)
+
+             ?column?             
+----------------------------------
+ === 13 SCALAR SUB-NEG a-(-5) ===
+(1 row)
+
+ id | s_subneg 
+----+----------
+  1 | 15
+  2 | 105
+  3 | 5
+  4 | 0
+(4 rows)
+
+             ?column?             
+----------------------------------
+ === 13 SCALAR COMPOUND a+3*2 ===
+(1 row)
+
+ id | s_comp 
+----+--------
+  1 | 16
+  2 | 106
+  3 | 6
+  4 | 1
+(4 rows)
+
+          ?column?           
+-----------------------------
+ === 13 SCALAR int8 b+50 ===
+(1 row)
+
+ id | s_i8 
+----+------
+  1 | 1050
+  2 | 2050
+  3 | 50
+  4 | -50
+(4 rows)
+
+          ?column?           
+-----------------------------
+ === 13 SCALAR MUL-M m*3 ===
+(1 row)
+
+ id | s_mulm 
+----+--------
+  1 | 6
+  2 | 15
+  3 | 0
+  4 | -9
+(4 rows)
+
+           ?column?           
+------------------------------
+ === 13 SCALAR MUL-ML 3*m ===
+(1 row)
+
+ id | s_mulml 
+----+---------
+  1 | 6
+  2 | 15
+  3 | 0
+  4 | -9
+(4 rows)
+
+             ?column?              
+-----------------------------------
+ === 13 SCALAR MUL-MNEG m*(-2) ===
+(1 row)
+
+ id | s_mulmn 
+----+---------
+  1 | -4
+  2 | -10
+  3 | 0
+  4 | 6
+(4 rows)
+
+                ?column?                 
+-----------------------------------------
+ === 13 SCALAR MUL-MNEG-EXPR m*(0-2) ===
+(1 row)
+
+ id | s_mulmne | s_mulmnel 
+----+----------+-----------
+  1 | -4       | -6
+  2 | -10      | -15
+  3 | 0        | 0
+  4 | 6        | 9
+(4 rows)
+
+            ?column?             
+---------------------------------
+ === 13 SCALAR MUL-MZERO m*0 ===
+(1 row)
+
+ id | s_mulmz 
+----+---------
+  1 | 0
+  2 | 0
+  3 | 0
+  4 | 0
+(4 rows)
+
+          ?column?          
+----------------------------
+ === 13 SCALAR int2 a+5 ===
+(1 row)
+
+ id | s_i2 
+----+------
+  1 | 105
+  2 | 205
+  3 | 5
+  4 | -5
+(4 rows)
+
+            ?column?            
+--------------------------------
+ === 13 SCALAR int8 MUL b*3 ===
+(1 row)
+
+ id | s_i8m 
+----+-------
+  1 | 6
+  2 | 9
+  3 | 0
+  4 | -6
+(4 rows)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+            ?column?             
+---------------------------------
+ === 14 assign OK he-add col ===
+(1 row)
+
+UPDATE 1
+ a  
+----
+ 20
+(1 row)
+
+              ?column?               
+-------------------------------------
+ === 14 assign ERR symmetric col ===
+(1 row)
+
+                ?column?                
+----------------------------------------
+ === 14 assign ERR symmetric+he col ===
+(1 row)
+
+      ?column?       
+---------------------
+ === 15 SUM int4 ===
+(1 row)
+
+ s_a 
+-----
+ 105
+(1 row)
+
+      ?column?       
+---------------------
+ === 15 SUM int8 ===
+(1 row)
+
+ s_i8 
+------
+ 2900
+(1 row)
+
+      ?column?       
+---------------------
+ === 15 SUM both ===
+(1 row)
+
+ s_x 
+-----
+ 8
+(1 row)
+
+      ?column?       
+---------------------
+ === 15 SUM int2 ===
+(1 row)
+
+ s_i2 
+------
+ 290
+(1 row)
+
+         ?column?          
+---------------------------
+ === 15 SUM neg scalar ===
+(1 row)
+
+ s_sum_n1 | s_sum_n2 
+----------+----------
+ -105     | -210
+(1 row)
+
+        ?column?         
+-------------------------
+ === 16 PT ADD cross ===
+(1 row)
+
+ id | a_plus_x 
+----+----------
+  1 | 13
+  2 | 107
+  3 | 0
+  4 | -7
+(4 rows)
+
+        ?column?         
+-------------------------
+ === 16 PT SUB cross ===
+(1 row)
+
+ id | a_sub_x 
+----+---------
+  1 | 7
+  2 | 93
+  3 | 0
+  4 | -3
+(4 rows)
+
+        ?column?         
+-------------------------
+ === 16 PT MUL cross ===
+(1 row)
+
+ id | m_mul_x 
+----+---------
+  1 | 6
+  2 | 35
+  3 | 0
+  4 | 6
+(4 rows)
+
+        ?column?         
+-------------------------
+ === 16 PT chain add ===
+(1 row)
+
+ id | chain 
+----+-------
+  1 | 23
+  2 | 207
+  3 | 0
+  4 | -12
+(4 rows)
+
+                    ?column?                     
+-------------------------------------------------
+ === 16 PT scalar MUL on add col (EC k-fold) ===
+(1 row)
+
+ id | a3  
+----+-----
+  1 | 30
+  2 | 300
+  3 | 0
+  4 | -15
+(4 rows)
+
+          ?column?          
+----------------------------
+ === 17 ERR add col MUL ===
+(1 row)
+
+          ?column?          
+----------------------------
+ === 17 ERR mul col ADD ===
+(1 row)
+
+          ?column?           
+-----------------------------
+ === 17 ERR mix both col ===
+(1 row)
+
+          ?column?           
+-----------------------------
+ === 18 WHERE scalar add ===
+(1 row)
+
+ id | i4_a 
+----+------
+  1 | 10
+  2 | 100
+  3 | 0
+  4 | -5
+(4 rows)
+
+                              ?column?                              
+--------------------------------------------------------------------
+ === 18 ERR WHERE scalar compare (HE ciphertext not comparable) ===
+(1 row)
+
+         ?column?         
+--------------------------
+ === 19 UPDATE scalar ===
+(1 row)
+
+UPDATE 1
+ id | i4_a 
+----+------
+  1 | 110
+(1 row)
+
+           ?column?           
+------------------------------
+ === 19 UPDATE sub scalar ===
+(1 row)
+
+UPDATE 1
+ id | i4_a 
+----+------
+  2 | 50
+(1 row)
+
+                ?column?                
+----------------------------------------
+ === 19 UPDATE mixed A_Expr + const ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+UPDATE 1
+ id |  a  | m 
+----+-----+---
+  1 | 100 | 5
+(1 row)
+
+               ?column?                
+---------------------------------------
+ === 19 UPDATE mul scalar (he-mul) ===
+(1 row)
+
+UPDATE 1
+ id | m  
+----+----
+  1 | 15
+(1 row)
+
+                 ?column?                  
+-------------------------------------------
+ === 19 UPDATE mul neg scalar (he-add) ===
+(1 row)
+
+UPDATE 1
+ id |  a   | m  
+----+------+----
+  1 | -200 | 15
+(1 row)
+
+DROP TABLE
+            ?column?            
+--------------------------------
+ === 20 ERR missing sym DEK ===
+(1 row)
+
+               ?column?               
+--------------------------------------
+ === 20 ERR HE_ADD_DEK points sm4 ===
+(1 row)
+
+              ?column?              
+------------------------------------
+ === 20 ERR sym DEK for HE-only ===
+(1 row)
+
+              ?column?              
+------------------------------------
+ === 20 ERR HE DEK with sym KEK ===
+(1 row)
+
+      ?column?       
+---------------------
+ === 21 ADD zero ===
+(1 row)
+
+ id | a0  
+----+-----
+  1 | 110
+  2 | 50
+  3 | 0
+  4 | -5
+(4 rows)
+
+      ?column?       
+---------------------
+ === 21 SUB zero ===
+(1 row)
+
+ id | s0  
+----+-----
+  1 | 110
+  2 | 50
+  3 | 0
+  4 | -5
+(4 rows)
+
+      ?column?       
+---------------------
+ === 21 MUL zero ===
+(1 row)
+
+ id | m0 
+----+----
+  1 | 0
+  2 | 0
+  3 | 0
+  4 | 0
+(4 rows)
+
+          ?column?           
+-----------------------------
+ === 22 CT add int2+int4 ===
+(1 row)
+
+ id | r24 
+----+-----
+  1 | 210
+  2 | 250
+  3 | 0
+  4 | -15
+(4 rows)
+
+          ?column?           
+-----------------------------
+ === 22 CT add int2+int8 ===
+(1 row)
+
+ id | r28  
+----+------
+  1 | 1100
+  2 | 2200
+  3 | 0
+  4 | -110
+(4 rows)
+
+          ?column?           
+-----------------------------
+ === 22 CT add int4+int8 ===
+(1 row)
+
+ id | r48  
+----+------
+  1 | 1110
+  2 | 2050
+  3 | 0
+  4 | -105
+(4 rows)
+
+          ?column?           
+-----------------------------
+ === 22 CT sub int4-int2 ===
+(1 row)
+
+ id | s42  
+----+------
+  1 | 10
+  2 | -150
+  3 | 0
+  4 | 5
+(4 rows)
+
+          ?column?           
+-----------------------------
+ === 22 CT mul int2*int4 ===
+(1 row)
+
+ id | m24 
+----+-----
+  1 | 6
+  2 | 20
+  3 | 0
+  4 | 6
+(4 rows)
+
+          ?column?           
+-----------------------------
+ === 22 CT mul int2*int8 ===
+(1 row)
+
+ id | m28 
+----+-----
+  1 | 6
+  2 | 12
+  3 | 0
+  4 | 4
+(4 rows)
+
+          ?column?           
+-----------------------------
+ === 22 CT mul int4*int8 ===
+(1 row)
+
+ id | m48 
+----+-----
+  1 | 4
+  2 | 15
+  3 | 0
+  4 | 6
+(4 rows)
+
+              ?column?               
+-------------------------------------
+ === 22 CT add int4+int2 reverse ===
+(1 row)
+
+ id | r42 
+----+-----
+  1 | 210
+  2 | 250
+  3 | 0
+  4 | -15
+(4 rows)
+
+              ?column?               
+-------------------------------------
+ === 22 CT add int8+int2 reverse ===
+(1 row)
+
+ id | r82  
+----+------
+  1 | 1100
+  2 | 2200
+  3 | 0
+  4 | -110
+(4 rows)
+
+              ?column?               
+-------------------------------------
+ === 22 CT add int8+int4 reverse ===
+(1 row)
+
+ id | r84  
+----+------
+  1 | 1110
+  2 | 2050
+  3 | 0
+  4 | -105
+(4 rows)
+
+          ?column?           
+-----------------------------
+ === 22 CT sub int2-int4 ===
+(1 row)
+
+ id | s24 
+----+-----
+  1 | -10
+  2 | 150
+  3 | 0
+  4 | -5
+(4 rows)
+
+          ?column?           
+-----------------------------
+ === 22 CT sub int8-int2 ===
+(1 row)
+
+ id | s82  
+----+------
+  1 | 900
+  2 | 1800
+  3 | 0
+  4 | -90
+(4 rows)
+
+          ?column?           
+-----------------------------
+ === 22 CT sub int8-int4 ===
+(1 row)
+
+ id | s84  
+----+------
+  1 | 890
+  2 | 1950
+  3 | 0
+  4 | -95
+(4 rows)
+
+              ?column?               
+-------------------------------------
+ === 22 CT mul int4*int2 reverse ===
+(1 row)
+
+ id | m42 
+----+-----
+  1 | 6
+  2 | 20
+  3 | 0
+  4 | 6
+(4 rows)
+
+              ?column?               
+-------------------------------------
+ === 22 CT mul int8*int2 reverse ===
+(1 row)
+
+ id | m82 
+----+-----
+  1 | 6
+  2 | 12
+  3 | 0
+  4 | 4
+(4 rows)
+
+              ?column?               
+-------------------------------------
+ === 22 CT mul int8*int4 reverse ===
+(1 row)
+
+ id | m84 
+----+-----
+  1 | 4
+  2 | 15
+  3 | 0
+  4 | 6
+(4 rows)
+
+           ?column?           
+------------------------------
+ === 22 CT boundary table ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+            ?column?             
+---------------------------------
+ === 22 CT boundary int2 max ===
+(1 row)
+
+  b24  |  b28  
+-------+-------
+ 33767 | 34767
+(1 row)
+
+            ?column?             
+---------------------------------
+ === 22 CT boundary int2 min ===
+(1 row)
+
+ b24m2  | b28m2  
+--------+--------
+ -31768 | -30768
+(1 row)
+
+            ?column?             
+---------------------------------
+ === 22 CT boundary int4 max ===
+(1 row)
+
+            ?column?             
+---------------------------------
+ === 22 CT boundary int4 min ===
+(1 row)
+
+    b24n     
+-------------
+ -2147483643
+(1 row)
+
+            ?column?             
+---------------------------------
+ === 22 CT boundary int8 min ===
+(1 row)
+
+         b28n         
+----------------------
+ -9223372036854775803
+(1 row)
+
+                  ?column?                  
+--------------------------------------------
+ === 22 CT boundary int8 max + int4 max ===
+(1 row)
+
+DROP TABLE
+          ?column?          
+----------------------------
+ === 23 HE key material ===
+(1 row)
+
+ ?column?  | ec_pub_ok 
+-----------+-----------
+ 23_ec_pub | t
+(1 row)
+
+    ?column?    | ec_priv_env_ok 
+----------------+----------------
+ 23_ec_priv_env | t
+(1 row)
+
+   ?column?    | kt_ok 
+---------------+-------
+ 23_ec_keytype | t
+(1 row)
+
+  ?column?   | no_eg_ok 
+-------------+----------
+ 23_ec_no_eg | t
+(1 row)
+
+ ?column?  | eg_pub_ok 
+-----------+-----------
+ 23_eg_pub | t
+(1 row)
+
+    ?column?    | eg_priv_env_ok 
+----------------+----------------
+ 23_eg_priv_env | t
+(1 row)
+
+   ?column?    | kt_ok 
+---------------+-------
+ 23_eg_keytype | t
+(1 row)
+
+  ?column?   | no_ec_ok 
+-------------+----------
+ 23_eg_no_ec | t
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 2
+    ?column?     | id | m  
+-----------------+----+----
+ 23_ff_roundtrip |  1 | 7
+ 23_ff_roundtrip |  2 | -9
+(2 rows)
+
+DROP TABLE
+        ?column?         
+-------------------------
+ === 24 pow i4_m ^ 2 ===
+(1 row)
+
+ id | p2 
+----+----
+  1 | 4
+  2 | 25
+  3 | 0
+  4 | 9
+(4 rows)
+
+        ?column?         
+-------------------------
+ === 24 pow i4_m ^ 3 ===
+(1 row)
+
+ id | p3  
+----+-----
+  1 | 8
+  2 | 125
+  3 | 0
+  4 | -27
+(4 rows)
+
+           ?column?            
+-------------------------------
+ === 24 pow power(i4_m, 3) ===
+(1 row)
+
+ id | pp  
+----+-----
+  1 | 8
+  2 | 125
+  3 | 0
+  4 | -27
+(4 rows)
+
+        ?column?         
+-------------------------
+ === 24 pow i2_m ^ 2 ===
+(1 row)
+
+ id | p2_2 
+----+------
+  1 | 9
+  2 | 16
+  3 | 0
+  4 | 4
+(4 rows)
+
+        ?column?         
+-------------------------
+ === 24 pow i8_m ^ 2 ===
+(1 row)
+
+ id | p2_8 
+----+------
+  1 | 4
+  2 | 9
+  3 | 0
+  4 | 4
+(4 rows)
+
+                    ?column?                     
+-------------------------------------------------
+ === 24 pow ERR he-add column (lacks EG_MUL) ===
+(1 row)
+
+             ?column?             
+----------------------------------
+ === 24 pow ERR exponent <= 0 ===
+(1 row)
+
+                 ?column?                  
+-------------------------------------------
+ === 24 pow ERR exponent > max (10000) ===
+(1 row)
+
+                 ?column?                  
+-------------------------------------------
+ === 24b pow type: i2_m ^ 2 → int8_enc ===
+(1 row)
+
+   type   
+----------
+ int8_enc
+(1 row)
+
+                 ?column?                  
+-------------------------------------------
+ === 24b pow type: i4_m ^ 2 → int8_enc ===
+(1 row)
+
+   type   
+----------
+ int8_enc
+(1 row)
+
+                 ?column?                  
+-------------------------------------------
+ === 24b pow type: i8_m ^ 2 → int8_enc ===
+(1 row)
+
+   type   
+----------
+ int8_enc
+(1 row)
+
+                    ?column?                     
+-------------------------------------------------
+ === 24b pow type: power(i2_m, 3) → int8_enc ===
+(1 row)
+
+   type   
+----------
+ int8_enc
+(1 row)
+
+                    ?column?                     
+-------------------------------------------------
+ === 24b pow type: power(i4_m, 3) → int8_enc ===
+(1 row)
+
+   type   
+----------
+ int8_enc
+(1 row)
+
+                    ?column?                     
+-------------------------------------------------
+ === 24b pow type: power(i8_m, 3) → int8_enc ===
+(1 row)
+
+   type   
+----------
+ int8_enc
+(1 row)
+
+          ?column?           
+-----------------------------
+ === 25 multi-dek create ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+            ?column?            
+--------------------------------
+ === 25 multi-dek roundtrip ===
+(1 row)
+
+ id | da | dm | dax | oa  |        sa        
+----+----+----+-----+-----+------------------
+  1 | 10 | 20 | 30  | 100 | multi-dek-search
+(1 row)
+
+          ?column?           
+-----------------------------
+ === 25 multi-dek HE ops ===
+(1 row)
+
+ id | da_add | dm_mul | dax_add | dax_mul 
+----+--------+--------+---------+---------
+  1 | 20     | 400    | 60      | 900
+(1 row)
+
+                 ?column?                  
+-------------------------------------------
+ === 25 multi-dek symmetric predicates ===
+(1 row)
+
+ id | da 
+----+----
+  1 | 10
+(1 row)
+
+ id | oa  
+----+-----
+  1 | 100
+(1 row)
+
+ id |        sa        
+----+------------------
+  1 | multi-dek-search
+(1 row)
+
+         ?column?         
+--------------------------
+ === 25 multi-dek sum ===
+(1 row)
+
+ sum 
+-----
+ 10
+(1 row)
+
+      ?column?      
+--------------------
+ === 12 recheck ===
+(1 row)
+
+ cnt 
+-----
+   4
+(1 row)
+
+              ?column?              
+------------------------------------
+ === 24c pow identity: i4_m ^ 1 ===
+(1 row)
+
+ id | p1 
+----+----
+  1 | 2
+  2 | 5
+  3 | 0
+  4 | -3
+(4 rows)
+
+              ?column?              
+------------------------------------
+ === 24c pow identity: i2_m ^ 1 ===
+(1 row)
+
+ id | p1 
+----+----
+  1 | 3
+  2 | 4
+  3 | 0
+  4 | -2
+(4 rows)
+
+              ?column?              
+------------------------------------
+ === 24c pow identity: i8_m ^ 1 ===
+(1 row)
+
+ id | p1 
+----+----
+  1 | 2
+  2 | 3
+  3 | 0
+  4 | -2
+(4 rows)
+
+          ?column?          
+----------------------------
+ === 24c pow NULL input ===
+(1 row)
+
+ id | pn 
+----+----
+  1 |   
+  2 |   
+  3 |   
+  4 |   
+(4 rows)
+
+           ?column?            
+-------------------------------
+ === 24c pow NULL exponent ===
+(1 row)
+
+ id | pne 
+----+-----
+  1 | 
+  2 | 
+  3 | 
+  4 | 
+(4 rows)
+
+               ?column?                
+---------------------------------------
+ === 24c pow negative base odd exp ===
+(1 row)
+
+ id | p3  
+----+-----
+  1 | 8
+  2 | 125
+  3 | 0
+  4 | -27
+(4 rows)
+
+                     ?column?                      
+---------------------------------------------------
+ === 24d pow ERR: mul result + he-add constant ===
+(1 row)
+
+               ?column?               
+--------------------------------------
+ === 98 WINDOW FUNCTION AGGREGATE ===
+(1 row)
+
+                  ?column?                   
+---------------------------------------------
+ === 100 HE INTEGER OVERFLOW RANGE CHECK ===
+(1 row)
+
+CREATE TABLE
+INSERT 0 1
+CREATE TABLE
+INSERT 0 1
+CREATE TABLE
+INSERT 0 1
+        ?column?         | ?column? 
+-------------------------+----------
+ 100d_normal_no_overflow | 111
+(1 row)
+
+DROP TABLE
+        ?column?        
+------------------------
+ === 26 HE SUM view ===
+(1 row)
+
+DROP VIEW
+CREATE VIEW
+  s  
+-----
+ 155
+(1 row)
+
+DROP VIEW
+      ?column?      
+--------------------
+ === 99 CLEANUP ===
+(1 row)
+
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+DROP DEK
+DROP KEK
+psql:/.../homomorphic_enc.sql:15: NOTICE:  key encryption key "kek_he" does not exist, skipping
+psql:/.../homomorphic_enc.sql:52: NOTICE:  data encryption key "dek_sym_he" does not exist, skipping
+psql:/.../homomorphic_enc.sql:53: NOTICE:  key encryption key "kek_sym_he" does not exist, skipping
+psql:/.../homomorphic_enc.sql:70: NOTICE:  table "he_test" does not exist, skipping
+psql:/.../homomorphic_enc.sql:301: NOTICE:  table "t_assign" does not exist, skipping
+psql:/.../homomorphic_enc.sql:313: TECC query preprocessing failed: cannot assign HE-only ciphertext to column 'd' which uses symmetric algorithms (DET/OPE/SEARCH)
+psql:/.../homomorphic_enc.sql:315: TECC query preprocessing failed: cannot assign HE-only ciphertext to column 'x' which uses symmetric algorithms (DET/OPE/SEARCH)
+psql:/.../homomorphic_enc.sql:353: ERROR:  cannot perform homomorphic multiplication: operand lacks EG_MUL ciphertext
+HINT:  Ensure the column has support_algo='he-mul' set.
+psql:/.../homomorphic_enc.sql:355: ERROR:  cannot perform homomorphic addition: operand lacks EG_ADD ciphertext
+HINT:  Ensure the column has support_algo='he-add' set.
+psql:/.../homomorphic_enc.sql:357: ERROR:  cannot perform homomorphic addition: operand lacks EG_ADD ciphertext
+HINT:  Ensure the column has support_algo='he-add' set.
+psql:/.../homomorphic_enc.sql:365: ERROR:  operator does not exist: int4_enc > integer
+LINE 1: ...E'\\x被隐藏的HEX输出'::int4_enc > 10 ORDER...
+                                                             ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+psql:/.../homomorphic_enc.sql:380: NOTICE:  table "t_set_mix" does not exist, skipping
+psql:/.../homomorphic_enc.sql:403: TECC query preprocessing failed: Column 'a' enables symmetric algorithms (DET/OPE/SEARCH) but no DEK specified
+psql:/.../homomorphic_enc.sql:405: TECC query preprocessing failed: HE_ADD_DEK 'dek_sym_he' for column 'a' must be a he-add DEK (KEY_ALGO='he-add')
+psql:/.../homomorphic_enc.sql:407: TECC query preprocessing failed: DEK 'dek_sym_he' for HE column 'a' must be a HE DEK (KEY_ALGO='he-add' or 'he-mul')
+psql:/.../homomorphic_enc.sql:409: TECC query preprocessing failed: HE DEK requires a non-asymmetric KEK (KEY_ALGO='sm2') for SM2 envelope encryption
+psql:/.../homomorphic_enc.sql:464: NOTICE:  table "he_ct" does not exist, skipping
+psql:/.../homomorphic_enc.sql:480: TECC result processing error: HE result out of range for column "i2"
+psql:/.../homomorphic_enc.sql:486: TECC result processing error: HE result out of range for column "i4"
+psql:/.../homomorphic_enc.sql:542: NOTICE:  table "t_he_ff" does not exist, skipping
+psql:/.../homomorphic_enc.sql:563: ERROR:  cannot perform homomorphic power: operand lacks EG_MUL ciphertext
+HINT:  Ensure the column has support_algo='he-mul' set.
+psql:/.../homomorphic_enc.sql:565: ERROR:  homomorphic power exponent must be positive
+psql:/.../homomorphic_enc.sql:567: ERROR:  homomorphic power exponent 10001 exceeds maximum allowed value 10000
+psql:/.../homomorphic_enc.sql:594: NOTICE:  table "t_multi" does not exist, skipping
+psql:/.../homomorphic_enc.sql:645: ERROR:  cannot perform homomorphic scalar addition: operand lacks EG_ADD ciphertext
+HINT:  Ensure the column has support_algo='he-add' set.
+psql:/.../homomorphic_enc.sql:653: TECC query preprocessing failed: aggregate function "SUM" inside window function is not supported on encrypted column "i4_a"
+psql:/.../homomorphic_enc.sql:663: TECC result processing error: HE result out of range for column "a"
+psql:/.../homomorphic_enc.sql:668: TECC result processing error: HE result out of range for column "a"
+psql:/.../homomorphic_enc.sql:673: TECC result processing error: HE result out of range for column "a"
+psql:/.../homomorphic_enc.sql:687: NOTICE:  view "v_he_sum" does not exist, skipping
+psql:/.../homomorphic_enc.sql:700: NOTICE:  table "t_bad1" does not exist, skipping
+psql:/.../homomorphic_enc.sql:701: NOTICE:  table "t_bad2" does not exist, skipping
+psql:/.../homomorphic_enc.sql:702: NOTICE:  table "t_bad3" does not exist, skipping
+psql:/.../homomorphic_enc.sql:703: NOTICE:  data encryption key "dek_bad_he" does not exist, skipping

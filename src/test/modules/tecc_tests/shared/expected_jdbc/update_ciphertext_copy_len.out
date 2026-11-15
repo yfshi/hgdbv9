@@ -1,0 +1,73 @@
+NOTICE: table "uccopy_t" does not exist, skipping
+DROP TABLE
+NOTICE: table "uccopy_wide" does not exist, skipping
+DROP TABLE
+NOTICE: table "uccopy_same" does not exist, skipping
+DROP TABLE
+NOTICE: table "uccopy_self" does not exist, skipping
+DROP TABLE
+NOTICE: table "uccopy_text" does not exist, skipping
+DROP TABLE
+NOTICE: table "uccopy_np5" does not exist, skipping
+DROP TABLE
+NOTICE: table "uccopy_np20" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "uccopy_dek" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "uccopy_kek" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 2
+=== UCCOPY-1 源声明 20 > 目标 5（值超长）-> 拒绝、值不变（libpq 14.1）===
+ERROR: value too long for type character varying(5) (copying from column "w20" declared character varying(20); a ciphertext copy cannot verify the value's actual length)
+abcde|true|false
+=== UCCOPY-2 已知代价：源声明更宽、值其实放得下也一并拒绝（libpq 14.3）===
+ERROR: value too long for type character varying(5) (copying from column "w20" declared character varying(20); a ciphertext copy cannot verify the value's actual length)
+abcde
+=== UCCOPY-3 源声明不超过目标 -> 放行（libpq 14.2）===
+CREATE TABLE
+INSERT 0 1
+UPDATE 1
+vwxyz|true
+=== UCCOPY-4 同表整列拷贝、源更宽 -> 拒绝（无限定名 / 目标表名 / 目标表别名）===
+CREATE TABLE
+INSERT 0 1
+ERROR: value too long for type character varying(5) (copying from column "wide" declared character varying(20); a ciphertext copy cannot verify the value's actual length)
+abcde
+ERROR: value too long for type character varying(5) (copying from column "wide" declared character varying(20); a ciphertext copy cannot verify the value's actual length)
+abcde
+ERROR: value too long for type character varying(5) (copying from column "wide" declared character varying(20); a ciphertext copy cannot verify the value's actual length)
+abcde
+=== UCCOPY-5 同表整列拷贝、源更窄 -> 放行 ===
+UPDATE 1
+abcde|true
+=== UCCOPY-6 源为 text_enc（未声明长度）-> 不判、放行 ===
+CREATE TABLE
+INSERT 0 1
+UPDATE 1
+abcdefghij|true
+=== UCCOPY-7 右值为 cast 包裹的列引用 -> 保持原行为（libpq 同样不判）===
+UPDATE 1
+abc|true
+=== UCCOPY-8 原生对照：按值判断，放得下的放行、超长的拒绝（libpq 14.4）===
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 2
+ERROR: ERROR: value too long for type character varying(5)
+abcde
+UPDATE 1
+=== UCCOPY-END 清理 ===
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK

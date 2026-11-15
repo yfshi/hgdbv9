@@ -1,0 +1,185 @@
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP KEK
+DO
+DROP ROLE
+CREATE ROLE
+CREATE ROLE
+CREATE ROLE
+CREATE KEK
+CREATE DEK
+CREATE DEK
+GRANT
+GRANT
+=== 1 KEK USAGE -> CREATE DEK ===
+(1 row)
+SET
+RESET
+GRANT
+SET
+CREATE DEK
+RESET
+SET
+CREATE DEK
+RESET
+SET
+CREATE DEK
+RESET
+REVOKE
+SET
+RESET
+=== 2 DEK USAGE -> CREATE TABLE ===
+(1 row)
+SET
+RESET
+GRANT
+SET
+CREATE TABLE
+RESET
+SET
+INSERT 0 3
+RESET
+REVOKE
+SET
+RESET
+=== 3 role inheritance ===
+(1 row)
+GRANT
+GRANT ROLE
+SET
+CREATE DEK
+RESET
+REVOKE ROLE
+SET
+RESET
+=== 4 owner self ===
+(1 row)
+CREATE TABLE
+INSERT 0 2
+1|1
+2|2
+(2 rows)
+=== 5 error combos ===
+(1 row)
+GRANT
+SET
+RESET
+REVOKE
+SET
+RESET
+GRANT
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP KEK
+DO
+DROP ROLE
+CREATE ROLE
+CREATE ROLE
+CREATE ROLE
+CREATE KEK
+CREATE DEK
+t
+(1 row)
+t
+(1 row)
+f
+(1 row)
+f
+(1 row)
+GRANT
+GRANT
+t
+(1 row)
+t
+(1 row)
+t
+(1 row)
+t
+(1 row)
+t
+(1 row)
+t
+(1 row)
+t
+(1 row)
+t
+(1 row)
+SET
+t
+(1 row)
+t
+(1 row)
+RESET
+SET
+t
+(1 row)
+t
+(1 row)
+RESET
+GRANT
+GRANT
+SET
+GRANT
+GRANT
+RESET
+t
+(1 row)
+t
+(1 row)
+REVOKE
+REVOKE
+f
+(1 row)
+f
+(1 row)
+(1 row)
+(1 row)
+(1 row)
+(1 row)
+(1 row)
+(1 row)
+DROP DEK
+DROP KEK
+DROP ROLE
+DROP ROLE
+DROP ROLE
+NOTICE: table "he_acl_owner" does not exist, skipping
+NOTICE: table "he_acl_u1" does not exist, skipping
+NOTICE: table "he_acl_u1b" does not exist, skipping
+NOTICE: table "he_acl_u1c" does not exist, skipping
+NOTICE: key encryption key "kek_acl" does not exist, skipping
+NOTICE: role "u1" does not exist, skipping
+NOTICE: role "u2" does not exist, skipping
+NOTICE: role "r1" does not exist, skipping
+ERROR: permission denied for key encryption key kek_acl
+ERROR: permission denied for key encryption key kek_acl
+ERROR: permission denied for DEK "dek_acl_add"
+DETAIL:  You do not have USAGE privilege on DEK "dek_acl_add".
+HINT:  Grant USAGE on the DEK to proceed.
+ERROR: permission denied for DEK "dek_acl_add"
+DETAIL:  You do not have USAGE privilege on DEK "dek_acl_add".
+HINT:  Grant USAGE on the DEK to proceed.
+ERROR: permission denied for key encryption key kek_acl
+ERROR: permission denied for DEK "dek_acl_add"
+DETAIL:  You do not have USAGE privilege on DEK "dek_acl_add".
+HINT:  Grant USAGE on the DEK to proceed.
+ERROR: permission denied for schema public
+NOTICE: table "he_acl_u1b" does not exist, skipping
+NOTICE: table "he_acl_u1c" does not exist, skipping
+NOTICE: drop cascades to 6 other objects
+DETAIL:  drop cascades to data encryption key dek_acl_add
+drop cascades to data encryption key dek_acl_mul
+drop cascades to data encryption key dek_u1_add
+drop cascades to data encryption key dek_u1_mul
+drop cascades to data encryption key dek_u1_sym
+drop cascades to data encryption key dek_u2_add
+ERROR: unrecognized privilege type: "INVALID"
+ERROR: unrecognized privilege type: "INVALID"
+ERROR: dependent privileges exist
+HINT:  Use CASCADE to revoke them too.
+ERROR: dependent privileges exist
+HINT:  Use CASCADE to revoke them too.

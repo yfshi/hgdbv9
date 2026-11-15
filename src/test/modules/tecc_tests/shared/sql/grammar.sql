@@ -849,6 +849,21 @@ SELECT
         ELSE 'mid'
     END AS category
 FROM test_p0_expr;
+-- 18c2: CaseExpr 混用类型不兼容 — 常量类型与密态列原始类型不匹配报错
+SELECT CASE WHEN val > 150 THEN val ELSE 'not-a-number' END FROM test_p0_expr;
+-- 18c3: CaseExpr 文本密态列混用兼容 — text_enc 列 + 字符串常量（DET 等值）
+SELECT CASE WHEN name = 'hello' THEN name ELSE 'nobody' END FROM test_p0_expr;
+-- 18c4: CaseExpr 嵌套 CASE 混用 — 外层与内层均混用密态列与常量
+SELECT CASE WHEN val < 150 THEN CASE WHEN val < 100 THEN val ELSE 0 END ELSE val END FROM test_p0_expr;
+-- 18c5: CaseExpr 多 WHEN 分支 + 常量混用
+SELECT CASE WHEN val < 150 THEN val WHEN val < 250 THEN 0 ELSE val END FROM test_p0_expr;
+-- 18c6: CaseExpr 单分支返回密态列（无 ELSE，NULL 分支）
+SELECT CASE WHEN val < 150 THEN val END FROM test_p0_expr;
+-- 18c7: CaseExpr NULL 值混用 — 密态列含 NULL 时走 ELSE 常量分支
+CREATE TABLE test_p0_expr_null (x INT4_ENC ENCRYPTED WITH (DEK = dek_grammar, SUPPORT_ALGO = 'OPE'));
+INSERT INTO test_p0_expr_null VALUES (10), (NULL), (30);
+SELECT CASE WHEN x < 20 THEN x ELSE 99 END FROM test_p0_expr_null;
+DROP TABLE test_p0_expr_null;
 
 -- 18d: RowExpr — ROW() constructor
 SELECT id FROM test_p0_expr WHERE (val, name) = ROW(100, 'hello');
@@ -1052,3 +1067,80 @@ DROP SCHEMA IF EXISTS test_grammar_schema;
 -- ============================================================
 SELECT '=== Cleanup ===';
 DROP KEK IF EXISTS kek_grammar CASCADE;
+
+-- ============================================================
+-- 系统目录表 + 密钥生命周期验证
+-- (从 tecc_system_tables / tecc_key_management 迁移)
+-- ============================================================
+
+-- 1. 系统表存在性
+SELECT relname FROM pg_class
+WHERE relname IN ('hg_kek', 'hg_dek', 'hg_kek_args', 'hg_dek_args')
+ORDER BY relname;
+
+-- 2. KEK创建 → 验证系统表行 + args
+CREATE KEK km_grammar_kek WITH (
+    KEY_STORE = 'localkms',
+    KEY_PATH = '%KEKPATH%/km_grammar.key'
+);
+SELECT kek_name FROM hg_kek WHERE kek_name = 'km_grammar_kek';
+
+SELECT ka.key FROM hg_kek_args ka
+JOIN hg_kek k ON ka.kek_id = k.oid
+WHERE k.kek_name = 'km_grammar_kek' AND ka.key != '_KEK_META'
+ORDER BY ka.key;
+
+-- 3. DEK创建 → 验证关联
+CREATE DEK km_grammar_dek WITH VALUES (KEK = 'km_grammar_kek');
+SELECT d.dek_name, k.kek_name
+FROM hg_dek d JOIN hg_kek k ON d.kek_id = k.oid
+WHERE d.dek_name = 'km_grammar_dek';
+
+-- 4. 多DEK引用同一KEK
+CREATE DEK km_grammar_dek2 WITH VALUES (KEK = 'km_grammar_kek');
+SELECT COUNT(*) FROM hg_dek WHERE dek_name LIKE 'km_grammar_dek%';
+
+-- 5. 视图查询
+SELECT kek_name FROM hg_kek_info WHERE kek_name = 'km_grammar_kek';
+
+-- 6. 依赖enforcement: DROP KEK有依赖应失败
+DROP KEK km_grammar_kek;
+
+-- 7. 先删DEK再删KEK
+DROP DEK km_grammar_dek;
+DROP DEK km_grammar_dek2;
+DROP KEK km_grammar_kek;
+SELECT COUNT(*) FROM hg_kek WHERE kek_name = 'km_grammar_kek';
+
+-- 8. CASCADE
+CREATE KEK km_cascade_kek WITH (
+    KEY_STORE = 'localkms', KEY_PATH = '%KEKPATH%/km_cascade.key'
+);
+CREATE DEK km_cascade_dek WITH VALUES (KEK = 'km_cascade_kek');
+DROP KEK km_cascade_kek CASCADE;
+SELECT COUNT(*) FROM hg_kek WHERE kek_name = 'km_cascade_kek';
+SELECT COUNT(*) FROM hg_dek WHERE dek_name = 'km_cascade_dek';
+
+-- 9. 重复名
+CREATE KEK km_dup_kek WITH (
+    KEY_STORE = 'localkms', KEY_PATH = '%KEKPATH%/km_dup.key'
+);
+CREATE KEK km_dup_kek WITH (
+    KEY_STORE = 'localkms', KEY_PATH = '%KEKPATH%/km_dup.key'
+);
+CREATE KEK IF NOT EXISTS km_dup_kek WITH (
+    KEY_STORE = 'localkms', KEY_PATH = '%KEKPATH%/km_dup.key'
+);
+DROP KEK km_dup_kek;
+
+-- 10. IF EXISTS
+DROP KEK IF EXISTS km_nonexistent;
+DROP DEK IF EXISTS km_nonexistent;
+
+-- 11. 不存在的KEK创建DEK
+CREATE DEK km_bad_dek WITH VALUES (KEK = 'nonexistent_kek');
+
+-- Cleanup
+DROP KEK IF EXISTS km_grammar_kek CASCADE;
+DROP KEK IF EXISTS km_cascade_kek CASCADE;
+DROP KEK IF EXISTS km_dup_kek CASCADE;

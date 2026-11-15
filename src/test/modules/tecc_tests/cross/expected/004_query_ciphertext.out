@@ -1,8 +1,10 @@
 === DET CIPHER ===
-1|100|1.11|det_alpha|det_varchar_alpha
-2|200|2.22|det_beta|det_varchar_beta
-3|100|3.33|det_gamma|det_varchar_gamma
-4|300|4.44|det_alpha|det_varchar_alpha
+1|100|1.11|10|det_alpha|det_varchar_alpha
+2|200|2.22|20|det_beta|det_varchar_beta
+3|100|3.33|10|det_gamma|det_varchar_gamma
+4|300|4.44|100|det_alpha|det_varchar_alpha
+5|400|5.55|100|det_delta|det_varchar_delta
+6|500|6.66|1000|det_epsilon|det_varchar_epsilon
 === OPE CIPHER ===
 1|5|10.5|ope_aa
 2|15|20.5|ope_bb

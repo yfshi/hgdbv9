@@ -17,6 +17,7 @@
 
 #include "tecc_data_validator.h"
 #include "common/fe_memutils.h"  /* For pg_malloc, pg_free */
+#include "catalog/pg_type_enc.h"  /* ReqID:TECC4.0 - INT2_ENCOID etc. for HE range check */
 
 #include <string.h>
 #include <limits.h>
@@ -28,9 +29,6 @@
 /* PostgreSQL port functions for case-insensitive string comparison */
 #include "port.h"
 
-/* Byte order conversion for SEARCH algorithm validation */
-#include "../../../src/include/common/tecc_algorithm/tecc_byteorder.h"
-
 /* Use PostgreSQL's pg_strncasecmp from port.h */
 
 /* Internal helper functions */
@@ -38,7 +36,6 @@ static TeccFormatterErrorCode validate_numeric_data(const unsigned char *data, s
 static TeccFormatterErrorCode validate_text_data(const unsigned char *data, size_t len, Oid data_type);
 static bool is_valid_integer_string(const char *str, size_t len);
 static bool is_valid_float_string(const char *str, size_t len);
-static TeccFormatterErrorCode validate_integer_range(const char *str, size_t len, Oid data_type);
 static TeccFormatterErrorCode validate_float_range(const char *str, size_t len, Oid data_type);
 static TeccFormatterErrorCode validate_numeric_special_values(const char *str, size_t len);
 
@@ -88,163 +85,6 @@ tecc_validate_input_data(
     return TECC_FORMATTER_SUCCESS;
 }
 
-/*
- * tecc_data_validator_validate_encrypted_data - Validate encrypted data integrity
- *
- * Validates encrypted data format and integrity.
- */
-TeccFormatterErrorCode
-tecc_data_validator_validate_encrypted_data(
-    const unsigned char *encrypted_data,
-    size_t encrypted_len,
-    TeccAlgorithmType algo_type)
-{
-    TECC_RETURN_IF_NULL(encrypted_data, TECC_FORMATTER_ERROR_INVALID_PARAM);
-
-    if (encrypted_len == 0)
-        return TECC_FORMATTER_ERROR_DATA_FORMAT;
-
-    /* Algorithm-specific validation */
-    switch (algo_type) {
-        case TECC_ALGO_RND:
-        case TECC_ALGO_DET:
-            /* RND and DET: no special validation needed */
-            break;
-
-        case TECC_ALGO_OPE:
-            /* OPE: validate numeric format */
-            if (encrypted_len < TECC_NUMERIC_HEADER_SIZE)
-                return TECC_FORMATTER_ERROR_DATA_FORMAT;
-            break;
-
-        case TECC_ALGO_SEARCH:
-            /* SEARCH: validate segment format */
-            if (encrypted_len < sizeof(uint32_t))  /* At least data length field */
-                return TECC_FORMATTER_ERROR_DATA_FORMAT;
-
-            /* Validate SEARCH data format */
-            {
-                const uint32_t *header = (const uint32_t *)encrypted_data;
-                uint32_t data_len;
-
-                /* Convert from network byte order (big-endian) */
-                data_len = tecc_ntoh32(header[0]);
-
-                /* Basic validation */
-                if (encrypted_len != sizeof(uint32_t) + data_len * 3) {
-                    /* Length mismatch */
-                    return TECC_FORMATTER_ERROR_DATA_FORMAT;
-                }
-
-                /* no arbitrary ciphertext size limit — PG enforces 1GB max */
-            }
-            break;
-
-        default:
-            return TECC_FORMATTER_ERROR_INVALID_PARAM;
-    }
-
-    return TECC_FORMATTER_SUCCESS;
-}
-
-/*
- * tecc_data_validator_adjust_data_size - Adjust data size if needed
- *
- * Adjusts data size to meet algorithm requirements.
- */
-TeccFormatterErrorCode
-tecc_data_validator_adjust_data_size(
-    const unsigned char *input_data,
-    size_t input_len,
-    Oid data_type,
-    TeccAlgorithmType algo_type,
-    unsigned char **adjusted_data,
-    size_t *adjusted_len)
-{
-    TECC_RETURN_IF_NULL(input_data, TECC_FORMATTER_ERROR_INVALID_PARAM);
-    TECC_RETURN_IF_NULL(adjusted_data, TECC_FORMATTER_ERROR_INVALID_PARAM);
-    TECC_RETURN_IF_NULL(adjusted_len, TECC_FORMATTER_ERROR_INVALID_PARAM);
-
-    /* Algorithm-specific adjustment */
-    switch (algo_type) {
-        case TECC_ALGO_RND:
-            /* RND: May need padding for block cipher */
-            *adjusted_data = pg_malloc(input_len);
-            TECC_RETURN_IF_MEMORY_ERROR(*adjusted_data, TECC_FORMATTER_ERROR_MEMORY_ALLOC);
-            memcpy(*adjusted_data, input_data, input_len);
-            *adjusted_len = input_len;
-            /* TODO: Add block padding if needed */
-            break;
-
-        case TECC_ALGO_DET:
-        case TECC_ALGO_OPE:
-            /* DET/OPE: No adjustment needed */
-            *adjusted_data = pg_malloc(input_len);
-            TECC_RETURN_IF_MEMORY_ERROR(*adjusted_data, TECC_FORMATTER_ERROR_MEMORY_ALLOC);
-            memcpy(*adjusted_data, input_data, input_len);
-            *adjusted_len = input_len;
-            break;
-
-        case TECC_ALGO_SEARCH:
-            /* SEARCH: May need text segmentation */
-            *adjusted_data = pg_malloc(input_len);
-            TECC_RETURN_IF_MEMORY_ERROR(*adjusted_data, TECC_FORMATTER_ERROR_MEMORY_ALLOC);
-            memcpy(*adjusted_data, input_data, input_len);
-            *adjusted_len = input_len;
-            /* TODO: Add text segmentation for SEARCH */
-            break;
-
-        default:
-            return TECC_FORMATTER_ERROR_INVALID_PARAM;
-    }
-
-    return TECC_FORMATTER_SUCCESS;
-}
-
-/*
- * tecc_data_validator_is_compatible - Check data compatibility with encryption algorithm
- *
- * Checks if data is compatible with specified encryption algorithm.
- */
-bool
-tecc_data_validator_is_compatible(
-    const unsigned char *data,
-    size_t len,
-    Oid data_type,
-    TeccAlgorithmType algo_type)
-{
-    if (!data || len == 0)
-        return false;
-
-    /* no arbitrary ciphertext size limit — PG enforces 1GB max */
-
-    /* Type-algorithm compatibility */
-    switch (algo_type) {
-        case TECC_ALGO_RND:
-            /* RND: compatible with all types */
-            return true;
-
-        case TECC_ALGO_DET:
-            /* DET: compatible with all types */
-            return true;
-
-        case TECC_ALGO_OPE:
-            /* OPE: best with numeric types, needs collation for text */
-            if (TECC_IS_NUMERIC_TYPE(data_type))
-                return true;
-            if (TECC_IS_TEXT_TYPE(data_type))
-                return true; /* TODO: Check collation availability */
-            return false;
-
-        case TECC_ALGO_SEARCH:
-            /* SEARCH: compatible with text types */
-            return TECC_IS_TEXT_TYPE(data_type);
-
-        default:
-            return false;
-    }
-}
-
 /* Begin - ReqID:TECC4.0 */
 /*
  * validate_numeric_data - Validate numeric data
@@ -268,21 +108,21 @@ validate_numeric_data(const unsigned char *data, size_t len, Oid data_type)
             if (!is_valid_integer_string((const char *)data, len))
                 return TECC_FORMATTER_ERROR_DATA_FORMAT;
             /* Add range validation for int2 (-32768 to 32767) */
-            return validate_integer_range((const char *)data, len, INT2OID);
+            return tecc_validate_integer_range((const char *)data, len, INT2OID);
 
         case INT4OID:
             /* int4: validate as string, conversion happens later */
             if (!is_valid_integer_string((const char *)data, len))
                 return TECC_FORMATTER_ERROR_DATA_FORMAT;
             /* Add range validation for int4 (-2147483648 to 2147483647) */
-            return validate_integer_range((const char *)data, len, INT4OID);
+            return tecc_validate_integer_range((const char *)data, len, INT4OID);
 
         case INT8OID:
             /* int8: validate as string, conversion happens later */
             if (!is_valid_integer_string((const char *)data, len))
                 return TECC_FORMATTER_ERROR_DATA_FORMAT;
             /* Add range validation for int8 */
-            return validate_integer_range((const char *)data, len, INT8OID);
+            return tecc_validate_integer_range((const char *)data, len, INT8OID);
 
         case FLOAT4OID:
             /* float4: validate as string, conversion happens later */
@@ -542,13 +382,17 @@ is_valid_float_string(const char *str, size_t len)
 }
 
 /*
- * validate_integer_range - Validate integer string range
+ * tecc_validate_integer_range - Validate integer string range
  *
  * Validates integer string range based on data type, following PostgreSQL
  * pg_strtoint16/32/64 logic.
  */
-static TeccFormatterErrorCode
-validate_integer_range(const char *str, size_t len, Oid data_type)
+/*
+ * ReqID:TECC4.0 - Validate integer decimal string against type range.
+ * Public API for HE decryption path (decimal strings from BN_bn2dec).
+ */
+TeccFormatterErrorCode
+tecc_validate_integer_range(const char *str, size_t len, Oid data_type)
 {
     const char *ptr = str;
     const char *end = str + len;
@@ -606,26 +450,30 @@ validate_integer_range(const char *str, size_t len, Oid data_type)
     if (ptr < end)
         return TECC_FORMATTER_ERROR_DATA_FORMAT;
 
-    /* Type-specific range checks */
+    /* Type-specific range checks — handle both native PG OIDs and encrypted OIDs */
     switch (data_type) {
         case INT2OID:
+        case INT2_ENCOID:
             if (result < -32768 || result > 32767)
                 return TECC_FORMATTER_ERROR_NUMERIC_OVERFLOW;
             break;
 
         case INT4OID:
+        case INT4_ENCOID:
             if (result < -2147483648LL || result > 2147483647LL)
                 return TECC_FORMATTER_ERROR_NUMERIC_OVERFLOW;
             break;
 
         case INT8OID:
+        case INT8_ENCOID:
             /* long long already covers int64 range on most platforms */
             if (result < -9223372036854775807LL - 1 || result > 9223372036854775807LL)
                 return TECC_FORMATTER_ERROR_NUMERIC_OVERFLOW;
             break;
 
         default:
-            return TECC_FORMATTER_ERROR_INVALID_TYPE;
+            /* Non-integer types (float, numeric, text, etc.) — skip integer range check */
+            break;
     }
 
     return TECC_FORMATTER_SUCCESS;

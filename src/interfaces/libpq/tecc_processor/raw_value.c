@@ -206,8 +206,11 @@ tecc_raw_value_copy(const TeccRawValue *source)
     copy->needs_decryption = source->needs_decryption;
     copy->is_null = source->is_null;
     copy->is_default = source->is_default;  /* ReqID:TECC4.0 */
+    copy->is_sql_expression = source->is_sql_expression; /* ReqID:TECC4.0 */
     copy->length = source->length;
     copy->type_oid = source->type_oid;
+    copy->location = source->location;       /* ReqID:TECC4.0 - Bug 9152: needed for SQL rewrite */
+    copy->data_size = source->data_size;     /* ReqID:TECC4.0 - Bug 9152: needed for SQL rewrite */
 
     /* Copy column info */
     if (source->column_name != NULL)
@@ -259,6 +262,7 @@ tecc_raw_value_copy(const TeccRawValue *source)
         switch (source->state)
         {
             case TECC_RAW_VALUE_STATE_ENCRYPTED:
+            case TECC_RAW_VALUE_STATE_PROCESSED: /* ReqID:TECC4.0 - Bug 9152: PROCESSED also uses encrypted_value */
                 if (source->processed.encrypted_value != NULL)
                     copy->processed.encrypted_value = pg_strdup(source->processed.encrypted_value);
                 break;

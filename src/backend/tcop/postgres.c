@@ -5454,6 +5454,10 @@ PostgresMain(int argc, char *argv[],
 		sql_resource_limit_start();
 		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+		sql_resource_limit_start();
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+
 		/* Begin - BUG#Z5597, BUG#z6159 */
 		/*
 		 * MyProc->pgxactoff is the index of current PROC in procArray->pgprocnos[]

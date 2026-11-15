@@ -3,6 +3,11 @@
  * fe-hsm-adapter.c
  *	  Hardware Security Module (HSM) adapter implementation for TECC
  *
+ * ReqID:TECC4.0 - 同智伟业（TZHSM）适配器通过 dlopen/dlsym 在运行时装载
+ * libsdf.client.so，构建期不再依赖厂商 HSM 驱动库：未使用 TZHSM 密码机
+ * 的客户无需安装厂商 SDK 即可完成构建，仅在运行时首次使用 TZHSM 设备时
+ * 才需要装载该动态库（与 fe-swxa-adapter.c 的 swxa 适配器方式一致）。
+ *
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
@@ -16,11 +21,21 @@
 #include <windows.h>
 #endif
 
+#ifdef _MSC_VER
+/* Windows lacks these POSIX dlopen flags.  The PostgreSQL port layer
+ * provides dlopen() on Windows via LoadLibrary, which ignores mode. */
+#define RTLD_LAZY     0
+#define RTLD_LOCAL    0
+#define RTLD_DEEPBIND 0
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
 #include <stddef.h>  /* For offsetof */
+#include <dlfcn.h>
+#include <openssl/crypto.h>  /* ReqID:TECC4.0 - OPENSSL_malloc for sm2_decrypt output */
 
 #include "fe-hsm-adapter.h"
 #include "../tecc_common/tecc_logging.h"
@@ -57,14 +72,160 @@ static HsmErrorCode tzhsm_sm4_decrypt(HsmDevice *device,
 									 const unsigned char *iv,
 									 const unsigned char *ciphertext, size_t cipher_len,
 									 unsigned char *plaintext, size_t *plain_len);
+static HsmErrorCode tzhsm_sm2_decrypt(HsmDevice *device, unsigned int key_index,
+									  const unsigned char *ciphertext, size_t cipher_len,
+									  void **plaintext, size_t *plaintext_len);
 static const char *tzhsm_error_string(HsmErrorCode error_code);
 static bool tzhsm_is_connected(HsmDevice *device);
 
 /* Helper function declaration */
 static HsmErrorCode sdf_error_to_hsm_error(int sdf_error);
 
+/* ReqID:TECC4.0 - TZHSM SDF API 函数指针表。
+ * libsdf.client.so（同智伟业密码机 SDK）在运行时通过 dlopen/dlsym 装载，
+ * 构建期不再依赖厂商驱动库：未使用 TZHSM 密码机（kms_type=tzwykms）的
+ * 客户无需安装 SDK 即可完成构建；仅在首次使用 TZHSM 设备时才需要装载。 */
+typedef struct TzhsmSdfApi
+{
+	void *handle;	/* dlopen handle，NULL 表示未装载 */
+
+	int (*SDF_OpenDevice)(long long *phDeviceHandle);
+	int (*SDF_OpenSession)(long long hDeviceHandle, long long *phSessionHandle);
+	int (*SDF_CloseDevice)(long long hDeviceHandle);
+	int (*SDF_CloseSession)(long long hSessionHandle);
+	int (*SDF_ImportKeyWithKEK)(long long hSessionHandle, unsigned int uiAlgID,
+								unsigned int uiKEKIndex, unsigned char *pucKey,
+								unsigned int uiKeyLength, long long *phKeyHandle);
+	int (*SDF_DestroyKey)(long long hSessionHandle, long long hKeyHandle);
+	int (*SDF_ExportSignPublicKey_RSA)(long long hSessionHandle,
+									   unsigned int uiKeyIndex,
+									   RSArefPublicKey *pucPublicKey);
+	int (*SDF_ExportSignPublicKey_ECC)(long long hSessionHandle,
+									   unsigned int uiKeyIndex,
+									   ECCrefPublicKey *pucPublicKey);
+	int (*SDF_GenerateRandom)(long long hSessionHandle, unsigned int uiLength,
+							  unsigned char *pucRandom);
+	int (*SDF_Encrypt)(long long hSessionHandle, long long hKeyHandle,
+					   unsigned int uiAlgID, unsigned char *pucIV,
+					   unsigned char *pucData, unsigned int uiDataLength,
+					   unsigned char *pucEncData, unsigned int *puiEncDataLength);
+	int (*SDF_Decrypt)(long long hSessionHandle, long long hKeyHandle,
+					   unsigned int uiAlgID, unsigned char *pucIV,
+					   unsigned char *pucEncData, unsigned int uiEncDataLength,
+					   unsigned char *pucData, unsigned int *puiDataLength);
+	int (*SDF_ImportKey)(long long hSessionHandle, unsigned char *pucKey,
+						 unsigned int uiKeyLength, long long *phKeyHandle);
+	int (*SDF_InternalDecrypt_ECC)(long long hSessionHandle,
+								   unsigned int uiISKIndex,
+								   unsigned int uiAlgID, ECCCipher *pucEncData,
+								   unsigned char *pucData,
+								   unsigned int *uiDataLength);
+} TzhsmSdfApi;
+
+/* ReqID:TECC4.0 - TZHSM SDF API 单例（进程内仅装载一次） */
+static TzhsmSdfApi tzhsm_sdf = {0};
+
+/*
+ * tzhsm_load_sdf_api - 运行时装载 TZHSM SDF 动态库（libsdf.client.so）
+ *
+ * 装载顺序：TECC_SDF_LIB 环境变量（测试可用 SoftSDF libteccsdf.so）→
+ * /usr/lib64/libsdf.client.so → /usr/local/lib64/libsdf.client.so →
+ * 按 soname "libsdf.client.so"（走 LD_LIBRARY_PATH / rpath）。
+ * 使用 RTLD_LOCAL | RTLD_DEEPBIND，避免与已装载的 libswsds.so（三未信安）
+ * 的同名 SDF 符号相互冲突。全部函数解析成功后返回 HSM_SUCCESS。
+ */
+static HsmErrorCode
+tzhsm_load_sdf_api(void)
+{
+	const char *sdf_lib;
+
+	if (tzhsm_sdf.handle != NULL)
+		return HSM_SUCCESS;
+
+	/* ReqID:TECC4.0 - 支持通过 TECC_SDF_LIB 环境变量切换/指定 SDF 动态库 */
+	sdf_lib = getenv("TECC_SDF_LIB");
+	if (sdf_lib != NULL && sdf_lib[0] != '\0')
+	{
+		tzhsm_sdf.handle = dlopen(sdf_lib, RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+		if (tzhsm_sdf.handle == NULL)
+		{
+			fprintf(stderr, "ERROR: Failed to load %s (TECC_SDF_LIB): %s\n",
+					sdf_lib, dlerror());
+			return HSM_ERROR_INIT_FAILED;
+		}
+	}
+	else
+	{
+		/* 常见安装路径，最后按 soname 查找（LD_LIBRARY_PATH / rpath） */
+		tzhsm_sdf.handle = dlopen("/usr/lib64/libsdf.client.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+		if (tzhsm_sdf.handle == NULL)
+			tzhsm_sdf.handle = dlopen("/usr/local/lib64/libsdf.client.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+		if (tzhsm_sdf.handle == NULL)
+			tzhsm_sdf.handle = dlopen("libsdf.client.so", RTLD_LAZY | RTLD_LOCAL | RTLD_DEEPBIND);
+		if (tzhsm_sdf.handle == NULL)
+		{
+			fprintf(stderr, "ERROR: Failed to load libsdf.client.so: %s\n", dlerror());
+			fprintf(stderr, "ERROR: TZHSM (Tongzhi Weiye) password machine support requires the vendor SDK.\n");
+			fprintf(stderr, "ERROR: Install libsdf.client.so (e.g. /usr/lib64) or set TECC_SDF_LIB=/path/to/libsdf.client.so.\n");
+			return HSM_ERROR_INIT_FAILED;
+		}
+	}
+
+	/* 通过 dlsym 解析全部 SDF 函数 */
+#define LOAD_TZHSM_FUNC(name) \
+	do { \
+		tzhsm_sdf.name = dlsym(tzhsm_sdf.handle, #name); \
+		if (tzhsm_sdf.name == NULL) { \
+			fprintf(stderr, "ERROR: Failed to resolve %s in libsdf.client.so: %s\n", \
+					#name, dlerror()); \
+			dlclose(tzhsm_sdf.handle); \
+			tzhsm_sdf.handle = NULL; \
+			return HSM_ERROR_INIT_FAILED; \
+		} \
+	} while (0)
+
+	LOAD_TZHSM_FUNC(SDF_OpenDevice);
+	LOAD_TZHSM_FUNC(SDF_OpenSession);
+	LOAD_TZHSM_FUNC(SDF_CloseDevice);
+	LOAD_TZHSM_FUNC(SDF_CloseSession);
+	LOAD_TZHSM_FUNC(SDF_ImportKeyWithKEK);
+	LOAD_TZHSM_FUNC(SDF_DestroyKey);
+	LOAD_TZHSM_FUNC(SDF_ExportSignPublicKey_RSA);
+	LOAD_TZHSM_FUNC(SDF_ExportSignPublicKey_ECC);
+	LOAD_TZHSM_FUNC(SDF_GenerateRandom);
+	LOAD_TZHSM_FUNC(SDF_Encrypt);
+	LOAD_TZHSM_FUNC(SDF_Decrypt);
+	LOAD_TZHSM_FUNC(SDF_ImportKey);
+	LOAD_TZHSM_FUNC(SDF_InternalDecrypt_ECC);
+
+#undef LOAD_TZHSM_FUNC
+
+	return HSM_SUCCESS;
+}
+
 /* Static adapter instances */
 static HsmAdapterInterface tzhsm_adapter = {0};
+static pthread_once_t tzhsm_adapter_once = PTHREAD_ONCE_INIT;
+
+static void tzhsm_adapter_init(void)
+{
+	tzhsm_adapter.init = tzhsm_init;
+	tzhsm_adapter.connect = tzhsm_connect;
+	tzhsm_adapter.disconnect = tzhsm_disconnect;
+	tzhsm_adapter.cleanup = tzhsm_cleanup;
+	tzhsm_adapter.check_key_exists = tzhsm_check_key_exists;
+	tzhsm_adapter.get_key_info = tzhsm_get_key_info;
+	tzhsm_adapter.export_public_key = tzhsm_export_public_key;
+	tzhsm_adapter.encrypt = tzhsm_encrypt;
+	tzhsm_adapter.decrypt = tzhsm_decrypt;
+	tzhsm_adapter.sign = tzhsm_sign;
+	tzhsm_adapter.verify = tzhsm_verify;
+	tzhsm_adapter.error_string = tzhsm_error_string;
+	tzhsm_adapter.is_connected = tzhsm_is_connected;
+	tzhsm_adapter.sm4_encrypt = tzhsm_sm4_encrypt;
+	tzhsm_adapter.sm4_decrypt = tzhsm_sm4_decrypt;
+	tzhsm_adapter.sm2_decrypt = tzhsm_sm2_decrypt;
+}
 
 /*
  * get_tzhsm_adapter - Get Tongzhi Weiye TZHSM-G002 adapter instance
@@ -72,26 +233,7 @@ static HsmAdapterInterface tzhsm_adapter = {0};
 HsmAdapterInterface *
 get_tzhsm_adapter(void)
 {
-	/* Initialize adapter if not already done */
-	if (tzhsm_adapter.init == NULL)
-	{
-		tzhsm_adapter.init = tzhsm_init;
-		tzhsm_adapter.connect = tzhsm_connect;
-		tzhsm_adapter.disconnect = tzhsm_disconnect;
-		tzhsm_adapter.cleanup = tzhsm_cleanup;
-		tzhsm_adapter.check_key_exists = tzhsm_check_key_exists;
-		tzhsm_adapter.get_key_info = tzhsm_get_key_info;
-		tzhsm_adapter.export_public_key = tzhsm_export_public_key;
-		tzhsm_adapter.encrypt = tzhsm_encrypt;
-		tzhsm_adapter.decrypt = tzhsm_decrypt;
-		tzhsm_adapter.sign = tzhsm_sign;
-		tzhsm_adapter.verify = tzhsm_verify;
-		tzhsm_adapter.error_string = tzhsm_error_string;
-		tzhsm_adapter.is_connected = tzhsm_is_connected;
-		tzhsm_adapter.sm4_encrypt = tzhsm_sm4_encrypt;
-		tzhsm_adapter.sm4_decrypt = tzhsm_sm4_decrypt;
-	}
-
+	pthread_once(&tzhsm_adapter_once, tzhsm_adapter_init);
 	return &tzhsm_adapter;
 }
 
@@ -108,6 +250,10 @@ tzhsm_init(HsmDevice **device, const char *config_file)
 
 	if (!device)
 		return HSM_ERROR_INVALID_PARAM;
+
+	/* ReqID:TECC4.0 - 首次使用 TZHSM 设备时惰性装载 libsdf.client.so */
+	if (tzhsm_load_sdf_api() != HSM_SUCCESS)
+		return HSM_ERROR_INIT_FAILED;
 
 	/* Allocate device structure */
 	dev = (HsmDevice *) malloc(sizeof(HsmDevice));
@@ -159,7 +305,7 @@ tzhsm_connect(HsmDevice *device)
 		return HSM_SUCCESS;
 
 	/* Open device using Tongzhi Weiye SDK */
-	ret = SDF_OpenDevice(&device_handle);
+	ret = tzhsm_sdf.SDF_OpenDevice(&device_handle);
 	if (ret != SDR_OK)
 	{
 		fprintf(stderr, "SDF_OpenDevice failed: 0x%08x\n", ret);
@@ -167,11 +313,11 @@ tzhsm_connect(HsmDevice *device)
 	}
 
 	/* Open session */
-	ret = SDF_OpenSession(device_handle, &session_handle);
+	ret = tzhsm_sdf.SDF_OpenSession(device_handle, &session_handle);
 	if (ret != SDR_OK)
 	{
 		fprintf(stderr, "SDF_OpenSession failed: 0x%08x\n", ret);
-		SDF_CloseDevice(device_handle);
+		tzhsm_sdf.SDF_CloseDevice(device_handle);
 		return sdf_error_to_hsm_error(ret);
 	}
 
@@ -196,7 +342,7 @@ tzhsm_disconnect(HsmDevice *device)
 	/* Close session */
 	if (device->session_handle)
 	{
-		ret = SDF_CloseSession((long long)device->session_handle);
+		ret = tzhsm_sdf.SDF_CloseSession((long long)device->session_handle);
 		if (ret != SDR_OK)
 		{
 			fprintf(stderr, "SDF_CloseSession failed: 0x%08x\n", ret);
@@ -207,7 +353,7 @@ tzhsm_disconnect(HsmDevice *device)
 	/* Close device */
 	if (device->device_handle)
 	{
-		ret = SDF_CloseDevice((long long)device->device_handle);
+		ret = tzhsm_sdf.SDF_CloseDevice((long long)device->device_handle);
 		if (ret != SDR_OK)
 		{
 			fprintf(stderr, "SDF_CloseDevice failed: 0x%08x\n", ret);
@@ -253,7 +399,7 @@ tzhsm_check_key_exists(HsmDevice *device, unsigned int key_index)
 	/* Try to import a test key using the specified KEK index
 	 * This will fail with SDR_KEYNOTEXIST if the KEK doesn't exist
 	 */
-	ret = SDF_ImportKeyWithKEK((long long)device->session_handle,
+	ret = tzhsm_sdf.SDF_ImportKeyWithKEK((long long)device->session_handle,
 							   SGD_SM4_ECB,  /* Use SM4 ECB as test algorithm */
 							   key_index,
 							   test_key,
@@ -263,7 +409,7 @@ tzhsm_check_key_exists(HsmDevice *device, unsigned int key_index)
 	/* Clean up if key was created */
 	if (key_handle != 0)
 	{
-		SDF_DestroyKey((long long)device->session_handle, key_handle);
+		tzhsm_sdf.SDF_DestroyKey((long long)device->session_handle, key_handle);
 	}
 
 	/* Convert SDF error to HSM error */
@@ -294,7 +440,7 @@ tzhsm_get_key_info(HsmDevice *device, unsigned int key_index, HsmKeyInfo **key_i
 	info->key_index = key_index;
 
 	/* Try to get RSA key info */
-	ret = SDF_ExportSignPublicKey_RSA((long long)device->session_handle,
+	ret = tzhsm_sdf.SDF_ExportSignPublicKey_RSA((long long)device->session_handle,
 									  key_index, &rsa_pub_key);
 	if (ret == SDR_OK)
 	{
@@ -305,7 +451,7 @@ tzhsm_get_key_info(HsmDevice *device, unsigned int key_index, HsmKeyInfo **key_i
 	}
 
 	/* Try to get ECC key info */
-	ret = SDF_ExportSignPublicKey_ECC((long long)device->session_handle,
+	ret = tzhsm_sdf.SDF_ExportSignPublicKey_ECC((long long)device->session_handle,
 									  key_index, &ecc_pub_key);
 	if (ret == SDR_OK)
 	{
@@ -337,7 +483,7 @@ tzhsm_export_public_key(HsmDevice *device, unsigned int key_index,
 		return HSM_ERROR_INVALID_PARAM;
 
 	/* Try to export RSA public key */
-	ret = SDF_ExportSignPublicKey_RSA((long long)device->session_handle,
+	ret = tzhsm_sdf.SDF_ExportSignPublicKey_RSA((long long)device->session_handle,
 									  key_index, &rsa_pub_key);
 	if (ret == SDR_OK)
 	{
@@ -361,7 +507,7 @@ tzhsm_export_public_key(HsmDevice *device, unsigned int key_index,
 	}
 
 	/* Try to export ECC public key */
-	ret = SDF_ExportSignPublicKey_ECC((long long)device->session_handle,
+	ret = tzhsm_sdf.SDF_ExportSignPublicKey_ECC((long long)device->session_handle,
 									  key_index, &ecc_pub_key);
 	if (ret == SDR_OK)
 	{
@@ -422,7 +568,7 @@ tzhsm_encrypt(HsmDevice *device, unsigned int key_index,
 	{
 		unsigned char kek_test_key[16] = {0};
 		unsigned int kek_test_key_len = sizeof(kek_test_key);
-		ret = SDF_ImportKeyWithKEK(hSessionHandle,
+		ret = tzhsm_sdf.SDF_ImportKeyWithKEK(hSessionHandle,
 								   SGD_SM4_CBC,   /* Use CBC for key import (matches encrypt/decrypt) */
 								   key_index,    /* KEK index in HSM */
 								   kek_test_key,
@@ -437,10 +583,10 @@ tzhsm_encrypt(HsmDevice *device, unsigned int key_index,
 	}
 
 	/* Step 2: Generate random IV for SM4 CBC mode */
-	ret = SDF_GenerateRandom(hSessionHandle, sizeof(iv), iv);
+	ret = tzhsm_sdf.SDF_GenerateRandom(hSessionHandle, sizeof(iv), iv);
 	if (ret != SDR_OK) {
 		if (hKeyHandle != key_index && hKeyHandle != 0) {
-			SDF_DestroyKey(hSessionHandle, hKeyHandle);
+			tzhsm_sdf.SDF_DestroyKey(hSessionHandle, hKeyHandle);
 		}
 		return sdf_error_to_hsm_error(ret);
 	}
@@ -470,7 +616,7 @@ tzhsm_encrypt(HsmDevice *device, unsigned int key_index,
 	padded_plaintext = (unsigned char *)malloc(padded_len);
 	if (!padded_plaintext) {
 		if (hKeyHandle != key_index && hKeyHandle != 0) {
-			SDF_DestroyKey(hSessionHandle, hKeyHandle);
+			tzhsm_sdf.SDF_DestroyKey(hSessionHandle, hKeyHandle);
 		}
 		return HSM_ERROR_INTERNAL;
 	}
@@ -494,7 +640,7 @@ tzhsm_encrypt(HsmDevice *device, unsigned int key_index,
 	if (!encrypted_data) {
 		free(padded_plaintext);
 		if (hKeyHandle != key_index && hKeyHandle != 0) {
-			SDF_DestroyKey(hSessionHandle, hKeyHandle);
+			tzhsm_sdf.SDF_DestroyKey(hSessionHandle, hKeyHandle);
 		}
 		return HSM_ERROR_INTERNAL;
 	}
@@ -503,7 +649,7 @@ tzhsm_encrypt(HsmDevice *device, unsigned int key_index,
 	memcpy(encrypted_data, iv, sizeof(iv));
 
 	/* Perform encryption (store encrypted data after IV) */
-	ret = SDF_Encrypt(hSessionHandle,
+	ret = tzhsm_sdf.SDF_Encrypt(hSessionHandle,
 					  hKeyHandle,      /* Key handle */
 					  SGD_SM4_CBC,     /* SM4 CBC mode */
 					  iv,
@@ -518,7 +664,7 @@ tzhsm_encrypt(HsmDevice *device, unsigned int key_index,
 
 	/* Clean up key handle if we created one */
 	if (hKeyHandle != key_index && hKeyHandle != 0) {
-		SDF_DestroyKey(hSessionHandle, hKeyHandle);
+		tzhsm_sdf.SDF_DestroyKey(hSessionHandle, hKeyHandle);
 	}
 
 	if (ret == SDR_OK) {
@@ -544,6 +690,7 @@ tzhsm_decrypt(HsmDevice *device, unsigned int key_index,
 	unsigned char iv[16]; /* IV for SM4 CBC mode - extracted from ciphertext */
 	unsigned char *decrypted_data;
 	unsigned int decrypted_len;
+	size_t encrypted_data_len;
 
 	if (!device || !device->connected || !device->session_handle)
 		return HSM_ERROR_CONNECT_FAILED;
@@ -558,7 +705,7 @@ tzhsm_decrypt(HsmDevice *device, unsigned int key_index,
 	{
 		unsigned char kek_test_key[16] = {0};
 		unsigned int kek_test_key_len = sizeof(kek_test_key);
-		ret = SDF_ImportKeyWithKEK(hSessionHandle,
+		ret = tzhsm_sdf.SDF_ImportKeyWithKEK(hSessionHandle,
 								   SGD_SM4_CBC,   /* SM4 CBC mode for key import (matches encrypt/decrypt) */
 								   key_index,    /* KEK index in HSM */
 								   kek_test_key,
@@ -575,7 +722,7 @@ tzhsm_decrypt(HsmDevice *device, unsigned int key_index,
 	/* Step 2: Extract IV from ciphertext (first 16 bytes) */
 	if (ciphertext_len < 16) {
 		if (hKeyHandle != key_index && hKeyHandle != 0) {
-			SDF_DestroyKey(hSessionHandle, hKeyHandle);
+			tzhsm_sdf.SDF_DestroyKey(hSessionHandle, hKeyHandle);
 		}
 		return HSM_ERROR_INVALID_PARAM; /* Ciphertext too short to contain IV */
 	}
@@ -584,19 +731,19 @@ tzhsm_decrypt(HsmDevice *device, unsigned int key_index,
 
 	/* Step 3: Decrypt the ciphertext using the KEK */
 	/* Calculate encrypted data length (excluding IV) */
-	size_t encrypted_data_len = ciphertext_len - sizeof(iv);
+	encrypted_data_len = ciphertext_len - sizeof(iv);
 
 	/* Allocate buffer for plaintext */
 	decrypted_data = (unsigned char *)malloc(encrypted_data_len); /* Max possible size */
 	if (!decrypted_data) {
 		if (hKeyHandle != key_index && hKeyHandle != 0) {
-			SDF_DestroyKey(hSessionHandle, hKeyHandle);
+			tzhsm_sdf.SDF_DestroyKey(hSessionHandle, hKeyHandle);
 		}
 		return HSM_ERROR_INTERNAL;
 	}
 
 	/* Perform decryption (skip IV at beginning of ciphertext) */
-	ret = SDF_Decrypt(hSessionHandle,
+	ret = tzhsm_sdf.SDF_Decrypt(hSessionHandle,
 					  hKeyHandle,      /* Key handle */
 					  SGD_SM4_CBC,     /* SM4 CBC mode */
 					  iv,
@@ -607,7 +754,7 @@ tzhsm_decrypt(HsmDevice *device, unsigned int key_index,
 
 	/* Clean up key handle if we created one */
 	if (hKeyHandle != key_index && hKeyHandle != 0) {
-		SDF_DestroyKey(hSessionHandle, hKeyHandle);
+		tzhsm_sdf.SDF_DestroyKey(hSessionHandle, hKeyHandle);
 	}
 
 	if (ret == SDR_OK) {
@@ -661,6 +808,71 @@ tzhsm_decrypt(HsmDevice *device, unsigned int key_index,
 	/* Decryption failed */
 	free(decrypted_data);
 	return sdf_error_to_hsm_error(ret);
+}
+
+/* ReqID:TECC4.0 - SM2 envelope decryption with the device-internal SM2 private key
+ * (identified by key_index).  Input ciphertext is the HE private-key envelope produced
+ * by local tecc_sm2_envelope_encrypt (OpenSSL SM2, C1||C3||C2), converted to the SDF
+ * ECCCipher layout (x||y||M||L||C). */
+static HsmErrorCode
+tzhsm_sm2_decrypt(HsmDevice *device, unsigned int key_index,
+				  const unsigned char *ciphertext, size_t cipher_len,
+				  void **plaintext, size_t *plaintext_len)
+{
+	int ret;
+	long long hSessionHandle;
+	ECCCipher *ecc_cipher;
+	unsigned char *plain_buf;
+	unsigned int plain_len;
+	size_t c2_len;
+
+	if (!device || !device->connected || !device->session_handle)
+		return HSM_ERROR_CONNECT_FAILED;
+
+	if (!ciphertext || cipher_len <= 96 || !plaintext || !plaintext_len)
+		return HSM_ERROR_INVALID_PARAM;
+
+	hSessionHandle = (long long)device->session_handle;
+
+	/* C1(64: 04||x||y) || C3(32) || C2(rest) */
+	c2_len = cipher_len - 96;
+
+	ecc_cipher = (ECCCipher *)malloc(sizeof(ECCCipher) - 1 + c2_len);
+	if (!ecc_cipher)
+		return HSM_ERROR_INTERNAL;
+	memset(ecc_cipher, 0, sizeof(ECCCipher) - 1 + c2_len);
+
+	/* C1 point: skip 0x04 prefix, then x(32) and y(32) */
+	memcpy(ecc_cipher->x, ciphertext + 1, ECCref_MAX_LEN);
+	memcpy(ecc_cipher->y, ciphertext + 1 + ECCref_MAX_LEN, ECCref_MAX_LEN);
+	/* C3 hash */
+	memcpy(ecc_cipher->M, ciphertext + 64, 32);
+	/* C2 ciphertext */
+	ecc_cipher->L = (unsigned int)c2_len;
+	memcpy(ecc_cipher->C, ciphertext + 96, c2_len);
+
+	/* OPENSSL_malloc so the caller (tecc_algorithm_scheduler) can OPENSSL_free */
+	plain_buf = (unsigned char *)OPENSSL_malloc(c2_len);
+	if (!plain_buf)
+	{
+		free(ecc_cipher);
+		return HSM_ERROR_INTERNAL;
+	}
+	plain_len = (unsigned int)c2_len;
+
+	ret = tzhsm_sdf.SDF_InternalDecrypt_ECC(hSessionHandle, key_index, SGD_SM2,
+								  ecc_cipher, plain_buf, &plain_len);
+	free(ecc_cipher);
+
+	if (ret != SDR_OK)
+	{
+		OPENSSL_free(plain_buf);
+		return sdf_error_to_hsm_error(ret);
+	}
+
+	*plaintext = plain_buf;
+	*plaintext_len = (size_t)plain_len;
+	return HSM_SUCCESS;
 }
 
 static HsmErrorCode
@@ -764,7 +976,7 @@ tzhsm_sm4_encrypt(HsmDevice *device,
 	hSession = (long long)device->session_handle;
 
 	/* Import raw SM4 key as session key handle */
-	ret = SDF_ImportKey(hSession, (unsigned char *)key, (unsigned int)key_len, &hKey);
+	ret = tzhsm_sdf.SDF_ImportKey(hSession, (unsigned char *)key, (unsigned int)key_len, &hKey);
 	if (ret != SDR_OK)
 	{
 		fprintf(stderr, "tzhsm_sm4_encrypt: SDF_ImportKey failed: 0x%08x\n", ret);
@@ -777,7 +989,7 @@ tzhsm_sm4_encrypt(HsmDevice *device,
 	padded = (unsigned char *)malloc(padded_len);
 	if (!padded)
 	{
-		SDF_DestroyKey(hSession, hKey);
+		tzhsm_sdf.SDF_DestroyKey(hSession, hKey);
 		return HSM_ERROR_INTERNAL;
 	}
 	memcpy(padded, plaintext, plain_len);
@@ -785,13 +997,13 @@ tzhsm_sm4_encrypt(HsmDevice *device,
 
 	/* SM4-CBC encrypt via HSM */
 	out_len = (unsigned int)padded_len;
-	ret = SDF_Encrypt(hSession, hKey, SGD_SM4_CBC,
+	ret = tzhsm_sdf.SDF_Encrypt(hSession, hKey, SGD_SM4_CBC,
 					 (unsigned char *)iv,
 					 padded, (unsigned int)padded_len,
 					 ciphertext, &out_len);
 
 	free(padded);
-	SDF_DestroyKey(hSession, hKey);
+	tzhsm_sdf.SDF_DestroyKey(hSession, hKey);
 
 	if (ret != SDR_OK)
 	{
@@ -832,7 +1044,7 @@ tzhsm_sm4_decrypt(HsmDevice *device,
 	hSession = (long long)device->session_handle;
 
 	/* Import raw SM4 key as session key handle */
-	ret = SDF_ImportKey(hSession, (unsigned char *)key, (unsigned int)key_len, &hKey);
+	ret = tzhsm_sdf.SDF_ImportKey(hSession, (unsigned char *)key, (unsigned int)key_len, &hKey);
 	if (ret != SDR_OK)
 	{
 		fprintf(stderr, "tzhsm_sm4_decrypt: SDF_ImportKey failed: 0x%08x\n", ret);
@@ -843,18 +1055,18 @@ tzhsm_sm4_decrypt(HsmDevice *device,
 	decrypted = (unsigned char *)malloc(cipher_len);
 	if (!decrypted)
 	{
-		SDF_DestroyKey(hSession, hKey);
+		tzhsm_sdf.SDF_DestroyKey(hSession, hKey);
 		return HSM_ERROR_INTERNAL;
 	}
 
 	/* SM4-CBC decrypt via HSM */
 	out_len = (unsigned int)cipher_len;
-	ret = SDF_Decrypt(hSession, hKey, SGD_SM4_CBC,
+	ret = tzhsm_sdf.SDF_Decrypt(hSession, hKey, SGD_SM4_CBC,
 					 (unsigned char *)iv,
 					 (unsigned char *)ciphertext, (unsigned int)cipher_len,
 					 decrypted, &out_len);
 
-	SDF_DestroyKey(hSession, hKey);
+	tzhsm_sdf.SDF_DestroyKey(hSession, hKey);
 
 	if (ret != SDR_OK)
 	{
@@ -957,7 +1169,7 @@ parse_hsm_key_path(const char *key_path, unsigned int *key_index)
  * setup_hsm_kek - Setup HSM KEK by checking if key exists at specified index
  */
 int
-setup_hsm_kek(const char *kek_name, const char *key_path, const char *kms_args)
+setup_hsm_kek(const char *kek_name, const char *key_path)
 {
 	unsigned int key_index;
 	HsmAdapterInterface *adapter;
@@ -979,8 +1191,10 @@ setup_hsm_kek(const char *kek_name, const char *key_path, const char *kms_args)
 		return -1;
 	}
 
-	printf("Setting up HSM KEK: %s\n", kek_name);
-	printf("Key path: %s (index: %u)\n", key_path, key_index);
+	/* ReqID:TECC4.0 - 原先用 printf 打 stdout，会混进使用方捕获的结果流；改走既有
+	 * TECC_LOG（级别见 TECC_LOG_LEVEL，默认 ERROR 即静默）。 */
+	TECC_LOG(TECC_LOG_DEBUG1, "Setting up HSM KEK: %s", kek_name);
+	TECC_LOG(TECC_LOG_DEBUG1, "Key path: %s (index: %u)", key_path, key_index);
 
 	/* Get HSM adapter - use Tongzhi Weiye adapter for real password machine */
 	adapter = get_tzhsm_adapter();
@@ -1013,8 +1227,8 @@ setup_hsm_kek(const char *kek_name, const char *key_path, const char *kms_args)
 		goto cleanup;
 	}
 
-	printf("SUCCESS: Key found in HSM at index %u\n", key_index);
-	printf("HSM KEK setup completed for: %s\n", kek_name);
+	TECC_LOG(TECC_LOG_INFO, "SUCCESS: Key found in HSM at index %u", key_index);
+	TECC_LOG(TECC_LOG_DEBUG1, "HSM KEK setup completed for: %s", kek_name);
 
 	result = 0;
 

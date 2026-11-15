@@ -1,8 +1,9 @@
+NOTICE: table "swxa_cross_t" does not exist, skipping
 DROP TABLE
+NOTICE: data encryption key "swxa_cross_dek" does not exist, skipping
 DROP DEK
+NOTICE: key encryption key "swxa_cross_kek" does not exist, skipping
 DROP KEK
-Setting up SWXA KEK: swxa_cross_kek (key index: 1)
-SUCCESS: Key found in SWXA password machine at index 1
 CREATE KEK
 CREATE DEK
 CREATE TABLE
@@ -17,6 +18,3 @@ cross_r2
 DROP TABLE
 DROP DEK
 DROP KEK
-psql:src/test/modules/tecc_tests/cross/sql/005_swxa_cross.sql:8: NOTICE:  table "swxa_cross_t" does not exist, skipping
-psql:src/test/modules/tecc_tests/cross/sql/005_swxa_cross.sql:9: NOTICE:  data encryption key "swxa_cross_dek" does not exist, skipping
-psql:src/test/modules/tecc_tests/cross/sql/005_swxa_cross.sql:10: NOTICE:  key encryption key "swxa_cross_kek" does not exist, skipping

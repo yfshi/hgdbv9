@@ -128,35 +128,6 @@ tecc_formatter_utils_calloc(size_t count, size_t size)
 }
 
 /*
- * tecc_formatter_utils_realloc - Safe memory reallocation
- */
-void *
-tecc_formatter_utils_realloc(void *ptr, size_t size)
-{
-    /* For now, use simple allocate-copy-free pattern */
-    if (ptr == NULL)
-        return tecc_formatter_utils_malloc(size);
-
-    if (size == 0) {
-        pg_free(ptr);
-        return NULL;
-    }
-
-    /* ReqID:TECC4.0 - Fix C90 mixed declaration warning */
-    {
-        void *new_ptr = pg_malloc(size);
-    if (!new_ptr)
-        return NULL;
-
-    /* Copy old data (size unknown, so we can't copy) */
-    /* TODO: Implement proper reallocation with size tracking */
-
-        pg_free(ptr);
-        return new_ptr;
-    }
-}
-
-/*
  * tecc_formatter_utils_strdup - Safe string duplication
  */
 char *

@@ -92,12 +92,14 @@ typedef enum TeccValueType
 /*
  * TeccGucParams structure
  * Simplified version based on openGauss GucParams structure
- * Only contains the 5 parameters actually used by openGauss:
+ * Only contains the parameters actually used by openGauss plus TECC
+ * client-side session controls:
  * 1. role - current role name
  * 2. standard_conforming_strings - standard conforming strings
  * 3. backslash_quote - backslash quote handling mode
  * 4. escape_string_warning - escape string warning
  * 5. searchpath - search path string
+ * 6. tecc_mode - client-side result decryption mode
  */
 typedef struct TeccGucParams
 {
@@ -111,6 +113,9 @@ typedef struct TeccGucParams
 
     /* Search path parameter */
     char        searchpath[1024];           /* Search path string */
+
+	/* TECC client-side session parameter */
+	bool        tecc_mode;                  /* Whether result decryption is enabled */
 } TeccGucParams;
 
 /* End - ReqID:TECC4.0 - TeccGucParams结构体定义 */
@@ -148,11 +153,13 @@ typedef enum TeccBufferType
     TECC_BUFFER_ENCRYPTED_DET,      /* Encrypted data (DET) */
     TECC_BUFFER_ENCRYPTED_OPE,      /* Encrypted data (OPE) */
     TECC_BUFFER_ENCRYPTED_SEARCH,   /* Encrypted data (SEARCH) */
+    TECC_BUFFER_ENCRYPTED_HE_ADD,   /* Encrypted data (EC-ElGamal additive) */
+    TECC_BUFFER_ENCRYPTED_HE_MUL,   /* Encrypted data (ElGamal multiplicative) */
     TECC_BUFFER_CIPHERDATA,         /* CipherDataType structure */
 
     /* Buffer count definitions */
     TECC_BUFFER_TYPE_MAX = 4,       /* For formatter compatibility */
-    TECC_BUFFER_MAX = 10            /* For scheduler compatibility */
+    TECC_BUFFER_MAX = 12            /* For scheduler compatibility (was 10, +2 for HE) */
 } TeccBufferType;
 
 /* Buffer descriptor - Compatible definition */
@@ -224,6 +231,27 @@ typedef struct TeccCryptoContextExtended
     unsigned char *search_ciphertext;  /* SEARCH ciphertext */
     size_t search_cipher_len;          /* SEARCH ciphertext length */
 
+    /* ReqID:TECC4.0 - Homomorphic encryption ciphertext */
+    unsigned char *he_add_ciphertext;  /* EC-ElGamal additive ciphertext (incl. 4B DEK ID prefix) */
+    size_t he_add_cipher_len;          /* EC-ElGamal additive ciphertext length (incl. prefix) */
+    unsigned char *he_mul_ciphertext;  /* Finite field ElGamal multiplicative ciphertext (incl. prefix) */
+    size_t he_mul_cipher_len;          /* Finite field ElGamal multiplicative ciphertext length (incl. prefix) */
+
+    /* ReqID:TECC4.0 - Per-segment DEK distributed identity for HE segments.
+     * Written into the 4-byte prefix of EG_ADD/EG_MUL segments.  When
+     * InvalidOid, the header dek_dist_oid is used. */
+    Oid         he_add_dek_id;         /* DEK distributed ID for EG_ADD segment */
+    Oid         he_mul_dek_id;         /* DEK distributed ID for EG_MUL segment */
+
+    /* ReqID:TECC4.0 - HE key material loaded per-DEK
+     * he_ec_*: EC-ElGamal (add), he_eg_*: FF ElGamal (mul).
+     * Public keys plaintext hex (used by encrypt / server ops);
+     * private keys KEK-encrypted hex (used by decrypt). */
+    char        *he_ec_pubkey_hex;     /* EC-ElGamal public key hex */
+    char        *he_ec_privkey_hex;    /* EC-ElGamal KEK-encrypted private key hex */
+    char        *he_eg_pubkey_hex;     /* FF ElGamal public key hex */
+    char        *he_eg_privkey_hex;    /* FF ElGamal KEK-encrypted private key hex */
+
     /* Status information */
     int error_code;                    /* Error code */
     char error_msg[256];               /* Error message */
@@ -235,6 +263,7 @@ typedef struct TeccCryptoContextExtended
     /* Operator type extension for SEARCH algorithm interface */
     TeccOperatorType operator_type;    /* Operator type for algorithm selection */
     bool is_like_pattern;              /* Whether this is a LIKE pattern */
+    char like_escape_char;             /* ReqID:TECC4.0 - LIKE ESCAPE character (0 = none) */
     void *parsed_pattern;              /* Parsed pattern structure (for SEARCH algorithm) */
 
     /* Extended buffer management */
@@ -322,6 +351,17 @@ typedef struct TeccParsedCipherdata
     size_t ope_data_len;                /* OPE ciphertext length */
     const unsigned char *search_data;   /* SEARCH ciphertext data pointer */
     size_t search_data_len;             /* SEARCH ciphertext length */
+
+    /* ReqID:TECC4.0 - Homomorphic encryption ciphertext data pointers */
+    const unsigned char *eg_add_data;   /* EC-ElGamal additive ciphertext data pointer (incl. 4B DEK ID prefix) */
+    size_t eg_add_data_len;             /* EC-ElGamal additive ciphertext length (incl. prefix) */
+    const unsigned char *eg_mul_data;   /* Finite field ElGamal multiplicative ciphertext pointer (incl. prefix) */
+    size_t eg_mul_data_len;             /* Finite field ElGamal multiplicative ciphertext length (incl. prefix) */
+
+    /* ReqID:TECC4.0 - Per-segment DEK distributed identity parsed from the
+     * 4-byte prefix of EG_ADD/EG_MUL segments.  InvalidOid when absent. */
+    Oid         eg_add_dek_id;          /* DEK distributed ID of EG_ADD segment */
+    Oid         eg_mul_dek_id;          /* DEK distributed ID of EG_MUL segment */
 } TeccParsedCipherdata;
 
 /* ==================== Raw Value Data Structures ==================== */
@@ -383,6 +423,7 @@ typedef struct TeccRawValue
     bool is_default;            /* ReqID:TECC4.0 - DEFAULT keyword placeholder */
 
     /* SQL rewrite support */
+    bool is_sql_expression;     /* ReqID:TECC4.0 - Trusted parser-derived SQL */
     bool is_param;              /* Whether this is a parameter */
     int param_index;            /* Parameter index for parameterized queries */
     size_t location;            /* Original position in SQL string */
@@ -418,6 +459,7 @@ typedef enum TeccStatementType
     TECC_STMT_TYPE_UPDATE,
     TECC_STMT_TYPE_DELETE,
     TECC_STMT_TYPE_CREATE_KEK,
+    TECC_STMT_TYPE_ALTER_KEK,
     TECC_STMT_TYPE_CREATE_DEK,
     TECC_STMT_TYPE_CREATE_TABLE,
     TECC_STMT_TYPE_ALTER_TABLE,
@@ -426,7 +468,10 @@ typedef enum TeccStatementType
     TECC_STMT_TYPE_PREPARE,      /* Added for prepared statement handling */
     TECC_STMT_TYPE_EXECUTE,       /* Added for EXECUTE statement handling */
     TECC_STMT_TYPE_DECLARE_CURSOR, /* Added for DECLARE CURSOR statement handling */
-    TECC_STMT_TYPE_EXPLAIN         /* EXPLAIN statement */
+    TECC_STMT_TYPE_EXPLAIN,         /* EXPLAIN statement */
+    TECC_STMT_TYPE_CREATE_VIEW,     /* CREATE VIEW statement - ReqID:TECC4.0 密态视图支持 */
+    TECC_STMT_TYPE_CREATE_MATVIEW,  /* CREATE MATERIALIZED VIEW - ReqID:TECC4.0 密态视图支持 */
+    TECC_STMT_TYPE_UPDATE_META      /* SELECT update_meta() - ReqID:TECC4.0 手动刷新元数据缓存 */
 } TeccStatementType;
 
 /* ==================== Parameter Mapping Structure ==================== */
@@ -507,7 +552,6 @@ typedef struct TeccStatementData {
 
     /* Processing status */
     int needs_rewrite;              /* Whether SQL rewrite is needed */
-    int fallback_did_encrypt;         /* PBE fallback already encrypted params */
     int where_needs_rewrite;        /* Whether WHERE clause rewrite is needed */
     int error_code;                 /* Error code */
     char error_message[256];        /* Error message buffer */
@@ -542,12 +586,20 @@ typedef struct TeccStatementData {
     const char *stmtName;
     size_t offset;
 
-    /* COPY相关字段 */
-    void *copy_state;           /* COPY状态信息指针 */
-    bool is_copy_command;       /* 是否为COPY命令 */
-    void *copy_stmt;            /* COPY语句解析树指针 */
+	/* COPY相关字段 */
+	void *copy_state;           /* COPY状态信息指针 */
+	bool is_copy_command;       /* 是否为COPY命令 */
+	void *copy_stmt;            /* COPY语句解析树指针 */
 
-    /* CSV数据处理 */
+	/* ReqID:TECC4.0 - COPY子查询列映射（processor输出，hook回填到copy_state） */
+	int *copy_column_mapping;   /* 文件列→所属表attnum映射数组（-1=非密态列/表达式） */
+	int copy_mapping_count;     /* 映射条目数 */
+	/* ReqID:TECC4.0 - Bug 907：每个输出列的唯一来源表名（多表 JOIN 必需；
+	 * 非密态列/表达式/列为 NULL）。与 copy_column_mapping 一一对应，
+	 * 长度同为 copy_mapping_count。 */
+	char **copy_column_table_names;
+
+	/* CSV数据处理 */
     char *csv_buffer;           /* CSV缓冲区 */
     size_t csv_buffer_size;     /* CSV缓冲区大小 */
     size_t csv_buffer_offset;   /* CSV缓冲区偏移 */
@@ -577,6 +629,7 @@ typedef struct TeccStatementData {
     /* Operator type for WHERE clause processing */
     TeccOperatorType operator_type;          /* Current operator type for WHERE clause */
     TeccOperatorType current_operator_type;  /* Alias for operator_type (backward compatibility) */
+    char like_escape_char;                   /* ReqID:TECC4.0 - LIKE ESCAPE character (0 = none) */
 
     /* Scenario type for algorithm selection */
     int scenario_type;                       /* Scenario type (INSERT, UPDATE, WHERE, etc.) */
@@ -604,9 +657,33 @@ typedef struct TeccStatementData {
      * clearing.  drop_remove_type stores the ObjectType (e.g.
      * OBJECT_TABLE, OBJECT_KEK, OBJECT_DEK); drop_behavior stores
      * DropBehavior (DROP_CASCADE / DROP_RESTRICT).  Negative means N/A. */
-    int drop_remove_type;
-    int drop_behavior;
+    int drop_remove_type;    int drop_behavior;
     Oid drop_key_oid;               /* ReqID:TECC4.0 - OID of dropped KEK/DEK for cache invalidation */
+
+    /* ReqID:TECC4.0 - PREPARE 语句体改写时保留 ENCRYPTED WITH 子句。
+     *
+     * cast 的密文替换文本默认是 E'\x..'::type，会把原 cast 整段（含
+     * ENCRYPTED WITH (...)）一起吃掉。子句是"新列从哪来"的唯一来源：服务端
+     * 只有在 CREATE TABLE ... AS EXECUTE <prepared> 时才需要它来派生结果表的
+     * 列加密元数据（transformCreateTableAsStmt 从原始解析树的目标列里取）。
+     * PREPARE 体在改写后就不再变化，若此时丢掉子句，服务端永远拿不回来，
+     * 该 CTAS 落成的列就成了"有加密类型、无元数据"的坏列。
+     * 置位后替换文本会把原样的子句拼回 cast 之后。 */
+    int keep_encrypted_with_clause;
+
+    /* ReqID:TECC4.0 - 本语句是否写进一个已存在的目标表（INSERT ... VALUES /
+     * INSERT ... SELECT）。INSERT 的 SELECT 部分会先交给 SELECT 处理器跑一遍
+     * （那一路拿不到目标列），单看有没有 InsertStmt 分不出它与"真·纯 SELECT"。
+     * 用它区分：有目标表时该列真实存在、排序规则由列自己决定，不能按"新列继承
+     * 库默认排序规则"假设；无目标表（纯 SELECT、视图/物化视图定义、CTAS）才是
+     * 新列。判据见 process_one_typecast / process_insert_select_typecast。 */
+    bool has_insert_target;
+
+    /* ReqID:TECC4.0 - HE 硬加密：CREATE KEK 时前端获取的 SM2 公钥（65 字节
+     * 未压缩点 hex），用于 SQL 改写注入 public_key 参数，替代后端读 .pub 文件。
+     * 前端（localkms 读 .pub / HSM export_public_key）填充，stmt_processor
+     * 消费后改写 SQL。NULL 表示非非对称 KEK 或未获取。 */
+    char *kek_public_key_hex;
 } TeccStatementData;
 
 /* ==================== COPY Data Structures ==================== */
@@ -685,8 +762,9 @@ typedef struct TeccEnhancedCopyState {
     int encrypted_column_count;    /* 加密列数量 */
 
     /* 列映射信息 */
-    int *column_mapping;           /* 列映射（文件列→表列） */
+    int *column_mapping;           /* 列映射（文件列→表列attnum） */
     int mapping_count;             /* 映射数量 */
+    char **column_table_names;     /* 列来源表名（多表JOIN时使用，NULL=单表） */
 
     /* 数据处理状态 */
     bool is_from_stdin;            /* 是否为COPY FROM STDIN */
@@ -695,6 +773,10 @@ typedef struct TeccEnhancedCopyState {
     char *row_buffer;              /* 行缓冲区 */
     size_t buffer_size;            /* 缓冲区大小 */
     size_t buffer_capacity;        /* 缓冲区容量 */
+
+    /* 子查询多表信息 */
+    Oid *subquery_table_oids;      /* 子查询中涉及的表OID数组（JOIN多表） */
+    int subquery_table_count;      /* 子查询表数量（0=单表/非子查询） */
 
     /* 格式信息 */
     bool csv_mode;                 /* CSV格式 */
@@ -720,10 +802,8 @@ typedef struct TeccEnhancedCopyState {
     /* 进度信息 */
     TeccCopyProgress progress;     /* 进度信息 */
 
-    /* 处理器上下文 */
-    void *processor_ctx;           /* 处理器上下文 */
-    void *crypto_ctx;              /* 加密上下文 */
-    void *formatter_ctx;           /* 格式化器上下文 */
+    /* 加密上下文 */
+    void *crypto_ctx;              /* 加密上下文（TeccCryptoContext **数组，每个加密列一个） */
 
     /* 流式处理上下文 */
     void **stream_crypto_contexts; /* 流式加密上下文数组（每个加密列一个） */
@@ -731,7 +811,6 @@ typedef struct TeccEnhancedCopyState {
     bool stream_contexts_initialized; /* 流式上下文是否已初始化 */
 
     /* 内存管理 */
-    void *memory_pool;             /* 内存池 */
     size_t memory_used;            /* 已使用内存 */
     size_t memory_limit;           /* 内存限制 */
 

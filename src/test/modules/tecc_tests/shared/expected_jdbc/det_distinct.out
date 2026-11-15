@@ -1,0 +1,100 @@
+NOTICE: key encryption key "kek_det_dist" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+=== 1 COUNT(DISTINCT det) ===
+NOTICE: table "test_dd_t1" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 6
+1a_count_distinct_text|4
+1b_count_distinct_int|3
+1c_count_distinct_varchar|3
+1d_count_distinct_numeric|3
+1e_count_distinct_ope|6
+=== 2 FILTER ===
+2a_filter|4
+2b_filter_all|4
+2c_filter_none|0
+=== 3 DISTINCT / GROUP BY ===
+3a_select_distinct|Alice
+3a_select_distinct|Bob
+3a_select_distinct|Alice
+3a_select_distinct|Charlie
+3a_select_distinct|Bob
+3a_select_distinct|Dave
+3b_group_by|Alice|2
+3b_group_by|Bob|2
+3b_group_by|Charlie|1
+3b_group_by|Dave|1
+=== 4 GROUP BY + COUNT(DISTINCT) ===
+4a_group_distinct|0|3
+4a_group_distinct|1|2
+4b_group_det|a|2
+4b_group_det|b|2
+4b_group_det|c|1
+4b_group_det||1
+4c_group_det_distinct_same|Alice|1
+4c_group_det_distinct_same|Bob|1
+4c_group_det_distinct_same|Charlie|1
+4c_group_det_distinct_same|Dave|1
+4d_group_det_distinct_other|a|1
+4d_group_det_distinct_other|b|1
+4d_group_det_distinct_other|c|1
+4d_group_det_distinct_other||1
+4e_group_det_plain|Alice|1|1
+4e_group_det_plain|Bob|0|1
+4e_group_det_plain|Charlie|0|1
+4e_group_det_plain|Bob|1|1
+4e_group_det_plain|Dave|0|0
+4f_rollup_det||4
+4f_rollup_det|a|1
+4f_rollup_det|b|1
+4f_rollup_det|c|1
+4f_rollup_det||1
+SET WORK_MEM
+SET HASH_MEM_MULTIPLIER
+SET ENABLE_SORT
+4g_spill_hashed_distinct|1200
+RESET ENABLE_SORT
+RESET HASH_MEM_MULTIPLIER
+RESET WORK_MEM
+SET ENABLE_SORT
+4h_ope_group_distinct|false|5
+4h_ope_group_distinct|true|1
+RESET ENABLE_SORT
+=== 5 rescan ===
+5a_corr|1|1
+5a_corr|2|2
+5a_corr|3|2
+5a_corr|4|3
+5a_corr|5|3
+5a_corr|6|4
+=== 6 multiple DISTINCT aggs ===
+6a_multi|4|3|6
+=== 7 plain types ===
+CREATE TEMP
+INSERT 0 5
+7a_plain_text|3
+7b_plain_int|4
+SET ENABLE_SORT
+7c_plain_group_distinct|0|2
+7c_plain_group_distinct|1|1
+RESET ENABLE_SORT
+=== 8 ordering semantics preserved ===
+ERROR: ERROR: cannot compare encrypted values for ordering: no OPE ciphertext available
+ERROR: ERROR: cannot compare encrypted values for ordering: no OPE ciphertext available
+ERROR: ERROR: cannot compare encrypted values for ordering: no OPE ciphertext available
+=== 8d group by + having det ===
+8d_having_det_on|Alice|2
+SET ENABLE_SORT
+8e_having_det_off|Alice|2
+RESET ENABLE_SORT
+8f_where_group_det|Alice|2
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+WARNING: Encrypted column [test_dd_t1.name] in ORDER BY without OPE: ordering by ciphertext bytes, semantic order may differ from plaintext order.
+WARNING: Encrypted column [test_dd_t1.name] in ORDER BY without OPE: ordering by ciphertext bytes, semantic order may differ from plaintext order.
+WARNING: Encrypted column [test_dd_t1.name] in ORDER BY without OPE: ordering by ciphertext bytes, semantic order may differ from plaintext order.

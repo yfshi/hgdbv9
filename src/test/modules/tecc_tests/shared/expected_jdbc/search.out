@@ -1,98 +1,36 @@
-发现 1 个 SQL 文件，开始执行...
-
-报告输出目录: /home/wxp/tecc4_on_pg14/src/test/modules/tecc_tests/.
-
->>> 执行文件: search.sql
-    [simple] 完成, 48 条语句
->>> search.sql
->>> 1
-DROP KEK IF EXISTS kek_search CASCADE
-rows: 0
->>> 2
-CREATE KEK kek_search WITH (     key_store = 'localkms',     key_path = '/tmp/kek_search.key' )
-rows: 0
->>> 3
-CREATE DEK dek_search WITH VALUES(KEK = kek_search)
-rows: 0
->>> 4
-SELECT '=== 1 LIKE Wildcard ==='
+NOTICE: key encryption key "kek_search" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
 === 1 LIKE Wildcard ===
-rows: -1
->>> 5
-DROP TABLE IF EXISTS tecc_like_test CASCADE
-rows: 0
->>> 6
-CREATE TABLE tecc_like_test (     id SERIAL PRIMARY KEY,     text_col text_enc encrypted with (dek = dek_search, support_algo='search'),     varchar_col varchar_enc encrypted with (dek = dek_search, s...
-rows: 0
->>> 7
-INSERT INTO tecc_like_test (text_col, varchar_col, bpchar_col) VALUES ('apple', 'apple', 'apple'), ('application', 'application', 'application'), ('banana', 'banana', 'banana'), ('berry', 'berry', 'be...
-rows: 21
->>> 8
-SELECT '1a_text_like_apple_pct', id, text_col FROM tecc_like_test WHERE text_col LIKE 'apple%' ORDER BY id
+NOTICE: table "tecc_like_test" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 21
 1a_text_like_apple_pct|1|apple
 1a_text_like_apple_pct|9|apple123
-rows: -1
->>> 9
-SELECT '1b_varchar_like_a_pct', id, varchar_col FROM tecc_like_test WHERE varchar_col LIKE 'a%' ORDER BY id
 1b_varchar_like_a_pct|1|apple
 1b_varchar_like_a_pct|2|application
 1b_varchar_like_a_pct|9|apple123
 1b_varchar_like_a_pct|15|a
-rows: -1
->>> 10
-SELECT '1c_bpchar_like_123_pct', id, bpchar_col FROM tecc_like_test WHERE bpchar_col LIKE '123%' ORDER BY id
 1c_bpchar_like_123_pct|8|123apple
-rows: -1
->>> 11
-SELECT '1d_text_like_app_e', id, text_col FROM tecc_like_test WHERE text_col LIKE 'app_e' ORDER BY id
 1d_text_like_app_e|1|apple
-rows: -1
->>> 12
-SELECT '1e_varchar_like_b_n_n_', id, varchar_col FROM tecc_like_test WHERE varchar_col LIKE 'b_n_n_' ORDER BY id
 1e_varchar_like_b_n_n_|3|banana
-rows: -1
->>> 13
-SELECT '1f_bpchar_mod_like_a_pct_e', id, bpchar_col FROM tecc_like_test WHERE bpchar_col LIKE 'a%_e' ORDER BY id
 1f_bpchar_mod_like_a_pct_e|1|apple
-rows: -1
->>> 14
-SELECT '1g_varchar_like_a_5us', id, varchar_col FROM tecc_like_test WHERE varchar_col LIKE 'a_____' ORDER BY id
-rows: -1
->>> 15
-SELECT '1h_text_like_app_e_pct', id, text_col FROM tecc_like_test WHERE text_col LIKE 'app_e%' ORDER BY id
 1h_text_like_app_e_pct|1|apple
 1h_text_like_app_e_pct|9|apple123
-rows: -1
->>> 16
-SELECT '1i_text_like_pct_apple', id, text_col FROM tecc_like_test WHERE text_col LIKE '%apple' ORDER BY id
 1i_text_like_pct_apple|1|apple
 1i_text_like_pct_apple|8|123apple
 1i_text_like_pct_apple|10|pineapple
 1i_text_like_pct_apple|12|red apple
 1i_text_like_pct_apple|13|green apple
-rows: -1
->>> 17
-SELECT '1j_text_like_pct_ana_pct', id, text_col FROM tecc_like_test WHERE text_col LIKE '%ana%' ORDER BY id
 1j_text_like_pct_ana_pct|3|banana
-rows: -1
->>> 18
-DROP TABLE IF EXISTS tecc_like_test CASCADE
-rows: 0
->>> 19
-SELECT '=== 2 NOT LIKE ==='
+DROP TABLE
 === 2 NOT LIKE ===
-rows: -1
->>> 20
-DROP TABLE IF EXISTS tecc_not_like_test CASCADE
-rows: 0
->>> 21
-CREATE TABLE tecc_not_like_test (     id SERIAL PRIMARY KEY,     text_col text_enc encrypted with (dek = dek_search, support_algo='search'),     varchar_col varchar_enc encrypted with (dek = dek_searc...
-rows: 0
->>> 22
-INSERT INTO tecc_not_like_test (text_col, varchar_col, bpchar_col) VALUES ('apple', 'apple', 'apple'), ('application', 'application', 'application'), ('banana', 'banana', 'banana'), ('berry', 'berry',...
-rows: 20
->>> 23
-SELECT '2a_text_not_like_app_pct', id, text_col FROM tecc_not_like_test WHERE text_col NOT LIKE 'app%' ORDER BY id
+NOTICE: table "tecc_not_like_test" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 20
 2a_text_not_like_app_pct|3|banana
 2a_text_not_like_app_pct|4|berry
 2a_text_not_like_app_pct|5|cherry
@@ -109,9 +47,6 @@ SELECT '2a_text_not_like_app_pct', id, text_col FROM tecc_not_like_test WHERE te
 2a_text_not_like_app_pct|17|test
 2a_text_not_like_app_pct|18|TEST
 2a_text_not_like_app_pct|19|Test
-rows: -1
->>> 24
-SELECT '2b_varchar_not_like_a_pct', id, varchar_col FROM tecc_not_like_test WHERE varchar_col NOT LIKE 'a%' ORDER BY id
 2b_varchar_not_like_a_pct|3|banana
 2b_varchar_not_like_a_pct|4|berry
 2b_varchar_not_like_a_pct|5|cherry
@@ -127,9 +62,6 @@ SELECT '2b_varchar_not_like_a_pct', id, varchar_col FROM tecc_not_like_test WHER
 2b_varchar_not_like_a_pct|17|test
 2b_varchar_not_like_a_pct|18|TEST
 2b_varchar_not_like_a_pct|19|Test
-rows: -1
->>> 25
-SELECT '2c_bpchar_not_like_123_pct', id, bpchar_col FROM tecc_not_like_test WHERE bpchar_col NOT LIKE '123%' ORDER BY id
 2c_bpchar_not_like_123_pct|1|apple
 2c_bpchar_not_like_123_pct|2|application
 2c_bpchar_not_like_123_pct|3|banana
@@ -148,9 +80,6 @@ SELECT '2c_bpchar_not_like_123_pct', id, bpchar_col FROM tecc_not_like_test WHER
 2c_bpchar_not_like_123_pct|17|test
 2c_bpchar_not_like_123_pct|18|TEST
 2c_bpchar_not_like_123_pct|19|Test
-rows: -1
->>> 26
-SELECT '2d_bpchar_not_like_pct_123', id, bpchar_col FROM tecc_not_like_test WHERE bpchar_col NOT LIKE '%123' ORDER BY id
 2d_bpchar_not_like_pct_123|1|apple
 2d_bpchar_not_like_pct_123|2|application
 2d_bpchar_not_like_pct_123|3|banana
@@ -169,44 +98,22 @@ SELECT '2d_bpchar_not_like_pct_123', id, bpchar_col FROM tecc_not_like_test WHER
 2d_bpchar_not_like_pct_123|17|test
 2d_bpchar_not_like_pct_123|18|TEST
 2d_bpchar_not_like_pct_123|19|Test
-rows: -1
->>> 27
-SELECT '2e_text_like_app_pct_ctrl', id, text_col FROM tecc_not_like_test WHERE text_col LIKE 'app%' ORDER BY id
 2e_text_like_app_pct_ctrl|1|apple
 2e_text_like_app_pct_ctrl|2|application
 2e_text_like_app_pct_ctrl|9|apple123
-rows: -1
->>> 28
-DROP TABLE IF EXISTS tecc_not_like_test CASCADE
-rows: 0
->>> 29
-SELECT '=== 3 LIKE + NOT LIKE Combined ==='
+DROP TABLE
 === 3 LIKE + NOT LIKE Combined ===
-rows: -1
->>> 30
-DROP TABLE IF EXISTS tecc_like_combined CASCADE
-rows: 0
->>> 31
-CREATE TABLE tecc_like_combined (     id SERIAL PRIMARY KEY,     text_col text_enc encrypted with (dek = dek_search, support_algo='search'),     varchar_col varchar_enc encrypted with (dek = dek_searc...
-rows: 0
->>> 32
-INSERT INTO tecc_like_combined (text_col, varchar_col, bpchar_col) VALUES ('apple', 'apple', 'apple'), ('application', 'application', 'application'), ('banana', 'banana', 'banana'), ('berry', 'berry',...
-rows: 20
->>> 33
-SELECT '3a_bpchar_like_a_not_like_123', id, bpchar_col FROM tecc_like_combined WHERE bpchar_col LIKE 'a%' AND bpchar_col NOT LIKE '%123' ORDER BY id
+NOTICE: table "tecc_like_combined" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 20
 3a_bpchar_like_a_not_like_123|1|apple
 3a_bpchar_like_a_not_like_123|2|application
 3a_bpchar_like_a_not_like_123|14|a
-rows: -1
->>> 34
-SELECT '3b_bpchar_like_a_pct_ctrl', id, bpchar_col FROM tecc_like_combined WHERE bpchar_col LIKE 'a%' ORDER BY id
 3b_bpchar_like_a_pct_ctrl|1|apple
 3b_bpchar_like_a_pct_ctrl|2|application
 3b_bpchar_like_a_pct_ctrl|9|apple123
 3b_bpchar_like_a_pct_ctrl|14|a
-rows: -1
->>> 35
-SELECT '3c_bpchar_not_like_123_ctrl', id, bpchar_col FROM tecc_like_combined WHERE bpchar_col NOT LIKE '%123' ORDER BY id
 3c_bpchar_not_like_123_ctrl|1|apple
 3c_bpchar_not_like_123_ctrl|2|application
 3c_bpchar_not_like_123_ctrl|3|banana
@@ -225,1276 +132,178 @@ SELECT '3c_bpchar_not_like_123_ctrl', id, bpchar_col FROM tecc_like_combined WHE
 3c_bpchar_not_like_123_ctrl|17|test
 3c_bpchar_not_like_123_ctrl|18|TEST
 3c_bpchar_not_like_123_ctrl|19|Test
-rows: -1
->>> 36
-DROP TABLE IF EXISTS tecc_like_combined CASCADE
-rows: 0
->>> 37
-SELECT '=== 4 Empty String + NOT LIKE ==='
+DROP TABLE
 === 4 Empty String + NOT LIKE ===
-rows: -1
->>> 38
-DROP TABLE IF EXISTS tecc_empty_search CASCADE
-rows: 0
->>> 39
-CREATE TABLE tecc_empty_search (     id SERIAL PRIMARY KEY,     text_col text_enc encrypted with (dek = dek_search, support_algo='search'),     varchar_col varchar_enc encrypted with (dek = dek_search...
-rows: 0
->>> 40
-INSERT INTO tecc_empty_search (text_col, varchar_col, bpchar_col) VALUES ('', '', ''), ('a', 'a', 'a'), ('ab', 'ab', 'ab'), (NULL, NULL, NULL)
-rows: 4
->>> 41
-SELECT '4a_not_like_123', id, text_col, varchar_col, bpchar_col FROM tecc_empty_search WHERE bpchar_col NOT LIKE '%123' ORDER BY id
+NOTICE: table "tecc_empty_search" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
 4a_not_like_123|1|||
 4a_not_like_123|2|a|a|a
 4a_not_like_123|3|ab|ab|ab
-rows: -1
->>> 42
-SELECT '4b_not_like_b', id, bpchar_col FROM tecc_empty_search WHERE bpchar_col NOT LIKE 'b' ORDER BY id
 4b_not_like_b|1|
 4b_not_like_b|2|a
 4b_not_like_b|3|ab
-rows: -1
->>> 43
-SELECT '4c_like_pct', id, bpchar_col FROM tecc_empty_search WHERE bpchar_col LIKE '%' ORDER BY id
 4c_like_pct|1|
 4c_like_pct|2|a
 4c_like_pct|3|ab
-rows: -1
->>> 44
-SELECT '4d_text_not_like_123', id, text_col FROM tecc_empty_search WHERE text_col NOT LIKE '%123' ORDER BY id
 4d_text_not_like_123|1|
 4d_text_not_like_123|2|a
 4d_text_not_like_123|3|ab
-rows: -1
->>> 45
-SELECT '4e_varchar_not_like_123', id, varchar_col FROM tecc_empty_search WHERE varchar_col NOT LIKE '%123' ORDER BY id
 4e_varchar_not_like_123|1|
 4e_varchar_not_like_123|2|a
 4e_varchar_not_like_123|3|ab
-rows: -1
->>> 46
-DROP TABLE IF EXISTS tecc_empty_search CASCADE
-rows: 0
->>> 47
-SELECT '=== Cleanup ==='
+DROP TABLE
+=== 5 Edge Cases ===
+NOTICE: table "tecc_edge_test" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 10
+5z1_plain: a_c LIKE ___|true
+5z2_plain: a_c LIKE a_c|true
+5z3_plain: abc LIKE ___|true
+5z4_plain: abc LIKE a_c|true
+5a___|ab|false|false
+5a___|abc|true|true
+5a___|abcd|false|false
+5a___|abcde|false|false
+5a___|axc|true|true
+5a___|a_c|true|true
+5a___|a1234|false|false
+5a___|ab234|false|false
+5a___||false|false
+5a___|a|false|false
+5b____|ab|false|false
+5b____|abc|false|false
+5b____|abcd|true|true
+5b____|abcde|false|false
+5b____|axc|false|false
+5b____|a_c|false|false
+5b____|a1234|false|false
+5b____|ab234|false|false
+5b____||false|false
+5b____|a|false|false
+5c__|ab|true|true
+5c__|abc|false|false
+5c__|abcd|false|false
+5c__|abcde|false|false
+5c__|axc|false|false
+5c__|a_c|false|false
+5c__|a1234|false|false
+5c__|ab234|false|false
+5c__||false|false
+5c__|a|false|false
+5d_a_|ab|true|true
+5d_a_|abc|false|false
+5d_a_|abcd|false|false
+5d_a_|abcde|false|false
+5d_a_|axc|false|false
+5d_a_|a_c|false|false
+5d_a_|a1234|false|false
+5d_a_|ab234|false|false
+5d_a_||false|false
+5d_a_|a|false|false
+5e_a__|ab|false|false
+5e_a__|abc|true|true
+5e_a__|abcd|false|false
+5e_a__|abcde|false|false
+5e_a__|axc|true|true
+5e_a__|a_c|true|true
+5e_a__|a1234|false|false
+5e_a__|ab234|false|false
+5e_a__||false|false
+5e_a__|a|false|false
+5f_a___|ab|false|false
+5f_a___|abc|false|false
+5f_a___|abcd|true|true
+5f_a___|abcde|false|false
+5f_a___|axc|false|false
+5f_a___|a_c|false|false
+5f_a___|a1234|false|false
+5f_a___|ab234|false|false
+5f_a___||false|false
+5f_a___|a|false|false
+5g__c|ab|false|false
+5g__c|abc|true|true
+5g__c|abcd|false|false
+5g__c|abcde|false|false
+5g__c|axc|true|true
+5g__c|a_c|true|true
+5g__c|a1234|false|false
+5g__c|ab234|false|false
+5g__c||false|false
+5g__c|a|false|false
+5h___d|ab|false|false
+5h___d|abc|false|false
+5h___d|abcd|true|true
+5h___d|abcde|false|false
+5h___d|axc|false|false
+5h___d|a_c|false|false
+5h___d|a1234|false|false
+5h___d|ab234|false|false
+5h___d||false|false
+5h___d|a|false|false
+5i_a____|ab|false|false
+5i_a____|abc|false|false
+5i_a____|abcd|false|false
+5i_a____|abcde|true|true
+5i_a____|axc|false|false
+5i_a____|a_c|false|false
+5i_a____|a1234|true|true
+5i_a____|ab234|true|true
+5i_a____||false|false
+5i_a____|a|false|false
+5j_ab___|ab|false|false
+5j_ab___|abc|false|false
+5j_ab___|abcd|false|false
+5j_ab___|abcde|true|true
+5j_ab___|axc|false|false
+5j_ab___|a_c|false|false
+5j_ab___|a1234|false|false
+5j_ab___|ab234|true|true
+5j_ab___||false|false
+5j_ab___|a|false|false
+5k_a_c|ab|false|false
+5k_a_c|abc|true|true
+5k_a_c|abcd|false|false
+5k_a_c|abcde|false|false
+5k_a_c|axc|true|true
+5k_a_c|a_c|true|true
+5k_a_c|a1234|false|false
+5k_a_c|ab234|false|false
+5k_a_c||false|false
+5k_a_c|a|false|false
+5l_a%_|ab|true|true
+5l_a%_|abc|true|true
+5l_a%_|abcd|true|true
+5l_a%_|abcde|true|true
+5l_a%_|axc|true|true
+5l_a%_|a_c|true|true
+5l_a%_|a1234|true|true
+5l_a%_|ab234|true|true
+5l_a%_||false|false
+5l_a%_|a|false|false
+5m_%c|ab|false|false
+5m_%c|abc|true|true
+5m_%c|abcd|false|false
+5m_%c|abcde|false|false
+5m_%c|axc|true|true
+5m_%c|a_c|true|true
+5m_%c|a1234|false|false
+5m_%c|ab234|false|false
+5m_%c||false|false
+5m_%c|a|false|false
+5n_%a%|ab|true|true
+5n_%a%|abc|true|true
+5n_%a%|abcd|true|true
+5n_%a%|abcde|true|true
+5n_%a%|axc|true|true
+5n_%a%|a_c|true|true
+5n_%a%|a1234|true|true
+5n_%a%|ab234|true|true
+5n_%a%||false|false
+5n_%a%|a|true|true
+DROP TABLE
 === Cleanup ===
-rows: -1
->>> 48
-DROP KEK IF EXISTS kek_search CASCADE
-rows: 0
-    语句总数: 48, 通过率: 100%
-
-====================================
-全部完成: 1 个文件, 100% 通过率
-
-报告已生成: /home/wxp/tecc4_on_pg14/src/test/modules/tecc_tests/.
-5月 24, 2026 4:11:14 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
-WARNING: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
-5月 24, 2026 4:11:14 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
-WARNING: Failed to read SymAlgFlag.SGD_SM4_CBC via reflection, using fallback=1026: com.tzwy.corelib.gm0006algflag.SymAlgFlag
-5月 24, 2026 4:11:14 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
-WARNING: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
-5月 24, 2026 4:11:16 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:16 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:17 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:17 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:17 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:17 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:17 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:17 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:17 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:17 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:17 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:18 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:18 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:18 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:18 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:18 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:18 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:18 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:18 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:19 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:19 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:19 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:19 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:19 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:20 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:20 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:20 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:20 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:20 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:20 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:20 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:21 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:21 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:21 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:21 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:21 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:21 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:21 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:22 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:22 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:22 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:22 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:22 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:22 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:22 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:22 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:22 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:22 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2316)
-	at org.postgresql.jdbc.PgResultSet.getBoolean(PgResultSet.java:2826)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLTypeFromQueryResult(TypeInfoCache.java:249)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:365)
-	at org.postgresql.jdbc.TypeInfoCache.getSQLType(TypeInfoCache.java:324)
-	at org.postgresql.jdbc.PgResultSet.initSqlType(PgResultSet.java:3104)
-	at org.postgresql.jdbc.PgResultSet.getSQLType(PgResultSet.java:3092)
-	at org.postgresql.jdbc.PgResultSet.internalGetObject(PgResultSet.java:220)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2941)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
-
-5月 24, 2026 4:11:23 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
-WARNING: fetchColumnsByTable failed for .
-FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
-	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnsByTable(DefaultMetadataFetcher.java:268)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$7(MetadataCacheManager.java:1689)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
-	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1687)
-	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
-	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1685)
-	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:1618)
-	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3387)
-	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3174)
-	at org.postgresql.jdbc.PgResultSet.getObject(PgResultSet.java:2928)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.captureResultSet(TeccSqlTestRunner.java:850)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeWithStatement(TeccSqlTestRunner.java:735)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeOneMode(TeccSqlTestRunner.java:714)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.executeSqlFile(TeccSqlTestRunner.java:544)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.run(TeccSqlTestRunner.java:335)
-	at org.postgresql.test.clientlogic.tools.TeccSqlTestRunner.main(TeccSqlTestRunner.java:297)
+NOTICE: drop cascades to data encryption key dek_search
+DROP KEK

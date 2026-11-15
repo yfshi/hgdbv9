@@ -1,0 +1,35 @@
+<!--
+doc/src/sgml/ref/drop_dek.sgml
+-->
+
+<refentry id="sql-dropdek">
+ <indexterm zone="sql-dropdek">
+  <primary>DROP DEK</primary>
+ </indexterm>
+
+ <refmeta>
+  <refentrytitle>DROP DEK</refentrytitle>
+  <manvolnum>7</manvolnum>
+  <refmiscinfo>SQL - Language Statements</refmiscinfo>
+ </refmeta>
+
+ <refnamediv>
+  <refname>DROP DEK</refname>
+  <refpurpose>remove a TECC data-encryption key</refpurpose>
+ </refnamediv>
+
+ <refsynopsisdiv>
+<synopsis>
+DROP DEK [ IF EXISTS ] <replaceable class="parameter">dek_name</replaceable> [, ...] [ CASCADE | RESTRICT ]
+</synopsis>
+ </refsynopsisdiv>
+
+ <refsect1>
+  <title>Description</title>
+  <para>
+   <command>DROP DEK</command> removes a TECC data-encryption key.  A DEK used
+   by encrypted columns cannot be dropped while those columns still depend on
+   it.
+  </para>
+ </refsect1>
+</refentry>

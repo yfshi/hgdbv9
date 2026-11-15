@@ -30,10 +30,11 @@ CREATE TABLE cross_rnd (
 DROP TABLE IF EXISTS cross_det CASCADE;
 CREATE TABLE cross_det (
     id SERIAL,
-    c_int4  int4_enc    ENCRYPTED WITH (DEK = dek_det, SUPPORT_ALGO = 'det'),
-    c_float8  float8_enc   ENCRYPTED WITH (DEK = dek_det, SUPPORT_ALGO = 'det'),
-    c_text  text_enc     ENCRYPTED WITH (DEK = dek_det, SUPPORT_ALGO = 'det'),
-    c_varchar varchar_enc ENCRYPTED WITH (DEK = dek_det, SUPPORT_ALGO = 'det')
+    c_int4     int4_enc     ENCRYPTED WITH (DEK = dek_det, SUPPORT_ALGO = 'det'),
+    c_float8   float8_enc   ENCRYPTED WITH (DEK = dek_det, SUPPORT_ALGO = 'det'),
+    c_numeric  numeric_enc  ENCRYPTED WITH (DEK = dek_det, SUPPORT_ALGO = 'det'),
+    c_text     text_enc     ENCRYPTED WITH (DEK = dek_det, SUPPORT_ALGO = 'det'),
+    c_varchar  varchar_enc  ENCRYPTED WITH (DEK = dek_det, SUPPORT_ALGO = 'det')
 );
 
 -- OPE表

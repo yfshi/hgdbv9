@@ -87,6 +87,9 @@ static Node *make_func_call_from_list(List *funcname, List *args, int location);
 static Node *make_a_expr(int kind, List *name, Node *lexpr, Node *rexpr, int location);
 static Node *make_a_expr_escape(int kind, List *name, Node *lexpr, Node *rexpr, Node *escape, int location);
 static Node *make_bool_expr(int boolop, List *args, int location);
+/* ReqID:TECC4.0 - Expand `expr op ANY/SOME/ALL(ARRAY[...])` into OR/AND of
+ * element comparisons so each constant goes through the normal encryption path. */
+static Node *make_any_all_array_expr(void *op_name, void *lhs, List *elements, int use_or, int location);
 static Node *make_null_test(Node *arg, int nulltesttype, int location);
 static List *convert_string_list_to_restargets(List *string_list, int location);
 
@@ -183,6 +186,8 @@ typedef struct PartitionOfClause {
 %token SELECT INSERT UPDATE DELETE CREATE DROP ALTER
 %token EXPLAIN ANALYZE VERBOSE
 %token KEK DEK TABLE VIEW INDEX SEQUENCE FUNCTION
+%token MATERIALIZED REPLACE REFRESH  /* ReqID:TECC4.0 - 密态视图支持 */
+%token KEY_ALGO KEY_LENGTH KEY_PATH KEY_STORE KEY_TYPE
 %token ARRAY
 %token CURRENT_DATE CURRENT_TIME CURRENT_TIMESTAMP
 %token WITH RECURSIVE WHERE FROM SET INTO VALUES
@@ -229,6 +234,13 @@ typedef struct PartitionOfClause {
 %token SHARE NOWAIT SKIP LOCKED OVERRIDING USER_P SYSTEM_P VALUE_P
 %token AT_P TIME_P ZONE_P
 
+/* ReqID:TECC4.0 - SET 语句语法关键字（完整 SET 变体支持） */
+%token LOCAL SESSION TRANSACTION CHARACTERISTICS
+%token CATALOG_P NAMES ROLE AUTHORIZATION
+%token XML_P OPTION DOCUMENT CONTENT SNAPSHOT
+%token ISOLATION LEVEL READ UNCOMMITTED COMMITTED
+%token REPEATABLE SERIALIZABLE ONLY WRITE CURRENT_P
+
 /* Operators */
 %token PLUS MINUS STAR SLASH PERCENT
 %token EQUAL NOT_EQUAL LESS GREATER LESS_EQUAL GREATER_EQUAL
@@ -241,12 +253,14 @@ typedef struct PartitionOfClause {
 %token COLON DOLLAR
 
 /* Expression precedence */
-%nonassoc IS NULL_P IN
-%nonassoc BETWEEN
+%nonassoc IS NULL_P
 %left OR
 %left AND
 %right NOT
-%nonassoc LIKE ILIKE SIMILAR REGEX_NOT_MATCH REGEX_NOT_MATCH_CI REGEX_MATCH REGEX_MATCH_CI
+/* ReqID:TECC4.0 - IN/BETWEEN 必须高于 AND/OR（与 PostgreSQL 一致），否则
+ * `id=1 AND a IN (1,2)` 会被解析成 `(id=1 AND a) IN (1,2)`，加密列 a 被
+ * 包在 BoolExpr 里，比较识别为 expr=expr，明文字面量不加密。 */
+%nonassoc IN BETWEEN LIKE ILIKE SIMILAR REGEX_NOT_MATCH REGEX_NOT_MATCH_CI REGEX_MATCH REGEX_MATCH_CI
 %nonassoc EQUAL NOT_EQUAL LESS GREATER LESS_EQUAL GREATER_EQUAL
 %left OP /* ReqID:TECC4.0 - OPERATOR() generic precedence */
 %left PLUS MINUS CONCAT
@@ -265,10 +279,10 @@ typedef struct PartitionOfClause {
 %type <node> expr b_expr simple_expr
 %type <node> input stmt
 %type <list> stmt_list
-%type <node> create_kek_stmt create_dek_stmt drop_stmt create_table_stmt alter_table_stmt
+%type <node> create_kek_stmt alter_kek_stmt create_dek_stmt drop_stmt create_table_stmt alter_table_stmt
 %type <ival> opt_drop_behavior
 %type <node> kek_param dek_param
-%type <node> PreparableStmt prepare_stmt execute_stmt deallocate_stmt declare_stmt copy_stmt create_as_stmt
+%type <node> PreparableStmt prepare_stmt execute_stmt deallocate_stmt declare_stmt copy_stmt create_as_stmt view_stmt matview_stmt
 %type <list> prep_type_clause execute_param_clause
 %type <list> opt_column_list opt_on_conflict opt_using
 %type <list> opt_order
@@ -291,6 +305,12 @@ typedef struct PartitionOfClause {
 %type <node> sortby
 %type <list> sortby_list
 %type <ival> opt_asc_desc opt_nulls_order
+
+/* ReqID:TECC4.0 - SET 语句规则类型声明 */
+%type <node> VariableSetStmt set_rest generic_set set_rest_more
+%type <node> var_value zone_value transaction_mode_item document_or_content opt_interval
+%type <list> var_list transaction_mode_list
+%type <str> var_name opt_boolean_or_string iso_level opt_encoding ident_or_sconst
 
 /* 添加缺失的类型声明 */
 %type <list> kek_opt_options dek_opt_options
@@ -358,6 +378,7 @@ typedef struct PartitionOfClause {
 
 /* SELECT增强新增类型声明 */
 %type <node> simple_select table_ref basic_table_ref
+%type <node> select_operand
 %type <node> opt_table_alias
 %type <node> case_expr when_clause
 %type <list> when_clause_list
@@ -410,6 +431,9 @@ stmt:
     create_kek_stmt      {
         $$ = $1;
     }
+    | alter_kek_stmt      {
+        $$ = $1;
+    }
     | create_dek_stmt    {
         $$ = $1;
     }
@@ -452,13 +476,33 @@ stmt:
     | create_as_stmt     {
         $$ = $1;
     }
+    | view_stmt          {
+        $$ = $1;
+    }
+    | matview_stmt       {
+        $$ = $1;
+    }
     | explain_stmt          {
         $$ = $1;
     }
     | with_clause select_stmt {
-        SelectStmt *n = (SelectStmt *)$2;
-        n->cteList = (List *)$1;
-        $$ = (Node *)n;
+        /* ReqID:TECC4.0 - Fix type confusion: select_stmt may return
+         * SetOperationStmt (for UNION/INTERSECT/EXCEPT), not SelectStmt.
+         * Traversing to the leftmost SelectStmt avoids heap overflow. */
+        Node *n = $2;
+        if (n != NULL && nodeTag(n) == FE_T_SelectStmt) {
+            ((SelectStmt *)n)->cteList = (List *)$1;
+        } else if (n != NULL && nodeTag(n) == FE_T_SetOp) {
+            SetOperationStmt *setop = (SetOperationStmt *)n;
+            Node *left = setop->larg;
+            while (left != NULL && nodeTag(left) == FE_T_SetOp) {
+                left = ((SetOperationStmt *)left)->larg;
+            }
+            if (left != NULL && nodeTag(left) == FE_T_SelectStmt) {
+                ((SelectStmt *)left)->cteList = (List *)$1;
+            }
+        }
+        $$ = n;
     }
     | with_clause insert_stmt {
         InsertStmt *n = (InsertStmt *)$2;
@@ -475,6 +519,177 @@ stmt:
         n->withClause = (List *)$1;
         $$ = (Node *)n;
     }
+    | VariableSetStmt    {
+        $$ = $1;
+    }
+    ;
+
+/* ReqID:TECC4.0 - SET 语句完整语法（对齐 PG 14 gram.y VariableSetStmt）。
+ * 所有 SET 变体解析为 SetStmt 透传节点，TECC 处理器透传不重写。
+ * 目的：多语句消息（如 "SET ...; SELECT 密态表达式"）能整体解析成功，
+ * SELECT 的表达式结果列元数据（pending_expr_col）正常收集。
+ * 扩展：SetStmt 携带 kind/args 取值信息，供处理器对 SET search_path
+ * 做同串即时性预测（ParameterStatus 权威值到达前预写缓存）。 */
+VariableSetStmt:
+    SET set_rest                    {
+        SetStmt *n = (SetStmt *) $2;
+        n->is_local = false;
+        $$ = (Node *) n;
+    }
+    | SET LOCAL set_rest            {
+        SetStmt *n = (SetStmt *) $3;
+        n->is_local = true;
+        $$ = (Node *) n;
+    }
+    | SET SESSION set_rest          {
+        SetStmt *n = (SetStmt *) $3;
+        n->is_local = false;
+        $$ = (Node *) n;
+    }
+    ;
+
+set_rest:
+    TRANSACTION transaction_mode_list {
+        $$ = (Node *) makeSetStmt(NULL, false, @1.first_line, TECC_SET_MULTI, NIL);
+    }
+    | SESSION CHARACTERISTICS AS TRANSACTION transaction_mode_list {
+        $$ = (Node *) makeSetStmt(NULL, false, @1.first_line, TECC_SET_MULTI, NIL);
+    }
+    | set_rest_more
+    ;
+
+generic_set:
+    var_name TO var_list            {
+        $$ = (Node *) makeSetStmt($1, false, @1.first_line, TECC_SET_VALUE, $3);
+    }
+    | var_name EQUAL var_list       {
+        $$ = (Node *) makeSetStmt($1, false, @1.first_line, TECC_SET_VALUE, $3);
+    }
+    | var_name TO DEFAULT           {
+        $$ = (Node *) makeSetStmt($1, false, @1.first_line, TECC_SET_DEFAULT, NIL);
+    }
+    | var_name EQUAL DEFAULT        {
+        $$ = (Node *) makeSetStmt($1, false, @1.first_line, TECC_SET_DEFAULT, NIL);
+    }
+    ;
+
+set_rest_more:
+    generic_set                     { $$ = $1; }
+    | var_name FROM CURRENT_P       {
+        $$ = (Node *) makeSetStmt($1, false, @1.first_line, TECC_SET_CURRENT, NIL);
+    }
+    | TIME_P ZONE_P zone_value      {
+        $$ = (Node *) makeSetStmt("timezone", false, @1.first_line, TECC_SET_MULTI, NIL);
+    }
+    | CATALOG_P STRING              {
+        $$ = (Node *) makeSetStmt(NULL, false, @1.first_line, TECC_SET_MULTI, NIL);
+    }
+    | SCHEMA STRING                 {
+        $$ = (Node *) makeSetStmt("search_path", false, @1.first_line, TECC_SET_VALUE,
+                                  list_make1(makeStringConst($2, @2.first_line, 0)));
+    }
+    | NAMES opt_encoding            {
+        $$ = (Node *) makeSetStmt("client_encoding", false, @1.first_line, TECC_SET_MULTI, NIL);
+    }
+    | ROLE ident_or_sconst          {
+        $$ = (Node *) makeSetStmt("role", false, @1.first_line, TECC_SET_MULTI, NIL);
+    }
+    | SESSION AUTHORIZATION ident_or_sconst {
+        $$ = (Node *) makeSetStmt("session_authorization", false, @1.first_line, TECC_SET_MULTI, NIL);
+    }
+    | SESSION AUTHORIZATION DEFAULT {
+        $$ = (Node *) makeSetStmt("session_authorization", false, @1.first_line, TECC_SET_MULTI, NIL);
+    }
+    | XML_P OPTION document_or_content {
+        $$ = (Node *) makeSetStmt("xmloption", false, @1.first_line, TECC_SET_MULTI, NIL);
+    }
+    | TRANSACTION SNAPSHOT STRING   {
+        $$ = (Node *) makeSetStmt(NULL, false, @1.first_line, TECC_SET_MULTI, NIL);
+    }
+    ;
+
+var_name:
+    IDENT                           { $$ = $1; }
+    | var_name DOT IDENT            { $$ = $1; }
+    ;
+
+var_list:
+    var_value                       { $$ = list_make1($1); }
+    | var_list ',' var_value      { $$ = lappend($1, $3); }
+    ;
+
+var_value:
+    opt_boolean_or_string           { $$ = (Node *) makeStringConst($1, @1.first_line, 0); }
+    | INTEGER                       { $$ = (Node *) makeStringConst($1, @1.first_line, 0); }
+    | FLOAT                         { $$ = (Node *) makeStringConst($1, @1.first_line, 0); }
+    | MINUS INTEGER                 { $$ = (Node *) makeStringConst($2, @1.first_line, 0); }
+    | MINUS FLOAT                   { $$ = (Node *) makeStringConst($2, @1.first_line, 0); }
+    ;
+
+opt_boolean_or_string:
+    TRUE_P                          { $$ = "true"; }
+    | FALSE_P                       { $$ = "false"; }
+    | ON                            { $$ = "on"; }
+    | IDENT                         { $$ = $1; }
+    | STRING                        { $$ = $1; }
+    ;
+
+zone_value:
+    STRING                          { $$ = (Node *) makeStringConst($1, @1.first_line, 0); }
+    | IDENT                         { $$ = (Node *) makeStringConst($1, @1.first_line, 0); }
+    | INTEGER                       { $$ = (Node *) makeStringConst($1, @1.first_line, 0); }
+    | FLOAT                         { $$ = (Node *) makeStringConst($1, @1.first_line, 0); }
+    | MINUS INTEGER                 { $$ = (Node *) makeStringConst($2, @1.first_line, 0); }
+    | MINUS FLOAT                   { $$ = (Node *) makeStringConst($2, @1.first_line, 0); }
+    | DEFAULT                       { $$ = NULL; }
+    | LOCAL                         { $$ = NULL; }
+    /* ReqID:TECC4.0 - SET TIME ZONE INTERVAL '...' [HOUR TO MINUTE] 等：
+     * INTERVAL 在前端是 IDENT（非保留字），opt_interval 用 IDENT/IDENT TO IDENT
+     * 覆盖 YEAR/HOUR/DAY 等全部区间字段（均为 IDENT）。 */
+    | IDENT STRING opt_interval     { $$ = (Node *) makeStringConst($2, @1.first_line, 0); }
+    ;
+
+opt_interval:
+    /* EMPTY */                     { $$ = NULL; }
+    | IDENT                         { $$ = NULL; }
+    | IDENT TO IDENT                { $$ = NULL; }
+    ;
+
+opt_encoding:
+    STRING                          { $$ = $1; }
+    | DEFAULT                       { $$ = NULL; }
+    | /* EMPTY */                   { $$ = NULL; }
+    ;
+
+transaction_mode_list:
+    transaction_mode_item           { $$ = list_make1($1); }
+    | transaction_mode_list ',' transaction_mode_item { $$ = lappend($1, $3); }
+    | transaction_mode_list transaction_mode_item      { $$ = lappend($1, $2); }
+    ;
+
+transaction_mode_item:
+    ISOLATION LEVEL iso_level       { $$ = (Node *) makeStringConst($3, @1.first_line, 0); }
+    | READ ONLY                     { $$ = (Node *) makeStringConst("read only", @1.first_line, 0); }
+    | READ WRITE                    { $$ = (Node *) makeStringConst("read write", @1.first_line, 0); }
+    | DEFERRABLE                    { $$ = (Node *) makeStringConst("deferrable", @1.first_line, 0); }
+    | NOT DEFERRABLE                { $$ = (Node *) makeStringConst("not deferrable", @1.first_line, 0); }
+    ;
+
+iso_level:
+    READ UNCOMMITTED                { $$ = "read uncommitted"; }
+    | READ COMMITTED                { $$ = "read committed"; }
+    | REPEATABLE READ               { $$ = "repeatable read"; }
+    | SERIALIZABLE                  { $$ = "serializable"; }
+    ;
+
+document_or_content:
+    DOCUMENT                        { $$ = (Node *) makeStringConst("DOCUMENT", @1.first_line, 0); }
+    | CONTENT                       { $$ = (Node *) makeStringConst("CONTENT", @1.first_line, 0); }
+    ;
+
+ident_or_sconst:
+    IDENT                           { $$ = $1; }
+    | STRING                        { $$ = $1; }
     ;
 
 opt_reloptions:
@@ -519,6 +734,17 @@ kek_opt_options:
     WITH '(' kek_opt_list ')'  { $$ = $3; }
     ;
 
+/* ALTER KEK statement */
+alter_kek_stmt:
+    ALTER KEK any_name kek_opt_options
+    {
+        AlterKekStmt *n = makeAlterKekStmt(@1.first_line, @$.last_column - @1.first_column + 1);
+        n->names = $3;
+        n->options = $4;
+        $$ = (Node *)n;
+    }
+    ;
+
 /* CREATE DEK statement */
 create_dek_stmt:
     CREATE DEK any_name dek_opt_options
@@ -559,6 +785,7 @@ create_table_stmt:
         }
         n->partspec = $10;
         n->ofTypename = NULL;
+        n->is_temp = $2;
         $$ = (Node *)n;
     }
     | CREATE opt_temp TABLE IF_P NOT EXISTS qualified_name '(' table_element_list ')' opt_inherit opt_partition_of opt_partition_by opt_reloptions opt_on_commit opt_tablespace
@@ -575,6 +802,7 @@ create_table_stmt:
         }
         n->partspec = $13;
         n->ofTypename = NULL;
+        n->is_temp = $2;
         $$ = (Node *)n;
     }
     | CREATE opt_temp TABLE qualified_name OF any_name opt_of_table_column_list opt_reloptions opt_on_commit opt_tablespace
@@ -587,6 +815,7 @@ create_table_stmt:
         n->partbound = NULL;
         n->partspec = NULL;
         n->ofTypename = makeTypeNameFromList($6, @6.first_line, @6.last_column - @6.first_column + 1);
+        n->is_temp = $2;
         $$ = (Node *)n;
     }
     | CREATE opt_temp TABLE IF_P NOT EXISTS qualified_name OF any_name opt_of_table_column_list opt_reloptions opt_on_commit opt_tablespace
@@ -599,6 +828,7 @@ create_table_stmt:
         n->partbound = NULL;
         n->partspec = NULL;
         n->ofTypename = makeTypeNameFromList($9, @9.first_line, @9.last_column - @9.first_column + 1);
+        n->is_temp = $2;
         $$ = (Node *)n;
     }
     | CREATE opt_temp TABLE qualified_name PARTITION OF qualified_name for_values opt_partition_by opt_reloptions opt_on_commit opt_tablespace
@@ -611,6 +841,7 @@ create_table_stmt:
         n->partbound = $8;
         n->partspec = $9;
         n->ofTypename = NULL;
+        n->is_temp = $2;
         $$ = (Node *)n;
     }
     | CREATE opt_temp TABLE IF_P NOT EXISTS qualified_name PARTITION OF qualified_name for_values opt_partition_by opt_reloptions opt_on_commit opt_tablespace
@@ -623,6 +854,7 @@ create_table_stmt:
         n->partbound = $11;
         n->partspec = $12;
         n->ofTypename = NULL;
+        n->is_temp = $2;
         $$ = (Node *)n;
     }
     ;
@@ -984,8 +1216,8 @@ for_val:
             /* Handle "-Infinity" — combine minus + ident for special float values */
             size_t slen = strlen($2);
             char *neg = (char *)pg_malloc(slen + 2);
-            neg[0] = '-'; memcpy(neg + 1, $2, slen + 1);
             int full_length = @1.last_column + @2.last_column;
+            neg[0] = '-'; memcpy(neg + 1, $2, slen + 1);
             $$ = (Node *)makePartitionRangeDatum(
                 (Node *)makeStringConst(neg, @1.first_line, full_length), @1.first_line);
             pg_free(neg);
@@ -1109,30 +1341,42 @@ drop_stmt:
     }
     ;
 
+/* ReqID:TECC4.0 - Bug 9326 - 集合运算的操作数。
+ * 对齐 PG14 的 select_clause/select_with_parens：操作数可以是普通 SELECT，
+ * 也可以是带括号的（嵌套）集合表达式。缺这条规则时 `(SELECT ...) UNION/
+ * INTERSECT/EXCEPT ...` 与 `SELECT ... EXCEPT (SELECT ...)` 在前端整体解析
+ * 失败（syntax error, unexpected '('），语句被掩码后原文下发，其中的密态
+ * 常量不会加密，服务端报 invalid hex string。
+ * 括号只作分组，不引入新节点：'(' select_stmt ')' 直接返回内层节点。 */
+select_operand:
+    simple_select                        { $$ = $1; }
+    | '(' select_stmt ')'                { $$ = $2; }
+    ;
+
 /* SELECT statement with UNION/INTERSECT/EXCEPT support */
 select_stmt:
-    simple_select                        { $$ = $1; }
-    | select_stmt UNION ALL simple_select
+    select_operand                       { $$ = $1; }
+    | select_stmt UNION ALL select_operand
     {
         $$ = (Node *)makeSetOperationStmt(SETOP_UNION, true, $1, $4, @2.first_line, @$.last_column - @2.first_column + 1);
     }
-    | select_stmt UNION simple_select
+    | select_stmt UNION select_operand
     {
         $$ = (Node *)makeSetOperationStmt(SETOP_UNION, false, $1, $3, @2.first_line, @$.last_column - @2.first_column + 1);
     }
-    | select_stmt INTERSECT ALL simple_select
+    | select_stmt INTERSECT ALL select_operand
     {
         $$ = (Node *)makeSetOperationStmt(SETOP_INTERSECT, true, $1, $4, @2.first_line, @$.last_column - @2.first_column + 1);
     }
-    | select_stmt INTERSECT simple_select
+    | select_stmt INTERSECT select_operand
     {
         $$ = (Node *)makeSetOperationStmt(SETOP_INTERSECT, false, $1, $3, @2.first_line, @$.last_column - @2.first_column + 1);
     }
-    | select_stmt EXCEPT ALL simple_select
+    | select_stmt EXCEPT ALL select_operand
     {
         $$ = (Node *)makeSetOperationStmt(SETOP_EXCEPT, true, $1, $4, @2.first_line, @$.last_column - @2.first_column + 1);
     }
-    | select_stmt EXCEPT simple_select
+    | select_stmt EXCEPT select_operand
     {
         $$ = (Node *)makeSetOperationStmt(SETOP_EXCEPT, false, $1, $3, @2.first_line, @$.last_column - @2.first_column + 1);
     }
@@ -1305,6 +1549,22 @@ b_expr:
     | b_expr any_oper ALL '(' select_stmt ')'
     {
         $$ = (Node *)makeSubLink(ALL_SUBLINK, $1, $2, $5, @2.first_line);
+    }
+    /* ReqID:TECC4.0 - ANY/SOME/ALL over an ARRAY literal, e.g. `a = ANY(ARRAY[1,2])`.
+     * PostgreSQL's generic subquery_Op form; expand into OR/AND of element
+     * comparisons so the constant-encryption path handles each element.
+     * Without this the statement fails to parse and is sent unencrypted. */
+    | b_expr any_oper ANY '(' ARRAY '[' expr_list ']' ')'
+    {
+        $$ = make_any_all_array_expr($2, $1, (List *) $7, 1, @2.first_line);
+    }
+    | b_expr any_oper SOME '(' ARRAY '[' expr_list ']' ')'
+    {
+        $$ = make_any_all_array_expr($2, $1, (List *) $7, 1, @2.first_line);
+    }
+    | b_expr any_oper ALL '(' ARRAY '[' expr_list ']' ')'
+    {
+        $$ = make_any_all_array_expr($2, $1, (List *) $7, 0, @2.first_line);
     }
     /* ReqID:TECC4.0 - qual_Op: OPERATOR(schema.opname) syntax */
     | b_expr qual_Op b_expr %prec OP
@@ -1519,6 +1779,18 @@ column_ref:
         Node *cr = make_column_ref_from_list($1, @1.first_line);
         $$ = (Node *)makeA_Indirection(cr, $2);
     }
+    /* ReqID:TECC4.0 - Bug 907: 限定星号 tab.* / schema.tab.*
+     * （后端 gram.y 里属 indirection_el: '.' '*'）。本语法的 '.' 形式统一
+     * 交给 any_name_list，而 any_name_list 只吃标识符，故 tab.* 原先整体
+     * 解析失败 —— 后果是该语句的 TECC 处理被静默跳过（不做 SQL 改写、
+     * 不解密，密态列原样输出密文）。这里补一条产生式（放在 column_ref 上
+     * 与后端一致），产出与后端同形的 ColumnRef{fields=[..., A_Star]}；
+     * 实测不新增任何冲突。 */
+    | any_name_list '.' STAR
+    {
+        $$ = (Node *)makeColumnRef(lappend($1, (Node *)makeA_Star()),
+                                   @1.first_line);
+    }
     ;
 
 func_call:
@@ -1535,6 +1807,7 @@ func_call:
 			$$ = (Node*)fc;
 		} else {
 			FuncCall *fc = makeFuncCall($1, (List*)$3, @1.first_line);
+            fc->end_location = @4.first_line + 1; /* ReqID:TECC4.0 */
 			if ($5 != NIL) { fc->agg_order = $5; fc->agg_within_group = true; }
 			if ($6 != NULL) fc->agg_filter = $6;
 			if ($7 != NULL) fc->over = $7;
@@ -1676,8 +1949,11 @@ constant:
          * The formatter handles string→numeric conversion with full precision
          * for all types (float4/8 via Ryu, numeric via digit-by-digit parsing).
          * Pre-requisite for Bug8178: DET equality match for high-precision
-         * numeric values (>15 digits) between INSERT and WHERE paths. */
-        $$ = makeStringConst($1, @1.first_line, @1.last_column);
+         * numeric values (>15 digits) between INSERT and WHERE paths.
+         * 注意：用 makeNumericTextConst 而非 makeStringConst —— 同样保留文本，
+         * 但为该常量打上数值形态标记，使 GREATEST/LEAST 等参数组合校验按数值族
+         * 归类（否则 numeric/float 列 + 小数常量会被误判为"常量类型不匹配"）。 */
+        $$ = makeNumericTextConst($1, @1.first_line, @1.last_column);
     }
     | STRING           {
         $$ = makeStringConst($1, @1.first_line, @1.last_column);
@@ -1785,6 +2061,30 @@ name:
     | VALUE_P          { $$ = "value"; }
     | TEMP             { $$ = "temp"; }
     | ZONE_P           { $$ = "zone"; }
+    /* ReqID:TECC4.0 - SET 语句关键字允许作标识符（避免破坏现有 SQL） */
+    | LOCAL            { $$ = "local"; }
+    | SESSION          { $$ = "session"; }
+    | TRANSACTION      { $$ = "transaction"; }
+    | CHARACTERISTICS  { $$ = "characteristics"; }
+    | CATALOG_P        { $$ = "catalog"; }
+    | NAMES            { $$ = "names"; }
+    | ROLE             { $$ = "role"; }
+    | AUTHORIZATION    { $$ = "authorization"; }
+    | XML_P            { $$ = "xml"; }
+    | OPTION           { $$ = "option"; }
+    | DOCUMENT         { $$ = "document"; }
+    | CONTENT          { $$ = "content"; }
+    | SNAPSHOT         { $$ = "snapshot"; }
+    | ISOLATION        { $$ = "isolation"; }
+    | LEVEL            { $$ = "level"; }
+    | READ             { $$ = "read"; }
+    | UNCOMMITTED      { $$ = "uncommitted"; }
+    | COMMITTED        { $$ = "committed"; }
+    | REPEATABLE       { $$ = "repeatable"; }
+    | SERIALIZABLE     { $$ = "serializable"; }
+    | ONLY             { $$ = "only"; }
+    | WRITE            { $$ = "write"; }
+    | CURRENT_P        { $$ = "current"; }
     ;
 
 col_id:
@@ -1873,6 +2173,11 @@ target_list:
             $$ = lappend($1, (Node *)res);
         }
     }
+    /* ReqID:TECC4.0 - 空目标列表：PostgreSQL 允许 "SELECT FROM t WHERE ..."
+     * （与后端 gram.y 的 target_list 空产生式一致）。缺少该产生式会
+     * 导致此类语句前端解析失败被整体放行，密态常量明文发往服务端
+     * （服务端报 invalid hex string）。 */
+    | /* EMPTY */      { $$ = NIL; }
     ;
 
 id_list:
@@ -2360,29 +2665,41 @@ kek_param:
         DefElem *elem = makeDefElem($1, (Node *)makeStringConst($3, @2.first_line, 0), @1.first_line);
         $$ = (Node *)elem;
     }
+    | KEY_ALGO EQUAL sconst
+    {
+        DefElem *elem = makeDefElem("key_algo", (Node *)makeStringConst($3, @2.first_line, 0), @1.first_line);
+        $$ = (Node *)elem;
+    }
+    | KEY_ALGO EQUAL IDENT
+    {
+        DefElem *elem = makeDefElem("key_algo", (Node *)makeStringConst($3, @2.first_line, 0), @1.first_line);
+        $$ = (Node *)elem;
+    }
     ;
 
 dek_param:
     IDENT EQUAL sconst
     {
         /* ReqID:TECC4.0 - ENCRYPTED_VALUE is auto-generated, reject at parse time */
+        DefElem *elem;
         if (strcasecmp($1, "encrypted_value") == 0)
         {
             tecc_yyerror("ENCRYPTED_VALUE is auto-generated and cannot be specified in CREATE DEK");
             YYABORT;
         }
-        DefElem *elem = makeDefElem($1, (Node *)makeStringConst($3, @2.first_line, 0), @1.first_line);
+        elem = makeDefElem($1, (Node *)makeStringConst($3, @2.first_line, 0), @1.first_line);
         $$ = (Node *)elem;
     }
     | IDENT EQUAL IDENT
     {
         /* ReqID:TECC4.0 - ENCRYPTED_VALUE is auto-generated, reject at parse time */
+        DefElem *elem;
         if (strcasecmp($1, "encrypted_value") == 0)
         {
             tecc_yyerror("ENCRYPTED_VALUE is auto-generated and cannot be specified in CREATE DEK");
             YYABORT;
         }
-        DefElem *elem = makeDefElem($1, (Node *)makeStringConst($3, @2.first_line, 0), @1.first_line);
+        elem = makeDefElem($1, (Node *)makeStringConst($3, @2.first_line, 0), @1.first_line);
         $$ = (Node *)elem;
     }
     | KEK EQUAL any_name
@@ -2397,6 +2714,16 @@ dek_param:
             p += sprintf(p, "%s", strVal((const Value *)lfirst(lc)));
         }
         $$ = (Node *)makeDefElem("kek", (Node *)makeStringConst(tecc_pstrdup(buf), @2.first_line, 0), @1.first_line);
+    }
+    | KEY_ALGO EQUAL sconst
+    {
+        DefElem *elem = makeDefElem("key_algo", (Node *)makeStringConst($3, @2.first_line, 0), @1.first_line);
+        $$ = (Node *)elem;
+    }
+    | KEY_ALGO EQUAL IDENT
+    {
+        DefElem *elem = makeDefElem("key_algo", (Node *)makeStringConst($3, @2.first_line, 0), @1.first_line);
+        $$ = (Node *)elem;
     }
     ;
 
@@ -2489,6 +2816,58 @@ create_as_stmt:
         CreateTableAsStmt *ctas;
 
         ctas = makeCreateTableAsStmt((RangeVar *)$7, (Node *)$9, true, @1.first_line);
+        $$ = (Node *)ctas;
+    }
+    ;
+
+/* ReqID:TECC4.0 - 密态视图支持：CREATE [OR REPLACE] VIEW name [(cols)] AS select_stmt
+ * 注意：TEMP/TEMPORARY VIEW 必须拆为独立规则，不可复用 opt_temp——
+ * opt_temp 与 create_table_stmt 的 opt_temp 存在 shift/reduce 冲突。
+ * 同时也不可复用 opt_or_replace——空的 opt_or_replace 仍会在 TEMP 前
+ * 产生歧义（shift TEMP vs reduce empty opt_or_replace）。 */
+view_stmt:
+    CREATE VIEW qualified_name opt_column_list AS select_stmt
+    {
+        ViewStmt *n = makeViewStmt((RangeVar *)$3, (Node *)$6, false, false, $4, @1.first_line);
+        $$ = (Node *)n;
+    }
+    | CREATE OR REPLACE VIEW qualified_name opt_column_list AS select_stmt
+    {
+        ViewStmt *n = makeViewStmt((RangeVar *)$5, (Node *)$8, true, false, $6, @1.first_line);
+        $$ = (Node *)n;
+    }
+    | CREATE TEMP VIEW qualified_name opt_column_list AS select_stmt
+    {
+        ViewStmt *n = makeViewStmt((RangeVar *)$4, (Node *)$7, false, true, $5, @1.first_line);
+        $$ = (Node *)n;
+    }
+    | CREATE OR REPLACE TEMP VIEW qualified_name opt_column_list AS select_stmt
+    {
+        ViewStmt *n = makeViewStmt((RangeVar *)$6, (Node *)$9, true, true, $7, @1.first_line);
+        $$ = (Node *)n;
+    }
+    | CREATE TEMPORARY VIEW qualified_name opt_column_list AS select_stmt
+    {
+        ViewStmt *n = makeViewStmt((RangeVar *)$4, (Node *)$7, false, true, $5, @1.first_line);
+        $$ = (Node *)n;
+    }
+    | CREATE OR REPLACE TEMPORARY VIEW qualified_name opt_column_list AS select_stmt
+    {
+        ViewStmt *n = makeViewStmt((RangeVar *)$6, (Node *)$9, true, true, $7, @1.first_line);
+        $$ = (Node *)n;
+    }
+    ;
+
+/* ReqID:TECC4.0 - 密态视图支持：CREATE MATERIALIZED VIEW name [(cols)] AS select_stmt [WITH [NO] DATA]
+ * 复用 CreateTableAsStmt：objtype=1 表示物化视图，skipData 表示 WITH NO DATA */
+matview_stmt:
+    CREATE MATERIALIZED VIEW qualified_name opt_column_list AS select_stmt opt_with_data
+    {
+        CreateTableAsStmt *ctas;
+
+        ctas = makeCreateTableAsStmt((RangeVar *)$4, (Node *)$7, false, @1.first_line);
+        ctas->objtype = 1;      /* OBJECT_MATVIEW */
+        ctas->skipData = !$8;   /* opt_with_data: true=WITH DATA, false=WITH NO DATA */
         $$ = (Node *)ctas;
     }
     ;
@@ -2728,7 +3107,15 @@ any_oper:
 explain_option_elem:
     IDENT
     | IDENT IDENT
+    /* ReqID:TECC4.0 - ON/TRUE/FALSE are reserved tokens, but they are
+     * valid boolean values in EXPLAIN options such as SUMMARY ON. */
+    | IDENT ON
+    | IDENT TRUE_P
+    | IDENT FALSE_P
     | IDENT EQUAL IDENT
+    | IDENT EQUAL ON
+    | IDENT EQUAL TRUE_P
+    | IDENT EQUAL FALSE_P
     | IDENT EQUAL STRING
     | IDENT EQUAL INTEGER
     | IDENT EQUAL FLOAT
@@ -2877,6 +3264,32 @@ static Node *make_a_expr_escape(int kind, List *name, Node *lexpr, Node *rexpr, 
 
 static Node *make_bool_expr(int boolop, List *args, int location) {
     return (Node *)makeBoolExpr(boolop, args, location);
+}
+
+/* ReqID:TECC4.0 - Expand `expr op ANY/SOME/ALL(ARRAY[...])` into OR/AND of
+ * element comparisons.  `use_or` non-zero => ANY/SOME (OR), zero => ALL (AND).
+ * A single element degrades to a bare comparison. */
+static Node *make_any_all_array_expr(void *op_name, void *lhs, List *elements, int use_or, int location) {
+    List *operName = (List *) op_name;
+    Node *lexpr = (Node *) lhs;
+    const char *opstr = (operName != NIL) ?
+        strVal((Value *) linitial(operName)) : NULL;
+    List *args = NIL;
+    ListCell *lc;
+
+    for (lc = list_head(elements); lc != NULL; lc = lnext(lc))
+    {
+        Node *elem = (Node *) lfirst(lc);
+        /* Fresh operator-name list per comparison (no aliasing between nodes). */
+        List *elem_name = (opstr != NULL) ? list_make1(makeString(opstr)) : operName;
+        Node *cmp = make_a_expr(AEXPR_OP, elem_name, lexpr, elem, location);
+        args = lappend(args, cmp);
+    }
+    if (list_length(args) == 0)
+        return NULL;
+    if (list_length(args) == 1)
+        return (Node *) lfirst(list_head(args));
+    return make_bool_expr(use_or ? OR_EXPR : AND_EXPR, args, location);
 }
 
 static Node *make_null_test(Node *arg, int nulltesttype, int location) {

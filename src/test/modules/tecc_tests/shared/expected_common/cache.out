@@ -80,6 +80,37 @@ DROP TABLE
 DROP TABLE
 REVOKE
 DROP ROLE
+=== update_meta mark 置位测试 ===
+(1 row)
+||
+(1 row)
+5a_mark_before|f|f|f
+(1 row)
+(1 row)
+5c_mark_after|t|t|t
+(1 row)
+||
+(1 row)
+=== 6 Bug 9155 Stale Cache Sentinel ===
+(1 row)
+CREATE SCHEMA
+6a_wrong_dek_err
+(1 row)
+CREATE TABLE
+DROP TABLE
+6b_insert_no_table_err
+(1 row)
+6c_correct_dek_ok
+(1 row)
+CREATE TABLE
+6d_insert_ok
+(1 row)
+INSERT 0 2
+6e_select|1|test1
+6e_select|2|test2
+(2 rows)
+DROP TABLE
+DROP SCHEMA
 === Cleanup ===
 (1 row)
 DROP KEK
@@ -120,5 +151,8 @@ ERROR: permission denied for DEK "dek_cache"
 DETAIL:  You do not have USAGE privilege on DEK "dek_cache".
 HINT:  Grant USAGE on the DEK to proceed.
 NOTICE: table "test_noperm_create_table" does not exist, skipping
+ERROR: relation "sch_bug9155.t_base" does not exist
+LINE 1: INSERT INTO sch_bug9155.t_base(id, col_det) VALUES (1, 'test...
+^
 NOTICE: drop cascades to data encryption key dek_cache
 NOTICE: drop cascades to data encryption key dek_cache2

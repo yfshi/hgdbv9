@@ -26,7 +26,6 @@
  */
 extern void *tecc_formatter_utils_malloc(size_t size);
 extern void *tecc_formatter_utils_calloc(size_t count, size_t size);
-extern void *tecc_formatter_utils_realloc(void *ptr, size_t size);
 extern char *tecc_formatter_utils_strdup(const char *str);
 extern void tecc_formatter_utils_free(void *ptr);
 

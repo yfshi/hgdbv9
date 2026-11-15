@@ -20,6 +20,7 @@
 #include "access/transam.h"
 #include "access/xact.h"
 #include "catalog/catalog.h"
+#include "commands/encrypted_column.h"
 #include "commands/trigger.h"
 #include "executor/executor.h"
 #include "executor/nodeModifyTable.h"
@@ -444,6 +445,8 @@ ExecSimpleRelationInsert(ResultRelInfo *resultRelInfo,
 		/* Check the constraints of the tuple */
 		if (rel->rd_att->constr)
 			ExecConstraints(resultRelInfo, slot, estate);
+		/* ReqID:TECC4.0 - Validate encrypted column slots (unconditional) */
+		tecc_validate_encrypted_slots(resultRelInfo, slot);
 		if (rel->rd_rel->relispartition)
 			ExecPartitionCheck(resultRelInfo, slot, estate, true);
 
@@ -516,6 +519,8 @@ ExecSimpleRelationUpdate(ResultRelInfo *resultRelInfo,
 		/* Check the constraints of the tuple */
 		if (rel->rd_att->constr)
 			ExecConstraints(resultRelInfo, slot, estate);
+		/* ReqID:TECC4.0 - Validate encrypted column slots (unconditional) */
+		tecc_validate_encrypted_slots(resultRelInfo, slot);
 		if (rel->rd_rel->relispartition)
 			ExecPartitionCheck(resultRelInfo, slot, estate, true);
 

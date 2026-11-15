@@ -1,0 +1,36 @@
+NOTICE: table "hencp_pe_mixed" does not exist, skipping
+DROP TABLE
+NOTICE: table "hencp_pe_mixed_pure" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "hencp_dek_add" does not exist, skipping
+DROP DEK
+NOTICE: data encryption key "hencp_dek_sym" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "hencp_kek_asym" does not exist, skipping
+DROP KEK
+NOTICE: key encryption key "hencp_kek_sym" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE KEK
+CREATE DEK
+=== 1 PREPARE + CTAS AS EXECUTE（混合 det,he-add）===
+PREPARE HENCP_PE_1
+NOTICE: could not determine encryption metadata for column "a" in CTAS result table
+CREATE TABLE
+INSERT 0 1
+2|12
+=== 2 PREPARE + CTAS AS EXECUTE（纯同态 he-add）===
+PREPARE HENCP_PE_2
+NOTICE: could not determine encryption metadata for column "a" in CTAS result table
+CREATE TABLE
+INSERT 0 1
+2|12
+DEALLOCATE HENCP_PE_1
+DEALLOCATE HENCP_PE_2
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK

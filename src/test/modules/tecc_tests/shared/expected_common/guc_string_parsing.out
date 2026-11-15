@@ -1,0 +1,124 @@
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+1|hello
+2|it''s on mode
+3|backslash\is\literal
+(3 rows)
+SET
+INSERT 0 1
+INSERT 0 1
+RESET
+1|hello
+2|it''s on mode
+3|backslash\is\literal
+4|scs off basic
+5|it''s off mode
+(5 rows)
+SET
+INSERT 0 1
+INSERT 0 1
+RESET
+1|hello
+2|it''s on mode
+3|backslash\is\literal
+4|scs off basic
+5|it''s off mode
+6|path\C:\file
+7|escaped\\double
+(7 rows)
+SET
+SET
+INSERT 0 1
+RESET
+SET
+INSERT 0 1
+RESET
+RESET
+1|hello
+2|it''s on mode
+3|backslash\is\literal
+4|scs off basic
+5|it''s off mode
+6|path\C:\file
+7|escaped\\double
+8|bq_on_test
+9|bq_safe_test
+(9 rows)
+SET
+INSERT 0 1
+RESET
+INSERT 0 1
+SET
+INSERT 0 1
+RESET
+1|hello
+2|it''s on mode
+3|backslash\is\literal
+4|scs off basic
+5|it''s off mode
+6|path\C:\file
+7|escaped\\double
+8|bq_on_test
+9|bq_safe_test
+10|off mode 1
+11|on mode between
+12|off mode 2
+(12 rows)
+SET
+INSERT 0 1
+INSERT 0 1
+RESET
+42
+(1 row)
+typecast_off
+(1 row)
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+1|default_val
+2|default_val
+(2 rows)
+SET
+PREPARE
+INSERT 0 1
+DEALLOCATE
+PREPARE
+exec_off_val
+(1 row)
+DEALLOCATE
+RESET
+SET
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+roundtrip_a
+(1 row)
+1
+(1 row)
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+alpha_001
+alpha_002
+(2 rows)
+1
+(1 row)
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+NOTICE: table "t_scs" does not exist, skipping
+NOTICE: table "t_scs_search" does not exist, skipping
+NOTICE: data encryption key "dek_scs" does not exist, skipping
+NOTICE: key encryption key "kek_scs" does not exist, skipping

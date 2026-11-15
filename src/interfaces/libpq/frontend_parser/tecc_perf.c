@@ -27,12 +27,6 @@
 #include <sys/time.h>
 #endif
 
-/* Portability: MSVC does not support TECC_ATTR_UNUSED */
-#ifdef _MSC_VER
-#define TECC_ATTR_UNUSED
-#else
-#define TECC_ATTR_UNUSED __attribute__((unused))
-#endif
 
 /* ==================== 内部数据结构 ==================== */
 
@@ -107,18 +101,6 @@ static uint64_t get_current_time_ns(void) {
     gettimeofday(&tv, NULL);
     return (uint64_t)tv.tv_sec * 1000000000 + tv.tv_usec * 1000;
 #endif
-}
-
-/* 计算字符串哈希值 */
-TECC_ATTR_UNUSED static uint64_t hash_string(const char *str) {
-    uint64_t hash = 5381;
-    int c;
-
-    while ((c = *str++)) {
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
-    }
-
-    return hash;
 }
 
 /* 创建缓存条目 */
@@ -264,57 +246,6 @@ static MemoryBlock *create_memory_block(size_t size) {
     block->next = NULL;
 
     return block;
-}
-
-/* 从内存池分配内存 */
-TECC_ATTR_UNUSED static void *memory_pool_alloc(MemoryPool *pool, size_t size) {
-    if (!pool || size == 0) return NULL;
-
-    {
-        MemoryBlock *block;
-        size_t block_size;
-        void *ptr;
-
-        /* 对齐到8字节边界 */
-        size = (size + 7) & ~7;
-
-        /* 查找有足够空间的内存块 */
-        block = pool->blocks;
-        while (block) {
-            if (block->used + size <= block->size) {
-                ptr = (char *)block->memory + block->used;
-                block->used += size;
-                pool->used_size += size;
-
-                if (pool->used_size > pool->peak_size) {
-                    pool->peak_size = pool->used_size;
-                }
-
-                return ptr;
-            }
-            block = block->next;
-        }
-
-        /* 创建新的内存块 */
-        block_size = (size > 4096) ? size * 2 : 4096;
-        block = create_memory_block(block_size);
-        if (!block) return NULL;
-
-        block->next = pool->blocks;
-        pool->blocks = block;
-        pool->total_size += block_size;
-
-        /* 从新块分配 */
-        ptr = block->memory;
-        block->used = size;
-        pool->used_size += size;
-
-        if (pool->used_size > pool->peak_size) {
-            pool->peak_size = pool->used_size;
-        }
-
-        return ptr;
-    }
 }
 
 /* 更新性能统计 */

@@ -154,6 +154,26 @@ typedef struct AggStatePerTransData
 	Tuplesortstate **sortstates;	/* sort objects, if DISTINCT or ORDER BY */
 
 	/*
+	 * Begin - ReqID:TECC4.0
+	 *
+	 * Hash-based DISTINCT dedup path for encrypted columns that cannot be
+	 * sorted.  DET-only columns have no OPE ciphertext segment, so the btree
+	 * comparison used by Tuplesort would raise "cannot compare encrypted
+	 * values for ordering".  DISTINCT dedup only needs equality + hash, both
+	 * of which are available for DET ciphertexts, so we use a TupleHashTable
+	 * instead of a Tuplesort for pure-DISTINCT aggregates (no aggorder) on
+	 * such columns.
+	 *
+	 * use_hash_distinct is set during ExecInitAgg(); the dedup tables
+	 * themselves live in AggStatePerGroupData.distinctHashtable, one per
+	 * tuple group (see the comment there).
+	 */
+	bool		use_hash_distinct;	/* use hash table instead of Tuplesort */
+	FmgrInfo   *hashfunctions;	/* hash functions for DISTINCT columns */
+	Oid		   *eqfuncoids;		/* equality function OIDs for DISTINCT cols */
+	/* End - ReqID:TECC4.0 */
+
+	/*
 	 * This field is a pre-initialized FunctionCallInfo struct used for
 	 * calling this aggregate's transfn.  We save a few cycles per row by not
 	 * re-initializing the unchanging fields; which isn't much, but it seems
@@ -249,6 +269,24 @@ typedef struct AggStatePerAggData
  * keep it here for space reasons: we don't support DISTINCT aggregates
  * in AGG_HASHED mode, so there's no reason to use up a pointer field
  * in every entry of the hashtable.
+ *
+ * Begin - ReqID:TECC4.0
+ * TECC does support a hash-based DISTINCT dedup path, and it needs a per-group
+ * table even in AGG_HASHED mode, so one pointer field is kept here after all:
+ * the dedup table must be scoped to a single tuple group, because hashed
+ * aggregation consumes all input (advance_aggregates) before finalizing any
+ * group, and a per-grouping-set table would mix values from different groups.
+ * The cost is one pointer (8 bytes) per (group, trans): measured against the
+ * whole hash entry this is roughly 6% to 35%, depending on how many
+ * aggregates there are and how large their transition states are -- the more
+ * aggregates without a pass-by-ref transition state, the larger the share.
+ * Note that every HashAggregate pays it, not only the encrypted ones.
+ * hash_agg_entry_size() accounts for it, so the planner's hashing limits
+ * adapt accordingly.
+ * It is only used when AggStatePerTransData.use_hash_distinct is set.
+ * See tecc_doc/Hash聚合每组去重表内存开销评估.md for the analysis and the
+ * alternatives considered.
+ * End - ReqID:TECC4.0
  */
 typedef struct AggStatePerGroupData
 {
@@ -267,6 +305,9 @@ typedef struct AggStatePerGroupData
 	 * NULL and not auto-replace it with a later input value. Only the first
 	 * non-NULL input will be auto-substituted.
 	 */
+
+	/* ReqID:TECC4.0 - per-group DISTINCT dedup table (use_hash_distinct only) */
+	TupleHashTable distinctHashtable;
 }			AggStatePerGroupData;
 
 /*

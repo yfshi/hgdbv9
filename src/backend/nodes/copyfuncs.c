@@ -4818,6 +4818,17 @@ _copyCreateDekStmt(const CreateDekStmt *from)
 	return newnode;
 }
 
+static AlterKekStmt *
+_copyAlterKekStmt(const AlterKekStmt *from)
+{
+	AlterKekStmt *newnode = makeNode(AlterKekStmt);
+
+	COPY_NODE_FIELD(names);
+	COPY_NODE_FIELD(options);
+
+	return newnode;
+}
+
 static CreateExtensionStmt *
 _copyCreateExtensionStmt(const CreateExtensionStmt *from)
 {
@@ -5844,6 +5855,7 @@ _copyValue(const Value *from)
 			break;
 		case T_Float:
 		case T_String:
+		case T_IntroducerConst:			/* Req:SRS-MYSQL-SQL-Select */
 		case T_BitString:
 			COPY_STRING_FIELD(val.str);
 			break;
@@ -6864,6 +6876,9 @@ copyObjectImpl(const void *from)
 			break;
 		case T_CreateDekStmt:
 			retval = _copyCreateDekStmt(from);
+			break;
+		case T_AlterKekStmt:
+			retval = _copyAlterKekStmt(from);
 			break;
 		case T_CreateExtensionStmt:
 			retval = _copyCreateExtensionStmt(from);

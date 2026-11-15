@@ -19,6 +19,7 @@ Complete list of usable sgml source files in this directory.
 <!ENTITY alterFunction      SYSTEM "alter_function.sgml">
 <!ENTITY alterGroup         SYSTEM "alter_group.sgml">
 <!ENTITY alterIndex         SYSTEM "alter_index.sgml">
+<!ENTITY alterKek           SYSTEM "alter_kek.sgml">
 <!ENTITY alterLanguage      SYSTEM "alter_language.sgml">
 <!ENTITY alterLargeObject   SYSTEM "alter_large_object.sgml">
 <!ENTITY alterMaterializedView SYSTEM "alter_materialized_view.sgml">

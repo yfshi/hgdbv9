@@ -1,0 +1,73 @@
+NOTICE: table "enc_pgfunc_test_det" does not exist, skipping
+DROP TABLE
+NOTICE: table "enc_pgfunc_test_ope" does not exist, skipping
+DROP TABLE
+NOTICE: table "enc_arg_combos_ope" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "enc_pgfunc_dek" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "enc_pgfunc_kek" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+ERROR: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: coalesce does not support this argument combination: encrypted-type constants and plain constants cannot be mixed
+ERROR: coalesce does not support this argument combination: encrypted-type constants and plain constants cannot be mixed
+ERROR: coalesce does not support this argument combination: encrypted-type constants and plain constants cannot be mixed
+10
+abc
+abc
+10
+10
+ERROR: coalesce does not support this argument combination: the constant type does not match the encrypted column type
+ERROR: coalesce does not support this argument combination: the constant type does not match the encrypted column type
+ERROR: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: coalesce does not support this argument combination: this combination of encrypted types is not supported
+ERROR: coalesce does not support this argument combination: encrypted columns and plain columns cannot be mixed
+ERROR: greatest does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: least does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: greatest does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: greatest does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: greatest does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: least does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: greatest does not support this argument combination: encrypted-type constants and plain constants cannot be mixed
+ERROR: greatest does not support this argument combination: encrypted-type constants and plain constants cannot be mixed
+10
+abc
+abc
+10
+10
+ERROR: greatest does not support this argument combination: the constant type does not match the encrypted column type
+ERROR: greatest does not support this argument combination: the constant type does not match the encrypted column type
+ERROR: greatest does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: greatest does not support this argument combination: this combination of encrypted types is not supported
+ERROR: greatest does not support this argument combination: encrypted columns and plain columns cannot be mixed
+ERROR: case does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: case does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: case does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: case does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: case does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+10
+20
+def
+def
+10
+ERROR: case does not support this argument combination: the branch constant type cannot be encrypted like encrypted column c_int4; unify branches to encrypted columns or plain constants matching the column's original type
+ERROR: case does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: case does not support this argument combination: the switch form (CASE expression WHEN constant) is not supported; use the CASE WHEN condition form instead
+ERROR: case does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+ERROR: case does not support this argument combination: the switch form (CASE expression WHEN constant) is not supported; use the CASE WHEN condition form instead
+DROP TABLE
+DROP DEK
+DROP KEK

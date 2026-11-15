@@ -1,0 +1,93 @@
+DROP SCHEMA
+DROP KEK
+DROP DEK
+CREATE KEK
+CREATE DEK
+CREATE SCHEMA
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+            ?column?            
+--------------------------------
+ === 1 qualified UPDATE SET ===
+(1 row)
+
+UPDATE 1
+ id |  age   
+----+--------
+  1 | 33.444
+(1 row)
+
+ id | age 
+----+-----
+(0 rows)
+
+             ?column?              
+-----------------------------------
+ === 2 qualified WHERE literal ===
+(1 row)
+
+UPDATE 1
+ id |  age   
+----+--------
+  1 | 44.555
+(1 row)
+
+UPDATE 0
+ id |  age   
+----+--------
+  1 | 44.555
+(1 row)
+
+          ?column?          
+----------------------------
+ === 3 qualified INSERT ===
+(1 row)
+
+INSERT 0 1
+ id |  age   
+----+--------
+  1 | 44.555
+  2 | 55.666
+(2 rows)
+
+          ?column?          
+----------------------------
+ === 4 qualified DELETE ===
+(1 row)
+
+DELETE 1
+ id |  age   
+----+--------
+  1 | 44.555
+(1 row)
+
+                    ?column?                    
+------------------------------------------------
+ === 5 unqualified resolves via search_path ===
+(1 row)
+
+INSERT 0 1
+UPDATE 1
+ id |  age   
+----+--------
+  3 | 77.888
+(1 row)
+
+ id |  age   
+----+--------
+  1 | 44.555
+(1 row)
+
+     ?column?      
+-------------------
+ === 9 CLEANUP ===
+(1 row)
+
+DROP TABLE
+DROP SCHEMA
+DROP DEK
+DROP KEK
+psql:/.../schema_qualified_dml.sql:20: NOTICE:  schema "sch1" does not exist, skipping
+psql:/.../schema_qualified_dml.sql:21: NOTICE:  key encryption key "kek_test" does not exist, skipping
+psql:/.../schema_qualified_dml.sql:22: NOTICE:  data encryption key "dek_test" does not exist, skipping

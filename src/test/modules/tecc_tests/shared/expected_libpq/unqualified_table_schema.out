@@ -1,0 +1,73 @@
+DROP SCHEMA
+DROP KEK
+DROP KEK
+DROP DEK
+DROP DEK
+CREATE KEK
+CREATE SCHEMA
+SET
+CREATE KEK
+CREATE DEK
+RESET
+CREATE DEK
+SET
+CREATE TABLE
+INSERT 0 1
+ id |  v  
+----+-----
+  1 | 100
+(1 row)
+
+RESET
+CREATE TABLE
+SET
+INSERT 0 1
+ id |  v  
+----+-----
+  2 | 200
+(1 row)
+
+CREATE TABLE
+RESET
+CREATE TABLE
+SET
+INSERT 0 1
+ id |  v  
+----+-----
+  3 | 300
+(1 row)
+
+INSERT 0 1
+ id |  v  
+----+-----
+  4 | 400
+(1 row)
+
+SET
+INSERT 0 1
+ id |  v  
+----+-----
+  1 | 100
+  5 | 500
+(2 rows)
+
+RESET
+DROP SCHEMA
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+psql:/.../unqualified_table_schema.sql:25: NOTICE:  schema "sp1" does not exist, skipping
+psql:/.../unqualified_table_schema.sql:26: NOTICE:  key encryption key "kek_pub" does not exist, skipping
+psql:/.../unqualified_table_schema.sql:27: NOTICE:  key encryption key "kek_sp1" does not exist, skipping
+psql:/.../unqualified_table_schema.sql:28: NOTICE:  data encryption key "dek_pub" does not exist, skipping
+psql:/.../unqualified_table_schema.sql:29: NOTICE:  data encryption key "dek_sp1" does not exist, skipping
+psql:/.../unqualified_table_schema.sql:87: NOTICE:  drop cascades to 4 other objects
+DETAIL:  drop cascades to key encryption key kek_sp1
+drop cascades to data encryption key dek_sp1
+drop cascades to table sp1.t_only
+drop cascades to table sp1.t3
+psql:/.../unqualified_table_schema.sql:91: NOTICE:  data encryption key "dek_sp1" does not exist, skipping
+psql:/.../unqualified_table_schema.sql:93: NOTICE:  key encryption key "kek_sp1" does not exist, skipping

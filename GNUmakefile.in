@@ -21,54 +21,60 @@ endif
 
 # TECC全密态测试一键入口
 check-tecc: | submake-generated-headers temp-install
-       $(MAKE) -C src/test/regress check \
-       TESTS="tecc_system_tables tecc_permissions tecc_acl_queries tecc_acl_edge_cases tecc_frontend_processor tecc_integration"
-       $(MAKE) -C src/test/modules/tecc_tests check
+	 $(MAKE) -C src/test/regress check \
+	 TESTS="tecc_system_tables tecc_permissions tecc_acl_queries tecc_acl_edge_cases tecc_frontend_processor tecc_integration"
+	 $(MAKE) -C src/test/modules/tecc_tests check
 
 check-tecc-libpq: | submake-generated-headers temp-install
-       $(MAKE) -C src/test/modules/tecc_tests check \
-       PROVE_TESTS=t/001_tecc_libpq_test.pl
+	 $(MAKE) -C src/test/modules/tecc_tests check \
+	 PROVE_TESTS=t/001_tecc_libpq_test.pl
 
 check-tecc-libpq-raw: | submake-generated-headers temp-install
-       $(MAKE) -C src/test/modules/tecc_tests check \
-       PROVE_TESTS=t/001_tecc_libpq_test.pl MODE=raw
+	$(MAKE) -C src/test/modules/tecc_tests check \
+	PROVE_TESTS=t/001_tecc_libpq_test.pl MODE=raw
 
 check-tecc-libpq-common: | submake-generated-headers temp-install
-       $(MAKE) -C src/test/modules/tecc_tests check \
-       PROVE_TESTS=t/001_tecc_libpq_test.pl MODE=common
+	$(MAKE) -C src/test/modules/tecc_tests check \
+	PROVE_TESTS=t/001_tecc_libpq_test.pl MODE=common
+
+# ReqID:TECC4.0 - TECC + hgdde 分布式密态回归（1 coordinator + 2 worker）。
+# hgdde.so 由 temp-install 钩子装进临时前缀（见 src/Makefile.global.in）。
+check-tecc-hgdde: | submake-generated-headers temp-install
+	$(MAKE) -C src/test/modules/tecc_tests check \
+	    PROVE_TESTS=t/009_tecc_hgdde_test.pl
 
 check-tecc-jdbc: | submake-generated-headers temp-install
-       $(MAKE) -C src/test/modules/tecc_tests jdbc-jar
-       $(MAKE) -C src/test/modules/tecc_tests jdbc-compile
-       $(MAKE) -C src/test/modules/tecc_tests check \
-       PROVE_TESTS=t/002_tecc_jdbc_test.pl
+	$(MAKE) -C src/test/modules/tecc_tests jdbc-jar
+	$(MAKE) -C src/test/modules/tecc_tests jdbc-compile
+	$(MAKE) -C src/test/modules/tecc_tests check \
+	PROVE_TESTS=t/002_tecc_jdbc_test.pl
 
 check-tecc-jdbc-raw: | submake-generated-headers temp-install
-       $(MAKE) -C src/test/modules/tecc_tests jdbc-jar
-       $(MAKE) -C src/test/modules/tecc_tests jdbc-compile
-       $(MAKE) -C src/test/modules/tecc_tests check \
-       PROVE_TESTS=t/002_tecc_jdbc_test.pl MODE=raw
+	$(MAKE) -C src/test/modules/tecc_tests jdbc-jar
+	$(MAKE) -C src/test/modules/tecc_tests jdbc-compile
+	$(MAKE) -C src/test/modules/tecc_tests check \
+	PROVE_TESTS=t/002_tecc_jdbc_test.pl MODE=raw
 
 check-tecc-jdbc-common: | submake-generated-headers temp-install
-       $(MAKE) -C src/test/modules/tecc_tests jdbc-jar
-       $(MAKE) -C src/test/modules/tecc_tests jdbc-compile
-       $(MAKE) -C src/test/modules/tecc_tests check \
-       PROVE_TESTS=t/002_tecc_jdbc_test.pl MODE=common
+	$(MAKE) -C src/test/modules/tecc_tests jdbc-jar
+	$(MAKE) -C src/test/modules/tecc_tests jdbc-compile
+	$(MAKE) -C src/test/modules/tecc_tests check \
+	PROVE_TESTS=t/002_tecc_jdbc_test.pl MODE=common
 
 check-tecc-cross: | submake-generated-headers temp-install
-       $(MAKE) -C src/test/modules/tecc_tests check \
-       PROVE_TESTS=t/003_tecc_cross_test.pl
+	$(MAKE) -C src/test/modules/tecc_tests check \
+	PROVE_TESTS=t/003_tecc_cross_test.pl
 
 # TECC performance tests
 check-tecc-perf-libpq: | submake-generated-headers temp-install
-       $(MAKE) -C src/test/modules/tecc_tests check \
-       PROVE_TESTS=t/perf/004_tecc_libpq_perf.pl
+	$(MAKE) -C src/test/modules/tecc_tests check \
+	PROVE_TESTS=t/perf/004_tecc_libpq_perf.pl
 
 check-tecc-perf-jdbc: | submake-generated-headers temp-install
-       $(MAKE) -C src/test/modules/tecc_tests jdbc-jar
-       $(MAKE) -C src/test/modules/tecc_tests jdbc-compile
-       $(MAKE) -C src/test/modules/tecc_tests check \
-       PROVE_TESTS=t/perf/005_tecc_jdbc_perf.pl
+	$(MAKE) -C src/test/modules/tecc_tests jdbc-jar
+	$(MAKE) -C src/test/modules/tecc_tests jdbc-compile
+	$(MAKE) -C src/test/modules/tecc_tests check \
+	PROVE_TESTS=t/perf/005_tecc_jdbc_perf.pl
 
 
 # hg_alarm is only built when --enable-compatible-ak is enabled, so it is

@@ -1,0 +1,38 @@
+DROP SCHEMA
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+baseline_dek_ok|dek_dsch_pub
+CREATE SCHEMA
+SET
+DROP SCHEMA
+sch_dsch
+kek_dsch_rows|0
+dek_dsch_rows|0
+orphan_kek|0
+orphan_dek|0
+SET
+CREATE KEK
+kek_dsch_after_recovery|public
+CREATE DEK
+dek_dsch_after_recovery|public
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+cleanup_done
+psql:/.../kek_in_dropped_schema.sql:43: NOTICE:  schema "sch_dsch" does not exist, skipping
+psql:/.../kek_in_dropped_schema.sql:44: NOTICE:  table "t_dsch_probe" does not exist, skipping
+psql:/.../kek_in_dropped_schema.sql:45: NOTICE:  data encryption key "dek_dsch" does not exist, skipping
+psql:/.../kek_in_dropped_schema.sql:46: NOTICE:  data encryption key "dek_dsch_pub" does not exist, skipping
+psql:/.../kek_in_dropped_schema.sql:47: NOTICE:  key encryption key "kek_dsch" does not exist, skipping
+psql:/.../kek_in_dropped_schema.sql:48: NOTICE:  key encryption key "kek_dsch_pub" does not exist, skipping
+psql:/.../kek_in_dropped_schema.sql:66: ERROR:  no schema has been selected to create in
+LINE 1: CREATE TABLE t_dsch_probe (a int);
+                     ^
+psql:/.../kek_in_dropped_schema.sql:73: ERROR:  no schema has been selected to create in
+psql:/.../kek_in_dropped_schema.sql:76: ERROR:  no schema has been selected to create in

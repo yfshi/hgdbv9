@@ -1,0 +1,43 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+DROP TABLE
+CREATE TABLE
+  ?column?  
+------------
+ 0_setup_ok
+(1 row)
+
+INSERT 0 1
+ ?column?  
+-----------
+ 1_data_ok
+(1 row)
+
+ANALYZE
+   ?column?   
+--------------
+ 1_analyze_ok
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+ANALYZE
+     ?column?     
+------------------
+ 2_det_analyze_ok
+(1 row)
+
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+   ?column?   
+--------------
+ 3_cleanup_ok
+(1 row)
+
+psql:/.../analyze_search_col.sql:11: NOTICE:  key encryption key "kek_ana" does not exist, skipping
+psql:/.../analyze_search_col.sql:14: NOTICE:  table "ana_search_t" does not exist, skipping
+psql:/.../analyze_search_col.sql:25: NOTICE:  table "ana_det_t" does not exist, skipping

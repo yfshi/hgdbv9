@@ -6,7 +6,6 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
- *
  * IDENTIFICATION
  *	  src/backend/utils/cache/catcache.c
  *
@@ -948,6 +947,7 @@ RehashCatCache(CatCache *cp)
  * Call CatalogCacheInitializeCache() if not yet done.
  */
 pg_always_inline
+pg_attribute_always_inline
 static void
 ConditionalCatalogCacheInitializeCache(CatCache *cache)
 {

@@ -3,9 +3,9 @@
 -- 验证libpq和JDBC对同一数据产生的密文是否一致
 -- ============================================================
 
--- DET密文（cross_det仅有 int4/float8/text/varchar 四种类型）
+-- DET密文
 SELECT '=== DET CIPHER ===';
-SELECT id, c_int4, c_float8, c_text, c_varchar FROM cross_det ORDER BY id;
+SELECT id, c_int4, c_float8, c_numeric, c_text, c_varchar FROM cross_det ORDER BY id;
 
 -- OPE密文（cross_ope仅有 int4/numeric/text 三种类型）
 SELECT '=== OPE CIPHER ===';

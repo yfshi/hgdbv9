@@ -2911,7 +2911,7 @@ typedef enum ConstrType			/* types of constraints */
 	CONSTR_ATTR_DEFERRED,
 	CONSTR_ATTR_IMMEDIATE,
 	CONSTR_AUTO_INCREMENT,
-	CONSTR_INDEX				/* SRS-MYSQL-SQL-Alter */
+	CONSTR_INDEX,				/* SRS-MYSQL-SQL-Alter */
 } ConstrType;
 
 /* Foreign key action codes */
@@ -3037,6 +3037,7 @@ typedef struct CreateExtensionStmt
 	List	   *options;		/* List of DefElem nodes */
 } CreateExtensionStmt;
 
+
 /*
  * CREATE KEK - Key Encryption Key
  */
@@ -3058,6 +3059,16 @@ typedef struct CreateDekStmt
 	bool		if_not_exists;	/* just do nothing if it already exists? */
 	List	   *options;		/* List of DefElem nodes */
 } CreateDekStmt;
+
+/*
+ * ALTER KEK - Rotate key path / re-encrypt DEKs
+ */
+typedef struct AlterKekStmt
+{
+	NodeTag		type;
+	List	   *names;			/* qualified KEK name as a list of strings */
+	List	   *options;		/* List of DefElem nodes */
+} AlterKekStmt;
 
 /* Only used for ALTER EXTENSION UPDATE; later might need an action field */
 typedef struct AlterExtensionStmt

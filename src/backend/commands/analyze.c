@@ -1957,6 +1957,17 @@ std_typanalyze(VacAttrStats *stats)
 					       stats->attr->attnum))
 		ltopr = InvalidOid;
 
+	/* ReqID:TECC4.0 - Encrypted columns without DET/OPE (RND-only,
+	 * SEARCH-only) cannot do equality comparison: their ciphertext has no
+	 * comparable segment, so any equality operator would raise an error.
+	 * Drop eqopr to fall back to compute_trivial_stats (NULL/non-NULL
+	 * stats only), avoiding "neither DET nor OPE available for equality
+	 * comparison" during autovacuum analyze. */
+	if (OidIsValid(eqopr) &&
+		!tecc_column_supports_equality(stats->attr->attrelid,
+					       stats->attr->attnum))
+		eqopr = InvalidOid;
+
 	/* Save the operator info for compute_stats routines */
 	mystats = (StdAnalyzeData *) palloc(sizeof(StdAnalyzeData));
 	mystats->eqopr = eqopr;

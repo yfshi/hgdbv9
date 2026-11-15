@@ -23,6 +23,7 @@
 #include "tecc_key_args_parser.h"
 #include "tecc_error_handler.h"
 #include "tecc_metadata_serializer.h"
+#include "fe-auth.h"
 
 /* TECC状态管理接口 */
 #include "../tecc_libpq_integration/fe-tecc-integration.h"
@@ -41,7 +42,58 @@ TeccCursorInterface *tecc_fetcher_execute_query(const TeccState *state, const ch
 
 /* 连接级管理，每连接通过TeccState管理元数据查询连接 */
 
+/*
+ * ReqID:TECC4.0 - pg_upgrade V4.0.0 兼容探测：
+ * hg_encrypted_columns_info 视图是否含 he_add_dek/he_mul_dek 两列
+ * （V4.0.1 新增，V4.0.0 视图无此两列）。结果缓存在 TeccState，
+ * 首次调用时查询 pg_attribute（系统目录，两代版本均可查）。
+ */
+static bool
+tecc_fetcher_has_he_columns(const TeccState *state)
+{
+	TeccState *s = (TeccState *) state;	/* 缓存探测结果，需要可写访问 */
+	TeccCursorInterface *cursor;
+	const char *value;
+	bool has_cols = false;
 
+	if (state == NULL)
+		return false;
+	if (s->he_cols_probed)
+		return s->has_he_cols;
+
+	cursor = tecc_fetcher_execute_query(state,
+		"SELECT count(*) FROM pg_catalog.pg_attribute "
+		"WHERE attrelid = 'pg_catalog.hg_encrypted_columns_info'::regclass "
+		"AND attname IN ('he_add_dek', 'he_mul_dek')");
+	if (cursor != NULL)
+	{
+		if (cursor->next(cursor) == TECC_FETCHER_OK &&
+			(value = cursor->get_column(cursor, 0)) != NULL &&
+			atoi(value) >= 2)
+			has_cols = true;
+		cursor->close(cursor);
+		cursor->destroy(cursor);
+	}
+	else
+	{
+		/* 探测失败（如视图不存在）时按有列处理，交由后续查询正常报错 */
+		has_cols = true;
+	}
+
+	s->he_cols_probed = true;
+	s->has_he_cols = has_cols;
+	return has_cols;
+}
+
+/*
+ * 加密列查询的 HE 列后缀：视图含 he 列时追加 ", he_add_dek, he_mul_dek"，
+ * 否则省略（V4.0.0 兼容）。调用方在 has_dek_permission 之后以 %s 接入。
+ */
+static const char *
+tecc_fetcher_he_cols_suffix(const TeccState *state)
+{
+	return tecc_fetcher_has_he_columns(state) ? ", he_add_dek, he_mul_dek" : "";
+}
 
 /*
  * tecc_fetch_kek_metadata - 获取KEK元数据
@@ -230,6 +282,61 @@ tecc_fetch_kek_metadata(const TeccState *state,
     }
 
     return error_code;
+}
+
+/*
+ * tecc_fetch_kek_metadata_by_oid - 按OID获取KEK元数据
+ *
+ * ReqID:TECC4.0 - Bug 9256
+ *
+ * 与按名查询走同一个 hg_kek_info 视图，因此同样受视图的
+ * has_kek_privilege(k.oid,'USAGE') 权限过滤 —— 无 USAGE 的用户查不到，
+ * 与 CREATE DEK 的 hg_kek_aclmask(..., ACL_USAGE, ...) 口径一致。
+ *
+ * state: TECC状态结构
+ * kek_oid: KEK对象标识符
+ * result: 输出KEK元数据指针
+ * 返回: 错误码
+ */
+TeccFetcherErrorCode
+tecc_fetch_kek_metadata_by_oid(const TeccState *state,
+                               Oid kek_oid,
+                               TeccKekMetadata **result)
+{
+    TeccCursorInterface *cursor = NULL;
+    char query[512];
+    TeccFetcherErrorCode error_code;
+
+    if (state == NULL || result == NULL)
+        return TECC_FETCHER_ERROR_INVALID_PARAM;
+
+    *result = NULL;
+
+    snprintf(query, sizeof(query),
+             "SELECT kek_oid, kek_name, key_namespace_name, key_owner_oid, key_owner_name, "
+             "key_acl, create_date, function_name, arg_key, arg_value "
+             "FROM hg_kek_info WHERE kek_oid = %u "
+             "ORDER BY kek_oid, function_name, arg_key",
+             kek_oid);
+
+    cursor = tecc_fetcher_execute_query(state, query);
+    if (cursor == NULL)
+        return TECC_FETCHER_ERROR_QUERY;
+
+    error_code = tecc_parse_kek_metadata(state, cursor, result);
+    cursor->close(cursor);
+    cursor->destroy(cursor);
+
+    if (error_code != TECC_FETCHER_OK)
+    {
+        /* 视图无匹配行（KEK 不存在，或当前用户无 USAGE 被权限过滤）时，
+         * tecc_parse_kek_metadata 以 PARSE 错误返回、*result 保持 NULL。 */
+        tecc_free_kek_metadata(*result);
+        *result = NULL;
+        return error_code;
+    }
+
+    return TECC_FETCHER_OK;
 }
 
 /*
@@ -449,11 +556,11 @@ tecc_fetch_encrypted_column_metadata(const TeccState *state,
     snprintf(query, sizeof(query),
              "SELECT table_oid, cls.relname AS table_name, column_attnum, column_name, data_type_original_oid, "
              "data_type_original_mod, dek_name, encryption_type, collation_locale, column_key_id, create_date, "
-             "has_dek_privilege(column_key_id, 'USAGE') AS has_dek_permission "
+             "has_dek_privilege(column_key_id, 'USAGE') AS has_dek_permission%s "
              "FROM hg_encrypted_columns_info "
              "JOIN pg_class cls ON table_oid = cls.oid "
              "WHERE table_oid = %u AND column_attnum = %d",
-             table_oid, column_attnum);
+             tecc_fetcher_he_cols_suffix(state), table_oid, column_attnum);
 
     /* 执行查询 */
     cursor = tecc_fetcher_execute_query(state, query);
@@ -735,11 +842,11 @@ tecc_fetch_columns_by_table(const TeccState *state,
     snprintf(query, query_len,
              "SELECT table_oid, cls.relname AS table_name, column_attnum, column_name, data_type_original_oid, "
              "data_type_original_mod, dek_name, encryption_type, collation_locale, column_key_id, create_date, "
-             "has_dek_privilege(column_key_id, 'USAGE') AS has_dek_permission "
+             "has_dek_privilege(column_key_id, 'USAGE') AS has_dek_permission%s "
              "FROM hg_encrypted_columns_info "
              "JOIN pg_class cls ON table_oid = cls.oid "
              "WHERE table_oid = %u ORDER BY column_attnum",
-             table_oid);
+             tecc_fetcher_he_cols_suffix(state), table_oid);
 
     /* 记录调试信息 */
     TECC_LOG(TECC_LOG_DEBUG1, "Executing encrypted columns query for table OID: %u", table_oid);
@@ -886,6 +993,11 @@ tecc_free_encrypted_column_metadata(TeccEncryptedColumnMetadata *column)
         pg_free(column->kek_name);
     if (column->collation_locale != NULL)
         pg_free(column->collation_locale);
+    /* ReqID:TECC4.0 - 一列多 DEK：释放 HE 加法/乘法 DEK 名 */
+    if (column->he_add_dek != NULL)
+        pg_free(column->he_add_dek);
+    if (column->he_mul_dek != NULL)
+        pg_free(column->he_mul_dek);
 
     /* 释放结构体 */
     pg_free(column);
@@ -1076,6 +1188,13 @@ tecc_escape_string(const char *str)
 
 
 
+/* ReqID:TECC4.0 - 临时连接创建失败时的重连参数：
+ * 元数据获取临时连接在主连接繁忙或网络抖动时可能短暂失败，
+ * 重试几次并短暂间隔，避免单次失败导致元数据获取失败（删除
+ * 主连接 fallback 后，元数据获取失败会直接上抛错误）。 */
+#define TECC_FETCHER_MAX_CONNECT_RETRIES        3
+#define TECC_FETCHER_CONNECT_RETRY_INTERVAL_US  100000  /* 100ms */
+
 /*
  * tecc_create_temp_connection - 创建临时数据库连接
  *
@@ -1091,42 +1210,68 @@ PGconn *
 tecc_create_temp_connection(const TeccState *state, const char *caller_desc)
 {
     PGconn *conn;
-    static char env_buf[] = "PGENABLETECC=false";
+    int attempt;
+    const char *conninfo;
 
-    if (state == NULL || state->conninfo == NULL)
+    if (state == NULL)
     {
-        TECC_LOG(TECC_LOG_ERROR, "TEMP_CONN: CREATE FAILED - invalid state or conninfo, caller=\"%s\"",
+        TECC_LOG(TECC_LOG_ERROR, "TEMP_CONN: CREATE FAILED - invalid state, caller=\"%s\"",
                  caller_desc ? caller_desc : "unknown");
         return NULL;
     }
 
     /*
-     * 跳过 replication 连接：pg_basebackup 等工具使用 replication 协议，
-     * 没有对应的物理数据库，temp connection 无法连接。
+     * ReqID:TECC4.0 - 取数目标可被 DDL-only 模式临时覆盖。
+     *
+     * 分布式内部连接连的是 worker，而逻辑表的加密声明在协调节点上；DDL-only
+     * 通路需要用同一套取数器去协调节点取声明（见 plan §0.4.3 的 L1）。
+     * 覆盖串同样自带 enable_tecc=false（防递归）。
      */
-    if (strstr(state->conninfo, "dbname='replication'") ||
-        strstr(state->conninfo, "replication=database"))
+    conninfo = (state->fetch_conninfo_override != NULL) ?
+        state->fetch_conninfo_override : state->conninfo;
+
+    if (conninfo == NULL)
     {
-        TECC_LOG(TECC_LOG_DEBUG1, "TEMP_CONN: SKIP replication connection, caller=\"%s\"",
+        TECC_LOG(TECC_LOG_ERROR, "TEMP_CONN: CREATE FAILED - invalid conninfo, caller=\"%s\"",
                  caller_desc ? caller_desc : "unknown");
         return NULL;
     }
 
-    putenv(env_buf);
+    /*
+     * 取数连接自己绝不能再走密态处理，否则取元数据这件事本身会递归地触发
+     * 元数据查询。这里以前是靠 putenv 进程级改环境变量实现的，那会把同一
+     * 进程里之后建立的**所有**连接都关掉密态（后端进程内的连接尤其危险），
+     * 且全树没有还原点。现在改成由 state->conninfo 自带 enable_tecc=false
+     * （见 tecc_state_init），只影响这一条连接。
+     */
 
-    conn = PQconnectdb(state->conninfo);
-    if (PQstatus(conn) != CONNECTION_OK)
+    /* ReqID:TECC4.0 - 连接失败时重试几次（短暂间隔），避免单次网络/连接抖动
+     * 导致元数据获取失败；删除主连接 fallback 后，元数据获取失败会直接上抛错误。 */
+    for (attempt = 0; attempt < TECC_FETCHER_MAX_CONNECT_RETRIES; attempt++)
     {
-        TECC_LOG(TECC_LOG_ERROR, "TEMP_CONN: CREATE FAILED caller=\"%s\" conn=%p error=\"%s\"",
-                 caller_desc ? caller_desc : "unknown", (void *)conn, PQerrorMessage(conn));
+        conn = PQconnectdb(conninfo);
+        if (PQstatus(conn) == CONNECTION_OK)
+        {
+            conn->enable_tecc = false;
+            TECC_LOG(TECC_LOG_INFO, "TEMP_CONN: CREATE caller=\"%s\" conn=%p (attempt %d/%d)",
+                     caller_desc ? caller_desc : "unknown", (void *)conn,
+                     attempt + 1, TECC_FETCHER_MAX_CONNECT_RETRIES);
+            return conn;
+        }
+
+        TECC_LOG(TECC_LOG_WARNING,
+                 "TEMP_CONN: CREATE attempt %d/%d FAILED caller=\"%s\" error=\"%s\"",
+                 attempt + 1, TECC_FETCHER_MAX_CONNECT_RETRIES,
+                 caller_desc ? caller_desc : "unknown", PQerrorMessage(conn));
         PQfinish(conn);
-        return NULL;
+
+        if (attempt + 1 < TECC_FETCHER_MAX_CONNECT_RETRIES)
+            pg_usleep(TECC_FETCHER_CONNECT_RETRY_INTERVAL_US);
     }
 
-    conn->enable_tecc = false;
-    TECC_LOG(TECC_LOG_INFO, "TEMP_CONN: CREATE caller=\"%s\" conn=%p",
-             caller_desc ? caller_desc : "unknown", (void *)conn);
-    return conn;
+    TECC_LOG(TECC_LOG_ERROR, "TEMP_CONN: CREATE FAILED after %d attempts caller=\"%s\"",
+             TECC_FETCHER_MAX_CONNECT_RETRIES, caller_desc ? caller_desc : "unknown");
+    return NULL;
 }
 
 /*
@@ -1164,18 +1309,6 @@ tecc_fetcher_execute_query(const TeccState *state, const char *query)
     PGconn *conn;
     TeccCursorInterface *cursor;
     bool conn_is_temp;
-
-    /*
-     * 跳过 replication 连接：元数据查询对 replication 协议无意义，
-     * 且 temp connection 无法连接到虚拟的 "replication" 数据库。
-     */
-    if (state != NULL && state->conninfo != NULL &&
-        (strstr(state->conninfo, "dbname='replication'") ||
-         strstr(state->conninfo, "replication=database")))
-    {
-        TECC_LOG(TECC_LOG_DEBUG1, "FETCHER: SKIP replication connection");
-        return NULL;
-    }
 
     conn = tecc_data_fetcher_get_connection(state);
     if (conn == NULL)
@@ -1388,12 +1521,13 @@ tecc_fetch_encrypted_column_metadata_by_name(const TeccState *state,
     snprintf(query, sizeof(query),
              "SELECT table_oid, cls.relname AS table_name, column_attnum, column_name, data_type_original_oid, "
              "data_type_original_mod, dek_name, encryption_type, collation_locale, column_key_id, create_date, "
-             "has_dek_privilege(column_key_id, 'USAGE') AS has_dek_permission "
+             "has_dek_privilege(column_key_id, 'USAGE') AS has_dek_permission%s "
              "FROM hg_encrypted_columns_info "
              "JOIN pg_class cls ON table_oid = cls.oid "
              "JOIN pg_namespace ns ON cls.relnamespace = ns.oid "
              "WHERE cls.relname = '%s' AND ns.nspname = '%s' AND column_name = '%s' "
              "AND current_database() = '%s'",
+             tecc_fetcher_he_cols_suffix(state),
              escaped_table, escaped_schema, escaped_column, escaped_dbname);
 
     /* 清理转义字符串 */
@@ -1487,13 +1621,14 @@ tecc_fetch_columns_by_table_by_name(const TeccState *state,
     snprintf(query, sizeof(query),
              "SELECT table_oid, cls.relname AS table_name, column_attnum, column_name, data_type_original_oid, "
              "data_type_original_mod, dek_name, encryption_type, collation_locale, column_key_id, create_date, "
-             "has_dek_privilege(column_key_id, 'USAGE') AS has_dek_permission "
+             "has_dek_privilege(column_key_id, 'USAGE') AS has_dek_permission%s "
              "FROM hg_encrypted_columns_info "
              "JOIN pg_class cls ON table_oid = cls.oid "
              "JOIN pg_namespace ns ON cls.relnamespace = ns.oid "
              "WHERE cls.relname = '%s' AND ns.nspname = '%s' "
              "AND current_database() = '%s' "
              "ORDER BY column_attnum",
+             tecc_fetcher_he_cols_suffix(state),
              escaped_table, escaped_schema, escaped_dbname);
     TECC_LOG(TECC_LOG_DEBUG1, "DEBUG LOOP: Query: %s", query);
 
@@ -1534,6 +1669,225 @@ tecc_fetch_columns_by_table_by_name(const TeccState *state,
     {
         TECC_LOG(TECC_LOG_DEBUG1, "DEBUG LOOP: Failed to fetch columns or empty result");
     }
+
+    return error_code;
+}
+
+/*
+ * tecc_fetch_resolve_table_schema - 按 search_path 解析未限定表名的真实 schema
+ *
+ * state: TECC状态结构
+ * database_name: 数据库名称
+ * table_name: 表名称（未限定）
+ * schemas: search_path 解析后的 schema 列表（按 PG 顺序，$user 已替换）
+ * nschemas: schema 列表长度
+ * resolved_schema: 输出，找到的 schema 名（pg_malloc 分配，调用者负责 pg_free）；
+ *                  未找到（表不在 search_path 任何 schema）时置 NULL 且返回
+ *                  TECC_FETCHER_OK（"未找到"不是错误）
+ * 返回: 错误码
+ *
+ * 注意: 查询经数据获取器独立连接执行（池连接），会话私有对象（临时表）不可见；
+ * 临时表由前端会话级清单处理，不在此查询范围。
+ */
+TeccFetcherErrorCode
+tecc_fetch_resolve_table_schema(const TeccState *state,
+                                const char *database_name,
+                                const char *table_name,
+                                const char **schemas,
+                                int nschemas,
+                                char **resolved_schema)
+{
+    TeccCursorInterface *cursor = NULL;
+    char query[4096];
+    char *escaped_dbname = NULL;
+    char *escaped_table = NULL;
+    char **escaped_schemas = NULL;
+    char *best_schema = NULL;
+    int best_idx = -1;
+    int i;
+    int pos;
+    TeccFetcherErrorCode error_code = TECC_FETCHER_OK;
+
+    /* 参数检查 */
+    if (state == NULL || database_name == NULL || table_name == NULL ||
+        schemas == NULL || nschemas <= 0 || resolved_schema == NULL)
+    {
+        return TECC_FETCHER_ERROR_INVALID_PARAM;
+    }
+
+    /* 初始化输出参数 */
+    *resolved_schema = NULL;
+
+    /* 转义输入字符串 */
+    escaped_dbname = tecc_escape_string(database_name);
+    escaped_table = tecc_escape_string(table_name);
+    if (escaped_dbname == NULL || escaped_table == NULL)
+    {
+        if (escaped_dbname) pg_free(escaped_dbname);
+        if (escaped_table) pg_free(escaped_table);
+        return TECC_FETCHER_ERROR_MEMORY;
+    }
+
+    /* 转义 schema 列表 */
+    escaped_schemas = (char **)pg_malloc(sizeof(char *) * nschemas);
+    if (escaped_schemas == NULL)
+    {
+        pg_free(escaped_dbname);
+        pg_free(escaped_table);
+        return TECC_FETCHER_ERROR_MEMORY;
+    }
+    for (i = 0; i < nschemas; i++)
+    {
+        int j;
+        escaped_schemas[i] = tecc_escape_string(schemas[i]);
+        if (escaped_schemas[i] == NULL)
+        {
+            for (j = 0; j < i; j++)
+                pg_free(escaped_schemas[j]);
+            pg_free(escaped_schemas);
+            pg_free(escaped_dbname);
+            pg_free(escaped_table);
+            return TECC_FETCHER_ERROR_MEMORY;
+        }
+    }
+
+    /* 构建查询语句 - 查 pg_class 返回表在 search_path 中命中的所有 schema */
+    pos = snprintf(query, sizeof(query),
+                   "SELECT ns.nspname "
+                   "FROM pg_catalog.pg_class cls "
+                   "JOIN pg_catalog.pg_namespace ns ON cls.relnamespace = ns.oid "
+                   "WHERE cls.relname = '%s' AND current_database() = '%s' "
+                   "AND ns.nspname IN (",
+                   escaped_table, escaped_dbname);
+    for (i = 0; i < nschemas; i++)
+    {
+        pos += snprintf(query + pos, sizeof(query) - pos, "'%s'%s",
+                        escaped_schemas[i], (i < nschemas - 1) ? "," : "");
+    }
+    snprintf(query + pos, sizeof(query) - pos, ")");
+
+    /* 清理转义字符串 */
+    for (i = 0; i < nschemas; i++)
+        pg_free(escaped_schemas[i]);
+    pg_free(escaped_schemas);
+    pg_free(escaped_dbname);
+    pg_free(escaped_table);
+
+    /* 执行查询 */
+    cursor = tecc_fetcher_execute_query(state, query);
+    if (cursor == NULL)
+    {
+        return TECC_FETCHER_ERROR_QUERY;
+    }
+
+    /* 遍历结果，按 search_path 顺序取第一个匹配（等价于 PG 的"第一个存在即停"） */
+    while (cursor->fetch_next(cursor) == 0) /* 0表示有数据 */
+    {
+        const char *ns = cursor->get_column(cursor, 0);
+        if (ns != NULL)
+        {
+            int idx;
+            for (idx = 0; idx < nschemas; idx++)
+            {
+                if (strcmp(ns, schemas[idx]) == 0)
+                    break;
+            }
+            if (idx < nschemas && (best_idx < 0 || idx < best_idx))
+            {
+                if (best_schema != NULL)
+                    pg_free(best_schema);
+                best_schema = pg_strdup(ns);
+                best_idx = idx;
+            }
+        }
+    }
+
+    /* 关闭游标 */
+    cursor->close(cursor);
+    cursor->destroy(cursor);
+
+    if (best_schema != NULL)
+    {
+        *resolved_schema = best_schema;
+    }
+    /* 未找到：*resolved_schema 保持 NULL，返回 TECC_FETCHER_OK（"未找到"非错误） */
+
+    return error_code;
+}
+
+/*
+ * tecc_fetch_relation_exists - 判断指定 schema 下是否存在该关系
+ *
+ * state: TECC状态结构
+ * database_name: 数据库名称
+ * schema_name: 模式名称
+ * table_name: 表名称
+ * exists: 输出，true 表示关系存在
+ * 返回: 错误码（查询失败时返回错误；关系不存在不算错误，exists 置 false）
+ *
+ * 用途: 加密列元数据按名查询返回空结果时，"表不存在"与"表存在但无加密列"
+ * 的语义不同。缓存层只能为后者固化负缓存哨兵，否则本会话后续对该表名的
+ * 查找都会短路成"无需加密"，导致 DML 明文外发。
+ */
+TeccFetcherErrorCode
+tecc_fetch_relation_exists(const TeccState *state,
+                           const char *database_name,
+                           const char *schema_name,
+                           const char *table_name,
+                           bool *exists)
+{
+    TeccCursorInterface *cursor = NULL;
+    char query[1024];
+    char *escaped_dbname = NULL;
+    char *escaped_schema = NULL;
+    char *escaped_table = NULL;
+    TeccFetcherErrorCode error_code = TECC_FETCHER_OK;
+
+    if (state == NULL || database_name == NULL || schema_name == NULL ||
+        table_name == NULL || exists == NULL)
+    {
+        return TECC_FETCHER_ERROR_INVALID_PARAM;
+    }
+
+    *exists = false;
+
+    escaped_dbname = tecc_escape_string(database_name);
+    escaped_schema = tecc_escape_string(schema_name);
+    escaped_table = tecc_escape_string(table_name);
+
+    if (escaped_dbname == NULL || escaped_schema == NULL || escaped_table == NULL)
+    {
+        if (escaped_dbname) pg_free(escaped_dbname);
+        if (escaped_schema) pg_free(escaped_schema);
+        if (escaped_table) pg_free(escaped_table);
+        return TECC_FETCHER_ERROR_MEMORY;
+    }
+
+    snprintf(query, sizeof(query),
+             "SELECT 1 FROM pg_catalog.pg_class cls "
+             "JOIN pg_catalog.pg_namespace ns ON cls.relnamespace = ns.oid "
+             "WHERE cls.relname = '%s' AND ns.nspname = '%s' "
+             "AND current_database() = '%s' LIMIT 1",
+             escaped_table, escaped_schema, escaped_dbname);
+
+    pg_free(escaped_dbname);
+    pg_free(escaped_schema);
+    pg_free(escaped_table);
+
+    cursor = tecc_fetcher_execute_query(state, query);
+    if (cursor == NULL)
+    {
+        return TECC_FETCHER_ERROR_QUERY;
+    }
+
+    while (cursor->fetch_next(cursor) == 0) /* 0表示有数据 */
+    {
+        *exists = true;
+        break;
+    }
+
+    cursor->close(cursor);
+    cursor->destroy(cursor);
 
     return error_code;
 }

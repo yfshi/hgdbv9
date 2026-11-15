@@ -1,0 +1,8 @@
+=== 1 restore original KEK file ===
+=== 2 SELECT after restore (plaintext) ===
+1|hello
+2|world
+=== 3 CLEANUP ===
+DROP TABLE
+DROP DEK
+DROP KEK

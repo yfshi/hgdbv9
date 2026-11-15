@@ -91,6 +91,28 @@ check_dek_has_encrypted_columns(Oid dek_oid)
     systable_endscan(scan);
     table_close(enc_col_rel, AccessShareLock);
 
+    /* ReqID:TECC4.0 - 同态 DEK 的绑定不在 column_key_id 上，而在
+     * hg_encrypted_column_args 的 he_add_dek/he_mul_dek 条目里，纯同态列只
+     * 有这条检查能发现。否则 DROP KEK ... CASCADE 会连带删掉仍被列引用的
+     * 同态 DEK，留下指向不存在密钥的绑定。 */
+    if (!has_columns)
+    {
+        Oid            dek_dist_id = get_dek_dist_id(dek_oid);
+        Oid            he_table_oid = InvalidOid;
+        char          *he_column_name = NULL;
+        const char    *he_arg_key = NULL;
+
+        if (find_he_dek_bound_column(dek_dist_id, &he_table_oid,
+                                     &he_column_name, &he_arg_key))
+        {
+            has_columns = true;
+            elog(DEBUG1, "DROP KEK: DEK OID %u is bound as %s key by column \"%s\" (table OID %u)",
+                 dek_oid, he_arg_key, he_column_name, he_table_oid);
+        }
+        if (he_column_name != NULL)
+            pfree(he_column_name);
+    }
+
     return has_columns;
 }
 

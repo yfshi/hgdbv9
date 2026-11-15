@@ -1,0 +1,56 @@
+NOTICE: table "he_dss_t" does not exist, skipping
+DROP TABLE
+NOTICE: table "he_dss_sc" does not exist, skipping
+DROP TABLE
+NOTICE: table "he_dss_src" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "he_dss_add" does not exist, skipping
+DROP DEK
+NOTICE: data encryption key "he_dss_mul" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "he_dss_kek" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+=== 0 baseline ===
+1|10|2|3
+=== A1 he-add 结果（仅 EG_ADD）-> 双开列 x：期望失败 ===
+ERROR: ERROR: cannot store ciphertext missing the he-mul segment into column "x"
+  Detail: The column is declared with support_algo 'he-mul', but the assigned value carries no he-mul ciphertext.
+  Hint: Assign a value encrypted for this column's algorithms (for example from a column with the same support_algo), or adjust the column's support_algo.
+=== A2 he-mul 结果（仅 EG_MUL）-> 双开列 x：期望失败 ===
+ERROR: ERROR: cannot store ciphertext missing the he-add segment into column "x"
+  Detail: The column is declared with support_algo 'he-add', but the assigned value carries no he-add ciphertext.
+  Hint: Assign a value encrypted for this column's algorithms (for example from a column with the same support_algo), or adjust the column's support_algo.
+=== A3 常量 -> 双开列 x：期望成功（客户端双段加密）===
+UPDATE 1
+=== A4 UPDATE ... FROM 单段结果 -> 双开列 x：期望失败 ===
+CREATE TABLE
+INSERT 0 1
+ERROR: ERROR: cannot store ciphertext missing the he-mul segment into column "x"
+  Detail: The column is declared with support_algo 'he-mul', but the assigned value carries no he-mul ciphertext.
+  Hint: Assign a value encrypted for this column's algorithms (for example from a column with the same support_algo), or adjust the column's support_algo.
+=== A5 被拒后列值完好（x 仍为常量写入的 7）===
+1|10|2|7
+=== B1 create ===
+CREATE TABLE
+INSERT 0 1
+=== B2 常量路径 x * 3 -> 纯 he-mul 列：期望成功（结果 EG_MUL）===
+UPDATE 1
+=== B3 明文列路径 x * k -> 纯 he-mul 列：期望成功（修复后结果 EG_MUL）===
+UPDATE 1
+=== B4 仅 he-add 列 a * k（EC 倍点路径保留；目标列无 he-mul，JDBC 前端拦截）===
+ERROR: TECC strict: encrypted column 'public.he_dss_sc.a' lacks he-mul segment capability for homomorphic assignment to 'a' in SET clause
+=== B5 仅 he-mul 列 m * k：期望成功（FF 同态乘路径保留）===
+UPDATE 1
+=== B6 明文正确性（x=6 k=4：m=6*3=18 → *4=24 → *4=96；a=0*4=0）===
+1|6|4|96|0
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK

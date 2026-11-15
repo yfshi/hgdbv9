@@ -12,6 +12,13 @@ SELECT id, c_int4, c_float8, c_text, c_varchar FROM cross_det
     WHERE c_int4 = 100 ORDER BY id;
 SELECT id, c_int4, c_float8, c_text, c_varchar FROM cross_det
     WHERE c_text = 'det_alpha' ORDER BY id;
+SELECT '=== DET NUMERIC ===';
+SELECT id, c_int4, c_float8, c_numeric, c_text FROM cross_det
+    WHERE c_numeric = 10 ORDER BY id;
+SELECT id, c_int4, c_float8, c_numeric, c_text FROM cross_det
+    WHERE c_numeric = 100 ORDER BY id;
+SELECT id, c_int4, c_float8, c_numeric, c_text FROM cross_det
+    WHERE c_numeric = 1000 ORDER BY id;
 
 SELECT '=== OPE RANGE ===';
 SELECT id, c_int4, c_numeric, c_text FROM cross_ope

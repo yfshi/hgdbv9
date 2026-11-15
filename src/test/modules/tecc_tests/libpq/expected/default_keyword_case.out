@@ -1,0 +1,52 @@
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+1_tables_created|5
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+1a_lower|low_val
+1b_UPPER|up_val
+1c_Default|cap_val
+1d_DeFaUlT|mix1_val
+1e_dEfAuLt|mix2_val
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+2a_int_mixed|100
+2b_multi_cols|m_low|m_up|m_mix|42
+CREATE TABLE
+INSERT 0 1
+3a_plain_int_default|7
+3b_enc_default|p_mix
+4a_default_not_null|1
+4a_default_eq_hit|1
+INSERT 0 1
+4b_rows_after_explicit|2
+4c_explicit_readback|x1|y1|z1|9
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+z_cleanup_done
+psql:/.../default_keyword_case.sql:27: NOTICE:  table "t_dkc_low" does not exist, skipping
+psql:/.../default_keyword_case.sql:27: NOTICE:  table "t_dkc_up" does not exist, skipping
+psql:/.../default_keyword_case.sql:27: NOTICE:  table "t_dkc_cap" does not exist, skipping
+psql:/.../default_keyword_case.sql:27: NOTICE:  table "t_dkc_mix1" does not exist, skipping
+psql:/.../default_keyword_case.sql:27: NOTICE:  table "t_dkc_mix2" does not exist, skipping
+psql:/.../default_keyword_case.sql:28: NOTICE:  table "t_dkc_int" does not exist, skipping
+psql:/.../default_keyword_case.sql:28: NOTICE:  table "t_dkc_multi" does not exist, skipping
+psql:/.../default_keyword_case.sql:28: NOTICE:  table "t_dkc_plain" does not exist, skipping
+psql:/.../default_keyword_case.sql:29: NOTICE:  data encryption key "dek_dkc" does not exist, skipping
+psql:/.../default_keyword_case.sql:30: NOTICE:  key encryption key "kek_dkc" does not exist, skipping

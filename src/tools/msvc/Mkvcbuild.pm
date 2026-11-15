@@ -164,6 +164,28 @@ sub mkvcbuild
 
 	if ($solution->{options}->{openssl})
 	{
+		my @tecc_algorithm_files = (
+			'tecc_algorithm/tecc_hkdf_sm3.c',
+			'tecc_algorithm/tecc_sm4_rnd.c',
+			'tecc_algorithm/tecc_det_sm4.c',
+			'tecc_algorithm/tecc_sm4_ope.c',
+			'tecc_algorithm/tecc_search_sm4.c',
+			'tecc_algorithm/tecc_sm3_internal.c',
+			'tecc_algorithm/tecc_sm4_internal.c',
+			'tecc_algorithm/tecc_pattern.c',
+			'tecc_algorithm/tecc_algorithm_api.c',
+			'tecc_algorithm/tecc_byteorder.c',
+			'tecc_algorithm/tecc_ec_elgamal.c',
+			'tecc_algorithm/tecc_elgamal.c');
+		my @tecc_key_files = (
+			'tecc_key/config.c',
+			'tecc_key/high_level_api.c',
+			'tecc_key/key_manager.c',
+			'tecc_key/kms_adapter.c',
+			'tecc_key/security.c',
+			'tecc_key/server_interface.c',
+			'tecc_key/utils.c',
+			'tecc_key/tecc_sm2.c');
 		push(@pgcommonallfiles, 'cipher_openssl.c');
 		push(@pgcommonallfiles, 'cryptohash_openssl.c');
 		push(@pgcommonallfiles, 'hmac_openssl.c');

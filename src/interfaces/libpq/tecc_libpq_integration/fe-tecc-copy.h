@@ -33,6 +33,13 @@ extern int tecc_process_copy_result(PGconn *conn, const char *encrypted_data,
 /* COPY加密上下文清理接口 */
 extern void tecc_copy_state_cleanup_crypto_context(TeccEnhancedCopyState *copy_state);
 
+/* ReqID:TECC4.0 - Bug 907：多表 JOIN 子查询的来源表元数据补载。
+ * processor 回填出各输出列的来源表名后调用，把 JOIN 右表的密态列元数据
+ * 补进 COPY 状态（幂等，返回新加载的表数）；reload 版额外按新列数重建
+ * 加解密上下文数组。 */
+extern int tecc_copy_state_load_mapped_tables(TeccEnhancedCopyState *copy_state);
+extern int tecc_copy_state_reload_mapped_columns(TeccEnhancedCopyState *copy_state);
+
 /* COPY状态清理接口 */
 extern void tecc_cleanup_copy_state(PGconn *conn);
 

@@ -31,20 +31,6 @@ extern TeccFetcherErrorCode tecc_convert_sql_state(const char *sql_state);
 extern void tecc_set_detailed_error(const char *message);
 extern const char *tecc_get_detailed_error(void);
 
-/* 错误堆栈跟踪 */
-extern void tecc_push_error_stack(const char *function_name, TeccFetcherErrorCode error_code);
-extern void tecc_pop_error_stack(void);
-extern void tecc_clear_error_stack(void);
-extern void tecc_print_error_stack(void);
-
-/* 错误恢复 */
-extern bool tecc_can_recover_error(TeccFetcherErrorCode error_code);
-extern TeccFetcherErrorCode tecc_try_recover(TeccFetcherErrorCode error_code);
-
-/* 错误日志配置 */
-extern void tecc_set_error_log_level(int level);
-extern void tecc_enable_error_logging(bool enable);
-
 /* 错误统计 */
 extern void tecc_increment_error_count(TeccFetcherErrorCode error_code);
 extern int tecc_get_error_count(TeccFetcherErrorCode error_code);

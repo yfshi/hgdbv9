@@ -1,0 +1,62 @@
+<!--
+doc/src/sgml/ref/alter_kek.sgml
+-->
+
+<refentry id="sql-alterkek">
+ <indexterm zone="sql-alterkek">
+  <primary>ALTER KEK</primary>
+ </indexterm>
+
+ <refmeta>
+  <refentrytitle>ALTER KEK</refentrytitle>
+  <manvolnum>7</manvolnum>
+  <refmiscinfo>SQL - Language Statements</refmiscinfo>
+ </refmeta>
+
+ <refnamediv>
+  <refname>ALTER KEK</refname>
+  <refpurpose>rotate a TECC key-encryption key</refpurpose>
+ </refnamediv>
+
+ <refsynopsisdiv>
+<synopsis>
+ALTER KEK <replaceable class="parameter">kek_name</replaceable>
+    WITH ( KEY_PATH = <replaceable class="parameter">value</replaceable> )
+</synopsis>
+ </refsynopsisdiv>
+
+ <refsect1>
+  <title>Description</title>
+  <para>
+   <command>ALTER KEK</command> changes the provider-specific key path of an
+   existing TECC key-encryption key.  The command must be executed with TECC
+   encryption mode enabled so the frontend can re-encrypt DEKs protected by
+   the KEK.
+  </para>
+ </refsect1>
+
+ <refsect1>
+  <title>Parameters</title>
+  <variablelist>
+   <varlistentry>
+    <term><replaceable class="parameter">kek_name</replaceable></term>
+    <listitem>
+     <para>The name, optionally schema-qualified, of the KEK to alter.</para>
+    </listitem>
+   </varlistentry>
+   <varlistentry>
+    <term><literal>KEY_PATH</literal></term>
+    <listitem>
+     <para>The new provider-specific location or identifier for the key.</para>
+    </listitem>
+   </varlistentry>
+  </variablelist>
+ </refsect1>
+
+ <refsect1>
+  <title>Examples</title>
+<programlisting>
+ALTER KEK kek1 WITH (KEY_PATH = '/tmp/kek1_new.key');
+</programlisting>
+ </refsect1>
+</refentry>

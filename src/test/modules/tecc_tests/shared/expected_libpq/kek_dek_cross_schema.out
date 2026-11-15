@@ -1,0 +1,96 @@
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+DROP SCHEMA
+DROP SCHEMA
+CREATE SCHEMA
+CREATE SCHEMA
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+                 ?column?                  | id |  name  | salary 
+-------------------------------------------+----+--------+--------
+ case1 KEK in sch_cs1, DEK+table in public |  1 | highgo | 5000
+(1 row)
+
+You are now connected to database "postgres" as user "postgres".
+INSERT 0 1
+            ?column?            | id |  name  | salary 
+--------------------------------+----+--------+--------
+ case2 cold cache (by OID load) |  1 | highgo | 5000
+ case2 cold cache (by OID load) |  2 | cold   | 6000
+(2 rows)
+
+      ?column?      | id |  name  
+--------------------+----+--------
+ case2 DET equality |  1 | highgo
+(1 row)
+
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+         ?column?         | id |   name    
+--------------------------+----+-----------
+ case3 KEK+DEK in sch_cs1 |  1 | scenario1
+(1 row)
+
+You are now connected to database "postgres" as user "postgres".
+     ?column?     | id |   name    
+------------------+----+-----------
+ case3 cold cache |  1 | scenario1
+(1 row)
+
+      ?column?      | id |   name    
+--------------------+----+-----------
+ case3 DET equality |  1 | scenario1
+(1 row)
+
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+SET
+INSERT 0 1
+              ?column?              | id |   name    
+------------------------------------+----+-----------
+ case4 same KEK name in two schemas |  1 | right-key
+(1 row)
+
+You are now connected to database "postgres" as user "postgres".
+SET
+     ?column?     | id |   name    
+------------------+----+-----------
+ case4 cold cache |  1 | right-key
+(1 row)
+
+      ?column?      | id |   name    
+--------------------+----+-----------
+ case4 DET equality |  1 | right-key
+(1 row)
+
+RESET
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+DROP SCHEMA
+DROP SCHEMA
+psql:/.../kek_dek_cross_schema.sql:26: NOTICE:  table "t_cs_pub" does not exist, skipping
+psql:/.../kek_dek_cross_schema.sql:27: NOTICE:  table "t_cs_sch" does not exist, skipping
+psql:/.../kek_dek_cross_schema.sql:28: NOTICE:  table "t_cs_same" does not exist, skipping
+psql:/.../kek_dek_cross_schema.sql:29: NOTICE:  data encryption key "dek_cs_pub" does not exist, skipping
+psql:/.../kek_dek_cross_schema.sql:30: NOTICE:  data encryption key "dek_cs_sch" does not exist, skipping
+psql:/.../kek_dek_cross_schema.sql:31: NOTICE:  data encryption key "dek_cs_same" does not exist, skipping
+psql:/.../kek_dek_cross_schema.sql:32: NOTICE:  key encryption key "kek_cs1" does not exist, skipping
+psql:/.../kek_dek_cross_schema.sql:33: NOTICE:  key encryption key "kek_cs1" does not exist, skipping
+psql:/.../kek_dek_cross_schema.sql:34: NOTICE:  schema "sch_cs1" does not exist, skipping
+psql:/.../kek_dek_cross_schema.sql:35: NOTICE:  schema "sch_cs2" does not exist, skipping

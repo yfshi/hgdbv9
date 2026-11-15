@@ -1,0 +1,67 @@
+<!--
+doc/src/sgml/ref/create_dek.sgml
+-->
+
+<refentry id="sql-createdek">
+ <indexterm zone="sql-createdek">
+  <primary>CREATE DEK</primary>
+ </indexterm>
+
+ <refmeta>
+  <refentrytitle>CREATE DEK</refentrytitle>
+  <manvolnum>7</manvolnum>
+  <refmiscinfo>SQL - Language Statements</refmiscinfo>
+ </refmeta>
+
+ <refnamediv>
+  <refname>CREATE DEK</refname>
+  <refpurpose>define a TECC data-encryption key</refpurpose>
+ </refnamediv>
+
+ <refsynopsisdiv>
+<synopsis>
+CREATE DEK [ IF NOT EXISTS ] <replaceable class="parameter">dek_name</replaceable>
+    WITH VALUES ( KEK = <replaceable class="parameter">kek_name</replaceable> [, <replaceable class="parameter">option</replaceable> = <replaceable class="parameter">value</replaceable> ...] )
+</synopsis>
+ </refsynopsisdiv>
+
+ <refsect1>
+  <title>Description</title>
+  <para>
+   <command>CREATE DEK</command> creates a TECC data-encryption key protected
+   by an existing KEK.  The command must be executed with TECC encryption mode
+   enabled so the frontend can generate and encrypt the DEK value.
+  </para>
+ </refsect1>
+
+ <refsect1>
+  <title>Parameters</title>
+  <variablelist>
+   <varlistentry>
+    <term><replaceable class="parameter">dek_name</replaceable></term>
+    <listitem>
+     <para>The name, optionally schema-qualified, of the DEK to create.</para>
+    </listitem>
+   </varlistentry>
+   <varlistentry>
+    <term><literal>KEK</literal></term>
+    <listitem>
+     <para>The KEK used to protect this DEK.</para>
+    </listitem>
+   </varlistentry>
+   <varlistentry>
+    <term><literal>KEY_LENGTH</literal></term>
+    <listitem>
+     <para>Optional key length metadata.</para>
+    </listitem>
+   </varlistentry>
+  </variablelist>
+ </refsect1>
+
+ <refsect1>
+  <title>Examples</title>
+<programlisting>
+CREATE DEK dek1 WITH VALUES (KEK = kek1);
+</programlisting>
+ </refsect1>
+</refentry>

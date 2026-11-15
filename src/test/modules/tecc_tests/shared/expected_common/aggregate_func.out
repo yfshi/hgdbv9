@@ -1,0 +1,381 @@
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+DROP DEK
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+========== COUNT ==========
+COUNT(*)-OPE|5
+(1 row)
+COUNT(*)-DET|5
+(1 row)
+COUNT(c_int4)-OPE|4
+(1 row)
+COUNT(c_int4)-DET|4
+(1 row)
+COUNT(c_text)-OPE|5
+(1 row)
+COUNT(c_text)-DET|5
+(1 row)
+COUNT(c_numeric)-OPE|4
+(1 row)
+COUNT(c_numeric)-DET|4
+(1 row)
+COUNT(n_int4)-OPE-plain|4
+(1 row)
+COUNT(n_int4)-DET-plain|4
+(1 row)
+========== COUNT(DISTINCT) ==========
+COUNT(DISTINCT c_int4)-OPE|4
+(1 row)
+COUNT(DISTINCT c_int4)-DET|4
+(1 row)
+COUNT(DISTINCT c_int2)-OPE|4
+(1 row)
+COUNT(DISTINCT c_int2)-DET|4
+(1 row)
+COUNT(DISTINCT c_int8)-OPE|5
+(1 row)
+COUNT(DISTINCT c_int8)-DET|5
+(1 row)
+COUNT(DISTINCT c_float4)-OPE|4
+(1 row)
+COUNT(DISTINCT c_float4)-DET|4
+(1 row)
+COUNT(DISTINCT c_float8)-OPE|5
+(1 row)
+COUNT(DISTINCT c_float8)-DET|5
+(1 row)
+COUNT(DISTINCT c_numeric)-OPE|4
+(1 row)
+COUNT(DISTINCT c_numeric)-DET|4
+(1 row)
+COUNT(DISTINCT c_text)-OPE|5
+(1 row)
+COUNT(DISTINCT c_text)-DET|5
+(1 row)
+COUNT(DISTINCT c_varchar)-OPE|4
+(1 row)
+COUNT(DISTINCT c_varchar)-DET|4
+(1 row)
+COUNT(DISTINCT c_bpchar)-OPE|5
+(1 row)
+COUNT(DISTINCT c_bpchar)-DET|5
+(1 row)
+COUNT(DISTINCT n_int4)-OPE-plain|4
+(1 row)
+COUNT(DISTINCT n_text)-DET-plain|5
+(1 row)
+========== MIN — OPE (should succeed) ==========
+MIN(c_int2)-OPE|-50
+(1 row)
+MIN(c_int4)-OPE|-1000
+(1 row)
+MIN(c_int8)-OPE|-999999999
+(1 row)
+MIN(c_float4)-OPE|-1.5
+(1 row)
+MIN(c_float8)-OPE|-3.14159
+(1 row)
+MIN(c_numeric)-OPE|-500.0
+(1 row)
+MIN(c_text)-OPE|
+(1 row)
+MIN(c_varchar)-OPE|
+(1 row)
+MIN(c_bpchar)-OPE|
+(1 row)
+MIN(n_int4)-OPE-plain|-1000
+(1 row)
+MIN(n_text)-OPE-plain|
+(1 row)
+========== MAX — OPE (should succeed) ==========
+MAX(c_int2)-OPE|200
+(1 row)
+MAX(c_int4)-OPE|9999
+(1 row)
+MAX(c_int8)-OPE|1234567890123
+(1 row)
+MAX(c_float4)-OPE|99.99
+(1 row)
+MAX(c_float8)-OPE|12345.6789
+(1 row)
+MAX(c_numeric)-OPE|99999.9999
+(1 row)
+MAX(c_text)-OPE|Special: !@#$%^&*()_+-=[]{}|;:''",.<>?/~`
+(1 row)
+MAX(c_varchar)-OPE|VARCHAR值
+(1 row)
+MAX(c_bpchar)-OPE|BPCHAR值
+(1 row)
+MAX(n_int4)-OPE-plain|9999
+(1 row)
+MAX(n_text)-OPE-plain|Special: !@#$%^&*()_+-=[]{}|;:'",.<>?/~`
+(1 row)
+========== MIN — DET (should error: needs OPE) ==========
+========== MAX — DET (should error: needs OPE) ==========
+========== SUM — OPE (should error: unsupported aggregate) ==========
+SUM(n_int4)-OPE-plain|17887
+(1 row)
+SUM(n_numeric)-OPE-plain|99623.4559
+(1 row)
+========== SUM — DET (should error: unsupported aggregate) ==========
+SUM(n_int4)-DET-plain|17887
+(1 row)
+SUM(n_numeric)-DET-plain|99623.4559
+(1 row)
+========== AVG — OPE (should error: unsupported aggregate) ==========
+AVG(n_int4)-OPE-plain|4471.7500000000000000
+(1 row)
+AVG(n_numeric)-OPE-plain|24905.863975000000
+(1 row)
+========== AVG — DET (should error: unsupported aggregate) ==========
+AVG(n_int4)-DET-plain|4471.7500000000000000
+(1 row)
+AVG(n_numeric)-DET-plain|24905.863975000000
+(1 row)
+========== string_agg — OPE (should error: unsupported aggregate) ==========
+string_agg(n_text)-OPE-plain|Hello World,中文字符串🎉,,仅部分列为NULL,Special: !@#$%^&*()_+-=[]{}|;:'",.<>?/~`
+(1 row)
+========== string_agg — DET (should error: unsupported aggregate) ==========
+string_agg(n_text)-DET-plain|Hello World,中文字符串🎉,,仅部分列为NULL,Special: !@#$%^&*()_+-=[]{}|;:'",.<>?/~`
+(1 row)
+========== array_agg — OPE (encrypted columns should fail) ==========
+array_agg(n_int4)-OPE-plain|{9999,-1000,0,NULL,8888}
+(1 row)
+array_agg(n_text)-OPE-plain|{"Hello World",中文字符串🎉,"",仅部分列为NULL,"Special: !@#$%^&*()_+-=[]{}|;:'\",.<>?/~`"}
+(1 row)
+========== array_agg — DET (encrypted columns should fail) ==========
+array_agg(n_int4)-DET-plain|{9999,-1000,0,NULL,8888}
+(1 row)
+array_agg(n_text)-DET-plain|{"Hello World",中文字符串🎉,"",仅部分列为NULL,"Special: !@#$%^&*()_+-=[]{}|;:'\",.<>?/~`"}
+(1 row)
+========== MIN/MAX with GROUP BY — OPE ==========
+GROUP BY c_int4-OPE|-1000|1|-50|-999999999
+GROUP BY c_int4-OPE|0|1|0|0
+GROUP BY c_int4-OPE|8888|1|200|999999999999
+GROUP BY c_int4-OPE|9999|1|100|1234567890123
+GROUP BY c_int4-OPE||1||500
+(5 rows)
+GROUP BY c_text-OPE||1||
+GROUP BY c_text-OPE|仅部分列为NULL|1||有值bpchar
+GROUP BY c_text-OPE|中文字符串🎉|1|Mixed混合|定长char
+GROUP BY c_text-OPE|Hello World|1|VARCHAR值|BPCHAR值
+GROUP BY c_text-OPE|Special: !@#$%^&*()_+-=[]{}|;:''",.<>?/~`|1|varchar special chars|bpchar_special
+(5 rows)
+========== Window Functions — OPE ==========
+========== Window Functions — DET ==========
+========== HAVING with Aggregate ==========
+(0 rows)
+(0 rows)
+HAVING MIN-OPE|-1000|1|-50
+(1 row)
+========== Expression + Aggregate ==========
+COALESCE+MIN-OPE|-1000
+(1 row)
+GREATEST+array_agg-OPE|9999
+(1 row)
+========== Subquery + Aggregate ==========
+Subquery COUNT-OPE|-1000|1
+Subquery COUNT-OPE|0|1
+Subquery COUNT-OPE|8888|1
+Subquery COUNT-OPE|9999|1
+Subquery COUNT-OPE||1
+(5 rows)
+Subquery MIN-OPE||0
+Subquery MIN-OPE|仅部分列为NULL|
+Subquery MIN-OPE|中文字符串🎉|-1000
+Subquery MIN-OPE|Hello World|9999
+Subquery MIN-OPE|Special: !@#$%^&*()_+-=[]{}|;:''",.<>?/~`|8888
+(5 rows)
+Subquery array_agg-OPE||{"ERROR"}
+Subquery array_agg-OPE|仅部分列为NULL|{NULL}
+Subquery array_agg-OPE|中文字符串🎉|{"ERROR"}
+Subquery array_agg-OPE|Hello World|{"ERROR"}
+Subquery array_agg-OPE|Special: !@#$%^&*()_+-=[]{}|;:''",.<>?/~`|{"ERROR"}
+(5 rows)
+========== HE COUNT (should succeed) ==========
+COUNT(c_int4)-he-add|4
+(1 row)
+COUNT(m_int4)-he-mul|4
+(1 row)
+COUNT(c_int2)-he-add|4
+(1 row)
+COUNT(m_int8)-he-mul|4
+(1 row)
+COUNT(n_int4)-HE-plain|4
+(1 row)
+========== HE COUNT(DISTINCT) (should error: cannot hash) ==========
+COUNT(DISTINCT n_int4)-HE-plain|4
+(1 row)
+========== HE SUM — he-add (should succeed) ==========
+SUM(c_int2)-he-add|12
+(1 row)
+SUM(c_int4)-he-add|750
+(1 row)
+SUM(c_int8)-he-add|7500
+(1 row)
+SUM(n_int4)-HE-plain|750
+(1 row)
+========== HE SUM — he-mul (should error: unsupported) ==========
+========== Bug 9266 / 9253 — SUM error message regression ==========
+Bug9253-sum-he-add-i2-ok|12
+(1 row)
+Bug9253-sum-he-add-i4-ok|750
+(1 row)
+Bug9253-sum-he-add-i8-ok|7500
+(1 row)
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+DROP DEK
+DROP DEK
+DROP KEK
+NOTICE: table "enc_pgfunc_test_det" does not exist, skipping
+NOTICE: table "enc_pgfunc_test_ope" does not exist, skipping
+NOTICE: data encryption key "enc_pgfunc_dek" does not exist, skipping
+NOTICE: key encryption key "enc_pgfunc_kek" does not exist, skipping
+NOTICE: data encryption key "enc_pgfunc_he_mul_dek" does not exist, skipping
+NOTICE: data encryption key "enc_pgfunc_he_add_dek" does not exist, skipping
+NOTICE: key encryption key "enc_pgfunc_he_kek" does not exist, skipping
+ERROR: function count(int4_enc, text_enc) does not exist
+LINE 1: ...COUNT(DISTINCT c_int4, c_text)-OPE' AS test_case, COUNT(DIST...
+^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ERROR: function count(int4_enc, text_enc) does not exist
+LINE 1: ...COUNT(DISTINCT c_int4, c_text)-DET' AS test_case, COUNT(DIST...
+^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+psql:/.../aggregate_func.sql:362: TECC query preprocessing failed: aggregate function "MIN" requires OPE encryption, but column "c_int2" is not configured with OPE
+psql:/.../aggregate_func.sql:365: TECC query preprocessing failed: aggregate function "MIN" requires OPE encryption, but column "c_int4" is not configured with OPE
+psql:/.../aggregate_func.sql:368: TECC query preprocessing failed: aggregate function "MIN" requires OPE encryption, but column "c_int8" is not configured with OPE
+psql:/.../aggregate_func.sql:371: TECC query preprocessing failed: aggregate function "MIN" requires OPE encryption, but column "c_float4" is not configured with OPE
+psql:/.../aggregate_func.sql:374: TECC query preprocessing failed: aggregate function "MIN" requires OPE encryption, but column "c_float8" is not configured with OPE
+psql:/.../aggregate_func.sql:377: TECC query preprocessing failed: aggregate function "MIN" requires OPE encryption, but column "c_numeric" is not configured with OPE
+psql:/.../aggregate_func.sql:380: TECC query preprocessing failed: aggregate function "MIN" requires OPE encryption, but column "c_text" is not configured with OPE
+psql:/.../aggregate_func.sql:383: TECC query preprocessing failed: aggregate function "MIN" requires OPE encryption, but column "c_varchar" is not configured with OPE
+psql:/.../aggregate_func.sql:386: TECC query preprocessing failed: aggregate function "MIN" requires OPE encryption, but column "c_bpchar" is not configured with OPE
+psql:/.../aggregate_func.sql:392: TECC query preprocessing failed: aggregate function "MAX" requires OPE encryption, but column "c_int2" is not configured with OPE
+psql:/.../aggregate_func.sql:395: TECC query preprocessing failed: aggregate function "MAX" requires OPE encryption, but column "c_int4" is not configured with OPE
+psql:/.../aggregate_func.sql:398: TECC query preprocessing failed: aggregate function "MAX" requires OPE encryption, but column "c_int8" is not configured with OPE
+psql:/.../aggregate_func.sql:401: TECC query preprocessing failed: aggregate function "MAX" requires OPE encryption, but column "c_float4" is not configured with OPE
+psql:/.../aggregate_func.sql:404: TECC query preprocessing failed: aggregate function "MAX" requires OPE encryption, but column "c_float8" is not configured with OPE
+psql:/.../aggregate_func.sql:407: TECC query preprocessing failed: aggregate function "MAX" requires OPE encryption, but column "c_numeric" is not configured with OPE
+psql:/.../aggregate_func.sql:410: TECC query preprocessing failed: aggregate function "MAX" requires OPE encryption, but column "c_text" is not configured with OPE
+psql:/.../aggregate_func.sql:413: TECC query preprocessing failed: aggregate function "MAX" requires OPE encryption, but column "c_varchar" is not configured with OPE
+psql:/.../aggregate_func.sql:416: TECC query preprocessing failed: aggregate function "MAX" requires OPE encryption, but column "c_bpchar" is not configured with OPE
+psql:/.../aggregate_func.sql:426: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "c_int2": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:429: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "c_int4": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:432: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "c_int8": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:435: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "c_float4": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:438: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "c_float8": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:441: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "c_numeric": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:451: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "c_int2": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:454: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "c_int4": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:457: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "c_int8": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:460: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "c_float4": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:463: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "c_float8": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:466: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "c_numeric": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:480: TECC query preprocessing failed: aggregate function "AVG" is not supported on encrypted column "c_int2"
+psql:/.../aggregate_func.sql:483: TECC query preprocessing failed: aggregate function "AVG" is not supported on encrypted column "c_int4"
+psql:/.../aggregate_func.sql:486: TECC query preprocessing failed: aggregate function "AVG" is not supported on encrypted column "c_int8"
+psql:/.../aggregate_func.sql:489: TECC query preprocessing failed: aggregate function "AVG" is not supported on encrypted column "c_float4"
+psql:/.../aggregate_func.sql:492: TECC query preprocessing failed: aggregate function "AVG" is not supported on encrypted column "c_float8"
+psql:/.../aggregate_func.sql:495: TECC query preprocessing failed: aggregate function "AVG" is not supported on encrypted column "c_numeric"
+psql:/.../aggregate_func.sql:505: TECC query preprocessing failed: aggregate function "AVG" is not supported on encrypted column "c_int2"
+psql:/.../aggregate_func.sql:508: TECC query preprocessing failed: aggregate function "AVG" is not supported on encrypted column "c_int4"
+psql:/.../aggregate_func.sql:511: TECC query preprocessing failed: aggregate function "AVG" is not supported on encrypted column "c_int8"
+psql:/.../aggregate_func.sql:514: TECC query preprocessing failed: aggregate function "AVG" is not supported on encrypted column "c_float4"
+psql:/.../aggregate_func.sql:517: TECC query preprocessing failed: aggregate function "AVG" is not supported on encrypted column "c_float8"
+psql:/.../aggregate_func.sql:520: TECC query preprocessing failed: aggregate function "AVG" is not supported on encrypted column "c_numeric"
+psql:/.../aggregate_func.sql:534: TECC query preprocessing failed: aggregate function "string_agg" is not supported on encrypted column "c_text"
+psql:/.../aggregate_func.sql:537: TECC query preprocessing failed: aggregate function "string_agg" is not supported on encrypted column "c_varchar"
+psql:/.../aggregate_func.sql:540: TECC query preprocessing failed: aggregate function "string_agg" is not supported on encrypted column "c_bpchar"
+psql:/.../aggregate_func.sql:543: TECC query preprocessing failed: aggregate function "string_agg" is not supported on encrypted column "c_text"
+psql:/.../aggregate_func.sql:552: TECC query preprocessing failed: aggregate function "string_agg" is not supported on encrypted column "c_text"
+psql:/.../aggregate_func.sql:555: TECC query preprocessing failed: aggregate function "string_agg" is not supported on encrypted column "c_varchar"
+psql:/.../aggregate_func.sql:558: TECC query preprocessing failed: aggregate function "string_agg" is not supported on encrypted column "c_bpchar"
+psql:/.../aggregate_func.sql:571: TECC query preprocessing failed: aggregate function "array_agg" is not supported on encrypted column "c_int2"
+psql:/.../aggregate_func.sql:574: TECC query preprocessing failed: aggregate function "array_agg" is not supported on encrypted column "c_int4"
+psql:/.../aggregate_func.sql:577: TECC query preprocessing failed: aggregate function "array_agg" is not supported on encrypted column "c_text"
+psql:/.../aggregate_func.sql:580: TECC query preprocessing failed: aggregate function "array_agg" is not supported on encrypted column "c_text"
+psql:/.../aggregate_func.sql:590: TECC query preprocessing failed: aggregate function "array_agg" is not supported on encrypted column "c_int2"
+psql:/.../aggregate_func.sql:593: TECC query preprocessing failed: aggregate function "array_agg" is not supported on encrypted column "c_int4"
+psql:/.../aggregate_func.sql:596: TECC query preprocessing failed: aggregate function "array_agg" is not supported on encrypted column "c_text"
+psql:/.../aggregate_func.sql:627: TECC query preprocessing failed: aggregate function "MIN" inside window function is not supported on encrypted column "c_int4"
+psql:/.../aggregate_func.sql:632: TECC query preprocessing failed: aggregate function "MAX" inside window function is not supported on encrypted column "c_int4"
+psql:/.../aggregate_func.sql:637: TECC query preprocessing failed: aggregate function "COUNT" inside window function is not supported on encrypted column "c_int4"
+psql:/.../aggregate_func.sql:642: TECC query preprocessing failed: aggregate function "array_agg" inside window function is not supported on encrypted column "c_int4"
+psql:/.../aggregate_func.sql:650: TECC query preprocessing failed: aggregate function "COUNT" inside window function is not supported on encrypted column "c_int4"
+psql:/.../aggregate_func.sql:655: TECC query preprocessing failed: aggregate function "array_agg" inside window function is not supported on encrypted column "c_int4"
+psql:/.../aggregate_func.sql:660: TECC query preprocessing failed: aggregate function "MIN" inside window function is not supported on encrypted column "c_int4"
+psql:/.../aggregate_func.sql:665: TECC query preprocessing failed: aggregate function "MAX" inside window function is not supported on encrypted column "c_int4"
+psql:/.../aggregate_func.sql:670: TECC query preprocessing failed: aggregate function "SUM" inside window function is not supported on encrypted column "c_int4"
+psql:/.../aggregate_func.sql:675: TECC query preprocessing failed: aggregate function "SUM" inside window function is not supported on encrypted column "c_int4"
+psql:/.../aggregate_func.sql:680: TECC query preprocessing failed: aggregate function "AVG" inside window function is not supported on encrypted column "c_int4"
+psql:/.../aggregate_func.sql:685: TECC query preprocessing failed: aggregate function "AVG" inside window function is not supported on encrypted column "c_int4"
+psql:/.../aggregate_func.sql:718: TECC query preprocessing failed: aggregate function "MIN" requires OPE encryption, but column "c_int2" is not configured with OPE
+psql:/.../aggregate_func.sql:724: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "c_int8": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:730: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "c_int8": SUM requires he-add encryption on int2/int4/int8 columns
+ERROR: operator does not exist: bigint > text_enc
+LINE 3: GROUP BY c_int4 HAVING COUNT(DISTINCT c_text) > 'HEX_STR...
+^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+TECC ERROR: HAVING clause processing failed
+psql:/.../aggregate_func.sql:748: TECC query preprocessing failed: aggregate function "array_agg" is not supported on encrypted column "c_int4"
+psql:/.../aggregate_func.sql:754: TECC query preprocessing failed: aggregate function "array_agg" is not supported on encrypted column "c_int4"
+ERROR: operator does not exist: int4_enc > integer
+LINE 2:        COUNT(DISTINCT CASE WHEN c_int4 > 0 THEN c_text ELSE ...
+^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ERROR: operator does not exist: int4_enc > integer
+LINE 2:        COUNT(DISTINCT CASE WHEN c_int4 > 0 THEN c_text ELSE ...
+^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ERROR: cannot compare encrypted values for ordering: OPE ciphertext not available
+HINT:  Enable OPE encryption on the column to support min/max aggregation.
+psql:/.../aggregate_func.sql:788: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "c_int4": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:792: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "c_int4": SUM requires he-add encryption on int2/int4/int8 columns
+TECC ERROR: Failed to process FROM RangeSubselect: -1
+ERROR: cannot compare encrypted values for ordering: no OPE ciphertext available
+TECC ERROR: Failed to process FROM RangeSubselect: -1
+TECC ERROR: Failed to process FROM RangeSubselect: -1
+ERROR: cannot compare encrypted values for ordering: no OPE ciphertext available
+ERROR: cannot hash encrypted value without DET or OPE ciphertext
+HINT:  Enable DET or OPE encryption for the column to support Hash indexes.
+ERROR: cannot hash encrypted value without DET or OPE ciphertext
+HINT:  Enable DET or OPE encryption for the column to support Hash indexes.
+psql:/.../aggregate_func.sql:882: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "m_int2": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:885: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "m_int4": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:888: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "m_int8": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:897: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "m_int4": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:900: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "m_int2": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:903: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "m_int8": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:907: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "c_int4": SUM requires he-add encryption on int2/int4/int8 columns
+psql:/.../aggregate_func.sql:910: TECC query preprocessing failed: aggregate function "SUM" is not supported on encrypted column "c_int4": SUM requires he-add encryption on int2/int4/int8 columns

@@ -94,6 +94,7 @@ extern void list_free(List *list);
 extern void list_free_deep(List *list);
 extern int list_length(const List *list);
 extern void *list_nth(const List *list, int n);
+extern ListCell *list_nth_cell(const List *list, int n);
 extern void *lfirst(const ListCell *cell);
 extern void *llast(const List *list);
 extern void *linitial(const List *list);

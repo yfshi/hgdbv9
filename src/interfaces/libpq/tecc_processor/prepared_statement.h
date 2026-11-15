@@ -74,6 +74,12 @@ typedef struct TeccPreparedStatement {
     time_t last_used_time;     /* Last usage timestamp */
     int error_code;            /* Error code if processing failed */
     char error_msg[256];       /* Error message if processing failed */
+    /* ReqID:TECC4.0 - 参数映射分析期间的「限定名 → 基表」映射。
+     * PREPARE 内层里 CTE 名、派生表别名都不是基表，直接拿它们查加密列缓存
+     * 必然落空，命中不了就会把参数当明文外发。仅分析期间有效，
+     * 由 free_prepared_statement 释放。 */
+    List *alias_names;
+    List *alias_tables;
     struct TeccPreparedStatement *next; /* Next statement in list */
 } TeccPreparedStatement;
 

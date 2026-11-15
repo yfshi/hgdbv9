@@ -25,7 +25,6 @@
 #include <errno.h>
 #include "server_interface.h"
 #include "utils.h"
-#include "config.h"
 
 /* Libpq headers for database connection */
 #include "../../interfaces/libpq/libpq-fe.h"
@@ -447,7 +446,12 @@ DbConnection *
 db_connection_create(const char *conn_str)
 {
     DbConnection *conn = NULL;
-    char *default_conn_str = NULL;
+
+    if (conn_str == NULL)
+    {
+        set_server_error("Connection string is required");
+        return NULL;
+    }
 
     conn = (DbConnection *)pg_malloc0(sizeof(DbConnection));
     if (conn == NULL)
@@ -456,39 +460,12 @@ db_connection_create(const char *conn_str)
         return NULL;
     }
 
-    /* Set connection string */
-    if (conn_str != NULL)
+    conn->connection_string = pg_strdup(conn_str);
+    if (conn->connection_string == NULL)
     {
-        conn->connection_string = pg_strdup(conn_str);
-        if (conn->connection_string == NULL)
-        {
-            pg_free(conn);
-            set_server_error("Failed to allocate memory for connection string");
-            return NULL;
-        }
-    }
-    else
-    {
-        /* Try to get connection string from configuration */
-        default_conn_str = client_config_get_connection_string(NULL);
-        if (default_conn_str != NULL)
-        {
-            conn->connection_string = pg_strdup(default_conn_str);
-            pg_free(default_conn_str);
-        }
-
-        if (conn->connection_string == NULL)
-        {
-            /* Fall back to hardcoded default */
-            conn->connection_string = pg_strdup("host=localhost port=5432 dbname=postgres");
-        }
-
-        if (conn->connection_string == NULL)
-        {
-            pg_free(conn);
-            set_server_error("Failed to allocate memory for connection string");
-            return NULL;
-        }
+        pg_free(conn);
+        set_server_error("Failed to allocate memory for connection string");
+        return NULL;
     }
 
     conn->is_connected = false;

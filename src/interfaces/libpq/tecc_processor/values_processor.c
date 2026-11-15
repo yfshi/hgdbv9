@@ -1,8 +1,3 @@
-#ifdef _MSC_VER
-#define TECC_ATTR_UNUSED
-#else
-#define TECC_ATTR_UNUSED __attribute__((unused))
-#endif
 
 /* Begin - ReqID:TECC4.0 */
 /*
@@ -25,6 +20,8 @@
 /* 前端代码必须包含postgres_fe.h作为第一个头文件 */
 #include "postgres_fe.h"
 #include <math.h>
+#include <pthread.h>
+#include <unistd.h>
 #include "common/fe_memutils.h"
 
 #include "values_processor.h"
@@ -39,8 +36,12 @@
 /* Include libpq for PQunescapeBytea */
 #include "libpq-fe.h"
 
+/* ReqID:TECC4.0 - 算法内部并行开关控制（字段级并行 worker 内关闭） */
+#include "common/tecc_algorithm/tecc_ec_elgamal.h"
+
 /* Forward declarations for external module interfaces */
 #include "../tecc_scheduler/tecc_crypto_scheduler.h"  /* Crypto scheduler interface */
+#include "../tecc_scheduler/tecc_algorithm_scheduler.h"  /* HE key/dek-name loaders (prewarm) */
 #include "../tecc_formatter/tecc_formatter.h"         /* Data formatter interface */
 #include "../tecc_cache/tecc_metadata_cache.h"        /* Metadata cache interface */
 #include "../tecc_libpq_integration/fe-tecc-integration.h"  /* TECC integration interface for tecc_get_state */
@@ -119,33 +120,8 @@ get_enc_type_name_from_base_oid(Oid type_oid)
 /*
  * Forward declarations
  */
-static TeccValuesProcessorResult values_process_list(TeccRawValuesList *list,
-                                                    TeccStatementData *statement_data);
 static TeccValuesProcessorResult values_process_single_value(TeccRawValue *value,
                                                             TeccStatementData *statement_data);
-static bool values_column_needs_encryption(const char *schema_name,
-                                          const char *table_name,
-                                          const char *column_name);
-static TeccDecryptResult tecc_process_null_value(unsigned char **plain_text,
-                                                size_t *plain_text_size,
-                                                int original_typeid,
-                                                TeccProcessStatus process_status);
-static void tecc_process_text_format(unsigned char **plain_text,
-                                    size_t *plain_text_size,
-                                    TeccProcessStatus process_status,
-                                    int original_typeid);
-static void tecc_process_binary_format(unsigned char **plain_text,
-                                      size_t *plain_text_size,
-                                      TeccProcessStatus process_status,
-                                      int original_typeid);
-static void tecc_free_param_map(TeccParamMapEntry *param_map, int param_map_size);
-static bool tecc_parameter_needs_encryption(TeccStatementData *statement_data,
-                                           int param_index,
-                                           Oid param_type,
-                                           const char *param_value);
-static int tecc_extract_param_mapping_from_parse_tree(TeccStatementData *statement_data,
-                                                     TeccParamMapEntry **param_map,
-                                                     int *param_map_size);
 
 /*
  * Main value processing entry point
@@ -253,7 +229,12 @@ tecc_values_processor_process(TeccStatementData *statement_data)
                         result = tecc_values_processor_process_insert_values(
                             values_lists,
                             insert_stmt->cols,
-                            insert_stmt->relation ? insert_stmt->relation->schemaname : NULL,
+                            /* ReqID:TECC4.0 - 未限定表名按 search_path 解析真实 schema，
+                             * 与表级元数据解析一致（否则值路径误用 current_schema 漏检） */
+                            insert_stmt->relation ?
+                                tecc_stmt_resolve_table_schema(statement_data,
+                                    insert_stmt->relation->schemaname,
+                                    insert_stmt->relation->relname) : NULL,
                             insert_stmt->relation ? insert_stmt->relation->relname : NULL,
                             statement_data);
 
@@ -268,7 +249,11 @@ tecc_values_processor_process(TeccStatementData *statement_data)
                         result = tecc_values_processor_process_update_values(
                             up_stmt->targetList,
                             NULL, /* TODO: Get target columns */
-                            up_stmt->relation ? up_stmt->relation->schemaname : NULL,
+                            /* ReqID:TECC4.0 - 未限定表名按 search_path 解析真实 schema */
+                            up_stmt->relation ?
+                                tecc_stmt_resolve_table_schema(statement_data,
+                                    up_stmt->relation->schemaname,
+                                    up_stmt->relation->relname) : NULL,
                             up_stmt->relation ? up_stmt->relation->relname : NULL,
                             statement_data);
                     }
@@ -615,6 +600,26 @@ tecc_values_processor_process_insert_values(List *values_lists,
                 }
             }
 
+            /* ReqID:TECC4.0 - 带 ENCRYPTED WITH 的 TypeCast 已由
+             * stmt_add_typecast_raw_value 登记为 is_sql_expression（覆盖整段 cast）。
+             * phase-1 若再按内层 Const 建一条，会在 phase-2 对交叠区域替换两次。
+             * 这里直接跳过；无 encryptedOpts 的普通 TypeCast（如 1::int2）仍走下方逻辑。 */
+            if (actual_value_node != NULL &&
+                nodeTag(actual_value_node) == FE_T_TypeCast)
+            {
+                TypeCast *tc_skip = (TypeCast *)actual_value_node;
+                if (tc_skip->typeName != NULL &&
+                    tc_skip->typeName->encryptedOpts != NIL)
+                {
+                    tecc_processor_debug(TECC_LOG_DEBUG1,
+                        "Skipping TypeCast with encryptedOpts at row %d col %d "
+                        "(already registered as is_sql_expression)",
+                        row_index, col_index);
+                    col_index++;
+                    continue;
+                }
+            }
+
             raw_value = tecc_create_raw_value_from_node(actual_value_node);
 
             from_const = false;  /* Reset for each value */
@@ -707,7 +712,12 @@ tecc_values_processor_process_insert_values(List *values_lists,
                     {
                         Node *op_node = (Node *)linitial(aexpr->name);
                         char *op_name = strVal((Value *)op_node);
-                        if (op_name != NULL && strcmp(op_name, "-") == 0 && aexpr->rexpr != NULL)
+                        /* ReqID:TECC4.0 - 仅一元负号作用于常量（如 -1.0、-32768）
+                         * 才按常量取负处理；作用于列引用/表达式（如 -i4_a）时是
+                         * 列运算，透传给服务端同态一元操作符。 */
+                        if (op_name != NULL && strcmp(op_name, "-") == 0 &&
+                            aexpr->rexpr != NULL &&
+                            nodeTag(aexpr->rexpr) == FE_T_Const)
                             is_unary_minus = true;
                     }
                 }
@@ -917,7 +927,10 @@ tecc_values_processor_process_insert_values(List *values_lists,
                         tecc_raw_value_set_column_info(raw_value, column_name, NULL, InvalidOid);
 
                         /* 检查是否需要加密 */
-                        if (tecc_column_needs_encryption(statement_data, NULL, table_name, column_name))
+                        /* 传 resolved_schema（限定表名如 sch1.tb1 的真实 schema），
+                         * 而不是 NULL——NULL 会走 search_path 解析，限定名会因
+                         * search_path 不含目标模式而漏检，导致字面量未加密。 */
+                        if (tecc_column_needs_encryption(statement_data, resolved_schema, table_name, column_name))
                         {
                             raw_value->needs_encryption = true;
 
@@ -933,6 +946,14 @@ tecc_values_processor_process_insert_values(List *values_lists,
                                     raw_value->needs_encryption = false;
                                     tecc_processor_debug(TECC_LOG_DEBUG1,
                                                        "DEFAULT keyword for encrypted column %s.%s, skipping encryption",
+                                                       table_name ? table_name : "NULL",
+                                                       column_name);
+                                }
+                                else if (raw_value->is_param)
+                                {
+                                    raw_value->needs_encryption = false;
+                                    tecc_processor_debug(TECC_LOG_DEBUG1,
+                                                       "Param reference for encrypted column %s.%s, deferring encryption to param processor",
                                                        table_name ? table_name : "NULL",
                                                        column_name);
                                 }
@@ -961,7 +982,10 @@ tecc_values_processor_process_insert_values(List *values_lists,
                                 {
                                     s = tecc_get_state(statement_data->conn);
                                     db = PQdb(statement_data->conn);
-                                    schema = (s != NULL) ? tecc_cache_get_guc_param(s, "current_schema") : NULL;
+                                    /* 优先用限定表名的真实 schema，未限定才回退 current_schema */
+                                    schema = resolved_schema;
+                                    if (schema == NULL || schema[0] == '\0')
+                                        schema = (s != NULL) ? tecc_cache_get_guc_param(s, "current_schema") : NULL;
                                 }
                                 if (s != NULL && db != NULL && schema != NULL)
                                 {
@@ -1024,13 +1048,17 @@ tecc_values_processor_process_insert_values(List *values_lists,
                     }
 
                     if (state != NULL) {
-                        /* 从缓存获取当前schema */
-                        schema_name = tecc_cache_get_guc_param(state, "current_schema");
+                        /* 优先用调用者传入的schema（限定表名如 sch1.tb1），
+                         * 未限定表名时才回退到 current_schema（search_path 首个模式） */
+                        schema_name = resolved_schema;
                         if (schema_name == NULL || schema_name[0] == '\0') {
+                            schema_name = tecc_cache_get_guc_param(state, "current_schema");
+                            if (schema_name == NULL || schema_name[0] == '\0') {
                             /* 无法获取schema名，记录错误并跳过 */
                             tecc_processor_debug(TECC_LOG_WARNING,
                                                "tecc_values_processor_process_insert_values: Could not get current schema from cache");
                             continue;
+                            }
                         }
                     } else {
                         /* 没有state，无法获取schema名，跳过 */
@@ -1079,6 +1107,14 @@ tecc_values_processor_process_insert_values(List *values_lists,
                                                            table_name ? table_name : "NULL",
                                                            column_name);
                                     }
+                                    else if (raw_value->is_param)
+                                    {
+                                        raw_value->needs_encryption = false;
+                                        tecc_processor_debug(TECC_LOG_DEBUG1,
+                                                           "Param reference for encrypted column %s.%s, deferring encryption to param processor",
+                                                           table_name ? table_name : "NULL",
+                                                           column_name);
+                                    }
                                     else
                                     {
                                         tecc_values_processor_set_error(statement_data,
@@ -1123,12 +1159,40 @@ done:
         result = tecc_process_values_list(raw_list, statement_data);
 
     /* 5. 将raw_list保存到statement_data用于后续SQL重写 */
+    /* ReqID:TECC4.0 - 与 stmt_add_typecast_raw_value 已登记的 ENCRYPTED WITH cast
+     * 条目合并，而不是直接覆盖：cast 路径先跑、普通常量由 phase-1 收集，两者必须
+     * 同在 raw_values_list 里，phase-2 才能一次从左到右改写整句。 */
     if (result == TECC_VALUES_PROCESSOR_SUCCESS && raw_list != NULL)
     {
         if (tecc_raw_values_list_count(raw_list) > 0)
+        {
+            if (statement_data->raw_values_list != NULL &&
+                tecc_raw_values_list_count(statement_data->raw_values_list) > 0)
+            {
+                int old_n = tecc_raw_values_list_count(statement_data->raw_values_list);
+                int mi;
+
+                for (mi = 0; mi < old_n; mi++)
+                {
+                    TeccRawValue *old_rv = tecc_raw_values_list_get(
+                        statement_data->raw_values_list, mi);
+                    if (old_rv != NULL)
+                        tecc_raw_values_list_add(raw_list, old_rv);
+                }
+                /* 所有权已转入 raw_list：清空旧列表计数后再销毁，避免 double-free */
+                statement_data->raw_values_list->num_values = 0;
+                statement_data->raw_values_list->values_list = NIL;
+                tecc_raw_values_list_destroy(statement_data->raw_values_list);
+                statement_data->raw_values_list = NULL;
+            }
             statement_data->raw_values_list = raw_list;
+        }
         else
+        {
+            /* phase-1 未新增条目（例如本句只有已登记的 encrypted cast）：
+             * 保留 statement_data->raw_values_list 里既有的 helper 条目 */
             tecc_raw_values_list_destroy(raw_list);
+        }
     }
     else
     {
@@ -1196,9 +1260,24 @@ tecc_values_processor_process_update_values(List *target_list,
         /* 3.1 跳过非常量值（ColumnRef/A_Expr等）。
          * 对于 SET enc_col = another_enc_col，客户端无法也不需加密——
          * 服务端直接进行密文拷贝（兼容加密数字类型间互相转换）。
-         * ReqID:TECC4.0 */
+         * ReqID:TECC4.0 - 二元 A_Expr（如 SET enc_col = enc_col + k）不是
+         * 整体常量，不能作为整值加密；其内部整数常量由 stmt_processor 的
+         * HE 常量加密路径（tecc_where_clause_processor_process_expr）处理，
+         * 此处跳过，避免对 "[unknown_node_type]" 占位值加密导致 SQL 损坏。 */
         {
             int target_val_type = nodeTag(target->val);
+            bool skip_binary_aexpr = false;
+
+            if (target_val_type == FE_T_A_Expr)
+            {
+                A_Expr *ae_check = (A_Expr *)target->val;
+                if (ae_check->kind == AEXPR_OP &&
+                    ae_check->lexpr != NULL && ae_check->rexpr != NULL)
+                {
+                    skip_binary_aexpr = true;
+                }
+            }
+
             if (target_val_type != FE_T_Const
                 && target_val_type != FE_T_Integer
                 && target_val_type != FE_T_Float
@@ -1211,6 +1290,16 @@ tecc_values_processor_process_update_values(List *target_list,
                     "Skipping non-Const value (type=%d) for column %s — "
                     "pass-through for server-side ciphertext copy",
                     target_val_type,
+                    target->name ? target->name : "?");
+                col_index++;
+                continue;
+            }
+
+            if (skip_binary_aexpr)
+            {
+                tecc_processor_debug(TECC_LOG_DEBUG1,
+                    "Skipping binary A_Expr value for column %s — "
+                    "inner constants handled by expression processor",
                     target->name ? target->name : "?");
                 col_index++;
                 continue;
@@ -1311,7 +1400,10 @@ tecc_values_processor_process_update_values(List *target_list,
             }
 
             /* 检查是否需要加密 */
-            if (tecc_column_needs_encryption(statement_data, NULL, resolved_table, target->name))
+            /* 传 resolved_schema（限定表名如 sch1.tb1 的真实 schema），
+             * 而不是 NULL——NULL 会走 search_path 解析，限定名会因
+             * search_path 不含目标模式而漏检，导致 SET 字面量未加密。 */
+            if (tecc_column_needs_encryption(statement_data, resolved_schema, resolved_table, target->name))
             {
                 raw_value->needs_encryption = true;
                 tecc_processor_debug(TECC_LOG_DEBUG1,
@@ -1386,60 +1478,7 @@ tecc_values_processor_process_update_values(List *target_list,
     /* End - ReqID:TECC4.0 - UPDATE语句值处理函数 */
 }
 
-/*
- * Process individual value
- */
-TeccValuesProcessorResult
-tecc_values_processor_process_value(TeccRawValue *raw_value,
-                                   const char *column_name,
-                                   const char *column_type,
-                                   TeccStatementData *statement_data)
-{
-    /* Begin - ReqID:TECC4.0 - 单个值处理函数 */
-    if (raw_value == NULL)
-        return TECC_VALUES_PROCESSOR_ERROR;
 
-    tecc_processor_debug(TECC_LOG_DEBUG1,
-                        "Processing value for column %s",
-                        column_name ? column_name : "unknown");
-
-    /* Set column information if provided */
-    if (column_name != NULL || column_type != NULL)
-    {
-        tecc_raw_value_set_column_info(raw_value, column_name, column_type, InvalidOid);
-    }
-
-    /* Check if encryption is needed */
-    if (raw_value->needs_encryption)
-    {
-        TeccValuesProcessorResult encrypt_result;
-        const char *algorithm = "RND";  /* Default algorithm for now */
-        const char *key = "default_key";  /* Default key for now */
-
-        tecc_processor_debug(TECC_LOG_DEBUG1,
-                           "Value needs encryption - calling scheduler");
-
-        /* Call encryption scheduler */
-        encrypt_result = tecc_values_processor_encrypt_value(
-            raw_value, algorithm, key, statement_data);
-
-        if (encrypt_result != TECC_VALUES_PROCESSOR_SUCCESS)
-        {
-            tecc_processor_debug(TECC_LOG_ERROR,
-                               "Encryption failed for column %s: %d",
-                               column_name ? column_name : "unknown",
-                               encrypt_result);
-            return encrypt_result;
-        }
-
-        tecc_processor_debug(TECC_LOG_DEBUG1,
-                           "Encryption completed successfully for column %s",
-                           column_name ? column_name : "unknown");
-    }
-
-    return TECC_VALUES_PROCESSOR_SUCCESS;
-    /* End - ReqID:TECC4.0 - 单个值处理函数 */
-}
 
 /* Begin - ReqID:TECC4.0 - 输入校验函数 */
 
@@ -1624,21 +1663,21 @@ tecc_validate_plaintext_for_type(const TeccRawValue *raw_value,
 /*
  * Encrypt single value
  */
-TeccValuesProcessorResult
-tecc_values_processor_encrypt_value(TeccRawValue *raw_value,
-                                   const char *algorithm,
-                                   const char *key,
-                                   TeccStatementData *statement_data)
+static TeccValuesProcessorResult
+encrypt_value_with_context(TeccRawValue *raw_value,
+                           const char *algorithm,
+                           TeccStatementData *statement_data,
+                           TeccCryptoContext *enc_ctx)
 {
-    /* Begin - ReqID:TECC4.0 - 单个值加密函数 */
+    /* Begin - ReqID:TECC4.0 - 单个值加密函数（内部：加密 context 由调用方
+     * 指定；线程安全版传 NULL，调度器内部创建独立 context） */
     char *plaintext = NULL;
     TeccUnifiedEncryptResult *encrypt_result = NULL;
     /* ReqID:TECC4.0 - Fix C90 mixed declaration warning */
     char *dek_name = NULL;
-    TeccState *state = tecc_get_state(statement_data->conn);
 
     /* 1. 参数检查 */
-    if (raw_value == NULL || algorithm == NULL || key == NULL)
+    if (raw_value == NULL || algorithm == NULL)
     {
         tecc_values_processor_set_error(statement_data, TECC_PROCESSOR_INTERNAL_ERROR,
                                        "Invalid parameters for encryption");
@@ -1678,8 +1717,12 @@ tecc_values_processor_encrypt_value(TeccRawValue *raw_value,
 
     /* 3. 获取DEK名称 */
     /* ReqID:TECC4.0 - dek_name declared at function scope beginning */
+    /* 用 raw_value->schema_name（限定表名 sch1.tb1 的真实 schema）而非 NULL，
+     * 否则 DEK 查找走 current_schema，限定名会漏检。未限定表名的 schema_name
+     * 为 NULL，回退到函数内 current_schema 解析（search_path 首个模式）。 */
     if (raw_value->table_name != NULL && raw_value->column_name != NULL) {
-        dek_name = tecc_get_column_dek_name(statement_data, NULL,
+        dek_name = tecc_get_column_dek_name(statement_data,
+                                           raw_value->schema_name,
                                            raw_value->table_name,
                                            raw_value->column_name);
     }
@@ -1696,14 +1739,17 @@ tecc_values_processor_encrypt_value(TeccRawValue *raw_value,
     }
 
     /* 4. 调用加密调度器 */
-    encrypt_result = tecc_unified_encrypt_string(
+    /* 用 schema-aware 变体传入 raw_value->schema_name（限定表名 sch1.tb1 的
+     * 真实 schema），否则调度器按 search_path 查元数据，限定名会漏检。 */
+    encrypt_result = tecc_unified_encrypt_string_with_schema(
         statement_data->conn,  /* 添加连接参数 */
+        raw_value->schema_name,
         plaintext,
         raw_value->table_name ? raw_value->table_name : "unknown_table",
         raw_value->column_name ? raw_value->column_name : "unknown_column",
         NULL,  /* 使用默认KEK */
         dek_name,  /* 使用实际的DEK名称 */
-        state ? state->crypto_ctx : NULL
+        enc_ctx
     );
 
     /* 释放DEK名称内存 */
@@ -1782,13 +1828,35 @@ tecc_values_processor_encrypt_value(TeccRawValue *raw_value,
     /* End - ReqID:TECC4.0 - 单个值加密函数 */
 }
 
+/* ReqID:TECC4.0 - 标准加密：复用连接级 crypto_ctx（单线程路径） */
+TeccValuesProcessorResult
+tecc_values_processor_encrypt_value(TeccRawValue *raw_value,
+                                    const char *algorithm,
+                                    TeccStatementData *statement_data)
+{
+    TeccState *state = (statement_data != NULL && statement_data->conn != NULL) ?
+        tecc_get_state(statement_data->conn) : NULL;
+
+    return encrypt_value_with_context(raw_value, algorithm, statement_data,
+                                      state ? state->crypto_ctx : NULL);
+}
+
+/* ReqID:TECC4.0 - 线程安全版加密：不共享连接级 crypto_ctx（调度器内部创建
+ * 独立 context），字段级并行 worker 使用。前提：所有元数据已由主线程预热
+ * （缓存 hit，worker 内不碰主连接）。 */
+TeccValuesProcessorResult
+tecc_values_processor_encrypt_value_ts(TeccRawValue *raw_value,
+                                       const char *algorithm,
+                                       TeccStatementData *statement_data)
+{
+    return encrypt_value_with_context(raw_value, algorithm, statement_data, NULL);
+}
+
 /*
  * Decrypt single value
  */
 TeccValuesProcessorResult
 tecc_values_processor_decrypt_value(TeccRawValue *raw_value,
-                                   const char *algorithm,
-                                   const char *key,
                                    TeccStatementData *statement_data)
 {
     /* Begin - ReqID:TECC4.0 - 单个值解密函数 */
@@ -1832,7 +1900,6 @@ tecc_values_processor_decrypt_value(TeccRawValue *raw_value,
     }
 
     /* 3. 调用解密调度器 */
-    /* Note: Passing NULL connection for now - needs to be fixed for thread safety */
     decrypt_result = tecc_unified_decrypt_hex(
         (statement_data != NULL) ? statement_data->conn : NULL,  /* Get connection from statement_data if available */
         encrypted_value,
@@ -2264,6 +2331,9 @@ tecc_create_raw_value_from_node(Node *value_node)
                         raw_value->needs_encryption = false;
                         raw_value->state = TECC_RAW_VALUE_STATE_PROCESSED;
                         raw_value->location = (size_t)param_node->location;
+                        /* ReqID:TECC4.0 - 标记参数引用（供加密列跳过"函数表达式"报错） */
+                        raw_value->is_param = true;
+                        raw_value->param_index = param_node->paramid - 1;
                     }
                 }
             }
@@ -2292,6 +2362,9 @@ tecc_create_raw_value_from_node(Node *value_node)
 					raw_value->needs_encryption = false;
 					raw_value->state = TECC_RAW_VALUE_STATE_PROCESSED;
 					raw_value->location = (size_t)param_node->location;
+					/* ReqID:TECC4.0 - 标记参数引用（供加密列跳过"函数表达式"报错） */
+					raw_value->is_param = true;
+					raw_value->param_index = param_node->number - 1;
 				}
 			}
 		}
@@ -2620,9 +2693,10 @@ tecc_get_column_dek_name(TeccStatementData *statement_data,
         return NULL;
     }
 
-    /* 如果schema_name为NULL，从缓存管理器获取当前schema */
+    /* ReqID:TECC4.0 - schema 为 NULL 时按 search_path 服务器解析（与表级解析一致），
+     * 不再用 current_schema（search_path 首项可能与表实际 schema 不一致） */
     if (actual_schema_name == NULL) {
-        actual_schema_name = tecc_cache_get_guc_param(state, "current_schema");
+        actual_schema_name = tecc_stmt_resolve_table_schema(statement_data, NULL, table_name);
         if (actual_schema_name == NULL || actual_schema_name[0] == '\0') {
             tecc_processor_debug(TECC_LOG_WARNING,
                                "tecc_get_column_dek_name: Could not get current schema from cache manager, returning NULL");
@@ -2650,16 +2724,23 @@ tecc_get_column_dek_name(TeccStatementData *statement_data,
         return NULL;
     }
 
-    /* 检查DEK名称是否存在 */
-    if (cache_result->dek_name == NULL || cache_result->dek_name[0] == '\0') {
+    /* ReqID:TECC4.0 - 纯 HE 列无对称 DEK（dek_name 为 NULL），改用 HE_ADD_DEK/HE_MUL_DEK 名 */
+    if ((cache_result->dek_name == NULL || cache_result->dek_name[0] == '\0') &&
+        (cache_result->he_add_dek_name == NULL || cache_result->he_add_dek_name[0] == '\0') &&
+        (cache_result->he_mul_dek_name == NULL || cache_result->he_mul_dek_name[0] == '\0')) {
         tecc_processor_debug(TECC_LOG_ERROR,
                             "tecc_get_column_dek_name: DEK name is NULL or empty for column %s.%s",
                             table_name, column_name);
         return NULL;
     }
 
-    /* 复制DEK名称字符串 */
-    dek_name = pg_strdup(cache_result->dek_name);
+    /* 复制DEK名称字符串（纯 HE 列优先 HE_ADD_DEK，再 HE_MUL_DEK） */
+    if (cache_result->dek_name != NULL && cache_result->dek_name[0] != '\0')
+        dek_name = pg_strdup(cache_result->dek_name);
+    else if (cache_result->he_add_dek_name != NULL && cache_result->he_add_dek_name[0] != '\0')
+        dek_name = pg_strdup(cache_result->he_add_dek_name);
+    else
+        dek_name = pg_strdup(cache_result->he_mul_dek_name);
     if (dek_name == NULL) {
         tecc_processor_debug(TECC_LOG_ERROR,
                             "tecc_get_column_dek_name: Failed to duplicate DEK name for column %s.%s",
@@ -2672,14 +2753,330 @@ tecc_get_column_dek_name(TeccStatementData *statement_data,
 }
 /* End - ReqID:TECC4.0 - 获取列的DEK名称函数 */
 
-TeccValuesProcessorResult
-tecc_process_values_list(TeccRawValuesList *list,
-                        TeccStatementData *statement_data)
+/* ==================== 字段级并行（HE 字段分片） ==================== */
+
+/* ReqID:TECC4.0 - 字段级并行阈值：HE 字段数 >= 该值才创建 worker 线程分片。
+ * 零散（<64）走串行（算法内部并行已默认启用覆盖）。 */
+#define TECC_HE_PARALLEL_MIN_FIELDS 64
+
+/* ReqID:TECC4.0 - 前向声明：线程安全版单值处理（worker 线程使用，定义在后） */
+static TeccValuesProcessorResult values_process_single_value_ts(TeccRawValue *value,
+                                                                TeccStatementData *statement_data);
+
+/* ReqID:TECC4.0 - 判断 value 对应列是否为 HE 列（he-add 0x08 / he-mul 0x10）。
+ * 查加密列缓存（hit 路径，raw_list 构建阶段已隐式预热）。 */
+static bool
+tecc_values_processor_is_he_column(TeccStatementData *statement_data,
+                                   const TeccRawValue *value)
+{
+    TeccColumnCacheItem *col;
+    TeccState *state;
+    const char *db;
+
+    if (statement_data == NULL || value == NULL ||
+        value->table_name == NULL || value->column_name == NULL ||
+        statement_data->conn == NULL)
+        return false;
+
+    state = tecc_get_state(statement_data->conn);
+    db = PQdb(statement_data->conn);
+    if (state == NULL || db == NULL)
+        return false;
+
+    col = tecc_cache_get_encrypted_column_by_name(state, db, value->schema_name,
+                                                  value->table_name,
+                                                  value->column_name);
+    if (col == NULL)
+        return false;
+    return (col->encryption_type & (0x08 | 0x10)) != 0;
+}
+
+/* ReqID:TECC4.0 - 字段级并行前主线程预热 HE 元数据缓存：
+ * 列 HE DEK 名（tecc_load_column_he_dek_name 缓存）+ HE 公钥
+ * （tecc_he_load_dek_key_hex 缓存）+ 对称 DEK 缓存。预热后 worker 内
+ * values_process_single_value 命中缓存，不碰主连接（libpq 非线程安全）。 */
+static void
+tecc_values_processor_prewarm_he(TeccStatementData *statement_data,
+                                 const TeccRawValue *value)
+{
+    TeccColumnCacheItem *col;
+    TeccState *state;
+    const char *db;
+    char tmp[NAMEDATALEN];
+
+    if (statement_data == NULL || value == NULL || statement_data->conn == NULL)
+        return;
+    state = tecc_get_state(statement_data->conn);
+    db = PQdb(statement_data->conn);
+    if (state == NULL || db == NULL)
+        return;
+
+    col = tecc_cache_get_encrypted_column_by_name(state, db, value->schema_name,
+                                                  value->table_name,
+                                                  value->column_name);
+    if (col == NULL)
+        return;
+
+    /* 预热 tecc_load_column_he_dek_name 缓存（调度器加密时调用） */
+    tmp[0] = '\0';
+    (void) tecc_load_column_he_dek_name(state, col->table_oid,
+                                        (int16) col->column_attnum,
+                                        "he_add_dek", tmp, sizeof(tmp));
+    tmp[0] = '\0';
+    (void) tecc_load_column_he_dek_name(state, col->table_oid,
+                                        (int16) col->column_attnum,
+                                        "he_mul_dek", tmp, sizeof(tmp));
+
+    /* 预热 HE 公钥缓存（hex_out 传局部变量，函数不支持 NULL 输出指针） */
+    if (col->he_add_dek_name != NULL && col->he_add_dek_name[0] != '\0')
+    {
+        char *pub_hex = NULL;
+
+        (void) tecc_he_load_dek_key_hex(state, col->he_add_dek_name,
+                                        "he_ec_pubkey", &pub_hex);
+        if (pub_hex)
+            pg_free(pub_hex);
+    }
+    if (col->he_mul_dek_name != NULL && col->he_mul_dek_name[0] != '\0')
+    {
+        char *pub_hex = NULL;
+
+        (void) tecc_he_load_dek_key_hex(state, col->he_mul_dek_name,
+                                        "he_eg_pubkey", &pub_hex);
+        if (pub_hex)
+            pg_free(pub_hex);
+    }
+
+    /* 预热对称 DEK 缓存（触发 DEK 缓存加载） */
+    (void) tecc_values_processor_get_column_key_with_state(statement_data,
+                                                          value->schema_name,
+                                                          value->table_name,
+                                                          value->column_name);
+}
+
+/* ReqID:TECC4.0 - 字段级并行 worker 上下文 */
+typedef struct ValuesParallelWorkerCtx
+{
+    TeccRawValuesList *list;
+    TeccStatementData *statement_data;
+    const bool *is_he;          /* HE 字段标记（按 list index） */
+    int start;                  /* 起始 index */
+    int end;                    /* 结束 index */
+    TeccValuesProcessorResult result;
+} ValuesParallelWorkerCtx;
+
+#ifdef _WIN32
+static DWORD WINAPI
+values_parallel_worker_thread(LPVOID arg)
+#else
+static void *
+values_parallel_worker_thread(void *arg)
+#endif
+{
+    ValuesParallelWorkerCtx *w = (ValuesParallelWorkerCtx *) arg;
+    int i;
+    TeccRawValue *value;
+    TeccValuesProcessorResult r = TECC_VALUES_PROCESSOR_SUCCESS;
+
+    /* ReqID:TECC4.0 - worker 内关闭算法内部并行，避免 N worker × M 内部线程超订阅 */
+    tecc_he_set_algo_parallel_override(0);
+
+    for (i = w->start; i < w->end && r == TECC_VALUES_PROCESSOR_SUCCESS; i++)
+    {
+        if (!w->is_he[i])
+            continue;           /* 非 HE 字段由主线程串行处理 */
+        value = tecc_raw_values_list_get(w->list, i);
+        if (value == NULL)
+            continue;
+        /* ReqID:TECC4.0 - 用线程安全版（独立 context，不共享连接级 crypto_ctx；
+         * 元数据已由主线程预热，缓存 hit 不碰主连接） */
+        r = values_process_single_value_ts(value, w->statement_data);
+    }
+
+    tecc_he_set_algo_parallel_override(-1);
+
+    w->result = r;
+#ifdef _WIN32
+    return (DWORD) r;
+#else
+    return NULL;
+#endif
+}
+
+/* ReqID:TECC4.0 - 字段级并行 worker 数：TECC_HE_OVERSUB 环境变量（默认 2），
+ * 总线程 = 核数 × oversub，clamp 到 [1, he_field_count]。Windows 恒 1（串行）。 */
+static int
+tecc_he_get_parallel_worker_count(int he_field_count)
+{
+#ifdef WIN32
+    return 1;
+#else
+    const char *env;
+    long        cores;
+    int         oversub = 2;
+    int         n;
+
+    env = getenv("TECC_HE_OVERSUB");
+    if (env != NULL && env[0] != '\0')
+    {
+        oversub = atoi(env);
+        if (oversub < 1)
+            oversub = 1;
+    }
+
+    cores = sysconf(_SC_NPROCESSORS_ONLN);
+    if (cores < 1)
+        cores = 1;
+    if (cores > 256)
+        cores = 256;
+
+    n = (int) (cores * oversub);
+    if (n > he_field_count)
+        n = he_field_count;
+    if (n < 1)
+        n = 1;
+    return n;
+#endif
+}
+
+/* ReqID:TECC4.0 - 字段级并行处理：只把 HE 字段分片给 worker 线程（每 worker
+ * 独立处理、关闭算法内部并行避免叠加），对称/普通字段由主线程 join 后串行处理
+ * （避免加密机 SDF 在 worker 线程调用）。错误：第一个失败的 worker 胜出。 */
+static TeccValuesProcessorResult
+tecc_process_values_list_parallel(TeccRawValuesList *list,
+                                  TeccStatementData *statement_data)
 {
     int i;
     int count;
     TeccRawValue *value;
-    TeccValuesProcessorResult result;
+    TeccValuesProcessorResult result = TECC_VALUES_PROCESSOR_SUCCESS;
+    int he_count = 0;
+    int nthreads;
+    bool *is_he = NULL;
+    ValuesParallelWorkerCtx *workers = NULL;
+    pthread_t *threads = NULL;
+    int chunk;
+    int extra;
+    int offset;
+
+    count = tecc_raw_values_list_count(list);
+
+    /* 完整标记 HE 字段 */
+    is_he = (bool *) calloc(count, sizeof(bool));
+    if (is_he == NULL)
+        return TECC_VALUES_PROCESSOR_MEMORY_ERROR;
+
+    for (i = 0; i < count; i++)
+    {
+        value = tecc_raw_values_list_get(list, i);
+        if (value != NULL && value->needs_encryption &&
+            tecc_values_processor_is_he_column(statement_data, value))
+        {
+            is_he[i] = true;
+            he_count++;
+            /* ReqID:TECC4.0 - 主线程预热 HE 元数据缓存（DEK 名/公钥/
+             * 对称 DEK），worker 内命中缓存不碰主连接（libpq 非线程安全） */
+            tecc_values_processor_prewarm_he(statement_data, value);
+        }
+    }
+
+    if (he_count < TECC_HE_PARALLEL_MIN_FIELDS)
+    {
+        /* 防御：实际 HE 字段数不足阈值（理论不会发生），退化为串行 */
+        for (i = 0; i < count && result == TECC_VALUES_PROCESSOR_SUCCESS; i++)
+        {
+            value = tecc_raw_values_list_get(list, i);
+            if (value == NULL)
+                continue;
+            result = values_process_single_value(value, statement_data);
+        }
+        free(is_he);
+        return result;
+    }
+
+    nthreads = tecc_he_get_parallel_worker_count(he_count);
+    workers = (ValuesParallelWorkerCtx *) calloc(nthreads, sizeof(ValuesParallelWorkerCtx));
+    threads = (pthread_t *) calloc(nthreads, sizeof(pthread_t));
+    if (workers == NULL || threads == NULL)
+    {
+        free(is_he);
+        free(workers);
+        free(threads);
+        return TECC_VALUES_PROCESSOR_MEMORY_ERROR;
+    }
+
+    /* 按 index 范围分片整个 list（worker 内按 is_he 只处理 HE 字段） */
+    chunk = count / nthreads;
+    extra = count % nthreads;
+    offset = 0;
+    for (i = 0; i < nthreads; i++)
+    {
+        int c = chunk + (i < extra ? 1 : 0);
+
+        workers[i].list = list;
+        workers[i].statement_data = statement_data;
+        workers[i].is_he = is_he;
+        workers[i].start = offset;
+        workers[i].end = offset + c;
+        workers[i].result = TECC_VALUES_PROCESSOR_SUCCESS;
+        offset += c;
+    }
+
+    /* 启动 worker */
+#ifdef _WIN32
+    /* ReqID:TECC4.0 - Windows 下 pthread-win32 shim 未提供 pthread_create，
+     * 且 tecc_he_get_parallel_worker_count 恒返回 1，直接串行执行同一 worker。 */
+    for (i = 0; i < nthreads; i++)
+        (void) values_parallel_worker_thread(&workers[i]);
+#else
+    for (i = 0; i < nthreads; i++)
+    {
+        if (pthread_create(&threads[i], NULL,
+                           values_parallel_worker_thread, &workers[i]) != 0)
+            workers[i].result = TECC_VALUES_PROCESSOR_ERROR;
+    }
+
+    /* 等待所有 worker */
+    for (i = 0; i < nthreads; i++)
+    {
+        if (threads[i])
+            pthread_join(threads[i], NULL);
+    }
+#endif
+
+    /* 汇总错误（第一个失败的 worker 胜出） */
+    for (i = 0; i < nthreads && result == TECC_VALUES_PROCESSOR_SUCCESS; i++)
+    {
+        if (workers[i].result != TECC_VALUES_PROCESSOR_SUCCESS)
+            result = workers[i].result;
+    }
+
+    /* 主线程串行处理非 HE 字段（对称/普通列，含加密机） */
+    for (i = 0; i < count && result == TECC_VALUES_PROCESSOR_SUCCESS; i++)
+    {
+        if (is_he[i])
+            continue;
+        value = tecc_raw_values_list_get(list, i);
+        if (value == NULL)
+            continue;
+        result = values_process_single_value(value, statement_data);
+    }
+
+    free(workers);
+    free(threads);
+    free(is_he);
+    return result;
+}
+
+TeccValuesProcessorResult
+tecc_process_values_list(TeccRawValuesList *list,
+                         TeccStatementData *statement_data)
+{
+    int i;
+    int count;
+    TeccRawValue *value;
+    TeccValuesProcessorResult result = TECC_VALUES_PROCESSOR_SUCCESS;
+    int he_count = 0;
 
     if (list == NULL)
         return TECC_VALUES_PROCESSOR_SUCCESS;
@@ -2689,6 +3086,25 @@ tecc_process_values_list(TeccRawValuesList *list,
                         "Processing %d values in list (list=%p, list->num_values=%d, list->max_values=%d)",
                         count, list, list ? list->num_values : -1, list ? list->max_values : -1);
 
+    /* ReqID:TECC4.0 - 字段级并行决策：统计 HE 字段数（he-add/he-mul），
+     * 达到阈值（TECC_HE_PARALLEL_MIN_FIELDS=64）必然触发字段级并行，早停。
+     * 对称/普通字段不参与并行决策。 */
+    for (i = 0; i < count; i++)
+    {
+        value = tecc_raw_values_list_get(list, i);
+        if (value != NULL && value->needs_encryption &&
+            tecc_values_processor_is_he_column(statement_data, value))
+        {
+            he_count++;
+            if (he_count >= TECC_HE_PARALLEL_MIN_FIELDS)
+                break;      /* 早停：必然触发字段级并行 */
+        }
+    }
+
+    if (he_count >= TECC_HE_PARALLEL_MIN_FIELDS)
+        return tecc_process_values_list_parallel(list, statement_data);
+
+    /* 串行路径（算法内部并行默认启用，覆盖零散 HE 字段；对称/普通列不受影响） */
     for (i = 0; i < count; i++)
     {
         value = tecc_raw_values_list_get(list, i);
@@ -2710,39 +3126,6 @@ tecc_process_values_list(TeccRawValuesList *list,
 /*
  * Internal helper functions
  */
-static TeccValuesProcessorResult TECC_ATTR_UNUSED
-values_process_list(TeccRawValuesList *list, TeccStatementData *statement_data)
-{
-    int i;
-    int count;
-    TeccRawValue *value;
-    TeccValuesProcessorResult result;
-
-    if (list == NULL)
-        return TECC_VALUES_PROCESSOR_SUCCESS;
-
-    count = tecc_raw_values_list_count(list);
-    tecc_processor_debug(TECC_LOG_DEBUG1,
-                        "Processing %d values in list (list=%p)", count, list);
-
-    for (i = 0; i < count; i++)
-    {
-        value = tecc_raw_values_list_get(list, i);
-        if (value == NULL)
-            continue;
-
-        result = values_process_single_value(value, statement_data);
-        if (result != TECC_VALUES_PROCESSOR_SUCCESS)
-        {
-            tecc_processor_debug(TECC_LOG_DEBUG1,
-                               "Failed to process value at index %d", i);
-            return result;
-        }
-    }
-
-    return TECC_VALUES_PROCESSOR_SUCCESS;
-}
-
 static TeccValuesProcessorResult
 values_process_single_value(TeccRawValue *value, TeccStatementData *statement_data)
 {
@@ -2760,20 +3143,21 @@ values_process_single_value(TeccRawValue *value, TeccStatementData *statement_da
     if (tecc_raw_value_process(value) != 0)
     {
         tecc_processor_set_error(statement_data, TECC_PROCESSOR_INTERNAL_ERROR,
-                                "Failed to process raw value");
+                               "Failed to process raw value");
         return TECC_VALUES_PROCESSOR_ERROR;
     }
 
     /* Encrypt if needed */
     if (value->needs_encryption)
     {
-        /* Get algorithm and key for the column */
+        /* 获取列 algorithm 与 key（key 仅用于提前校验 DEK 可解析性，
+         * 实际 DEK 由 encrypt_value 内部重新解析） */
         algorithm = tecc_values_processor_get_column_algorithm_with_state(statement_data, value->schema_name, value->table_name, value->column_name, NULL);
         key = tecc_values_processor_get_column_key_with_state(statement_data, value->schema_name, value->table_name, value->column_name);
 
         if (algorithm != NULL && key != NULL)
         {
-            return tecc_values_processor_encrypt_value(value, algorithm, key, statement_data);
+            return tecc_values_processor_encrypt_value(value, algorithm, statement_data);
         }
         else
         {
@@ -2787,17 +3171,47 @@ values_process_single_value(TeccRawValue *value, TeccStatementData *statement_da
     return TECC_VALUES_PROCESSOR_SUCCESS;
 }
 
-static bool TECC_ATTR_UNUSED
-values_column_needs_encryption(const char *schema_name,
-                              const char *table_name,
-                              const char *column_name)
+/* ReqID:TECC4.0 - 线程安全版单值处理（字段级并行 worker 用）：
+ * 与 values_process_single_value 相同，但加密用独立 context（ts 版，不共享
+ * 连接级 crypto_ctx）。前提：所有元数据已由主线程预热（缓存 hit，worker 内
+ * 不碰主连接）。 */
+static TeccValuesProcessorResult
+values_process_single_value_ts(TeccRawValue *value, TeccStatementData *statement_data)
 {
-    /* TODO: Query metadata cache to check if column is encrypted */
-    /* Placeholder implementation */
-    if (column_name != NULL && strstr(column_name, "_enc") != NULL)
-        return true;
+    const char *algorithm;
+    const char *key;
 
-    return false;
+    if (value == NULL)
+        return TECC_VALUES_PROCESSOR_SUCCESS;
+
+    if (value->is_null || value->is_default)
+        return TECC_VALUES_PROCESSOR_SUCCESS;
+
+    if (tecc_raw_value_process(value) != 0)
+    {
+        tecc_processor_set_error(statement_data, TECC_PROCESSOR_INTERNAL_ERROR,
+                               "Failed to process raw value");
+        return TECC_VALUES_PROCESSOR_ERROR;
+    }
+
+    if (value->needs_encryption)
+    {
+        /* 获取列 algorithm 与 key（缓存 hit；预热阶段已加载） */
+        algorithm = tecc_values_processor_get_column_algorithm_with_state(statement_data, value->schema_name, value->table_name, value->column_name, NULL);
+        key = tecc_values_processor_get_column_key_with_state(statement_data, value->schema_name, value->table_name, value->column_name);
+
+        if (algorithm != NULL && key != NULL)
+            return tecc_values_processor_encrypt_value_ts(value, algorithm, statement_data);
+        else
+        {
+            tecc_processor_debug(TECC_LOG_ERROR,
+                               "Missing algorithm or key for column %s",
+                               value->column_name ? value->column_name : "unknown");
+            return TECC_VALUES_PROCESSOR_ERROR;
+        }
+    }
+
+    return TECC_VALUES_PROCESSOR_SUCCESS;
 }
 
 /*
@@ -2953,16 +3367,12 @@ tecc_values_processor_process_parameters(TeccStatementData *statement_data)
         /* Mark that parameter encryption was performed */
         statement_data->needs_rewrite = 1;
 
-        /* Store parameter map in statement data for later use */
-        /* In a real implementation, this would be used during query reconstruction */
-        if (statement_data->param_map != NULL) {
-            /* Free existing parameter map */
-            tecc_free_param_map(statement_data->param_map, statement_data->param_map_size);
-        }
-        statement_data->param_map = param_map;
-        statement_data->param_map_size = param_map_size;
-
-        
+        /* ReqID:TECC4.0 - 修复：param_map 即 statement_data->param_map
+         * （tecc_extract_param_mapping_enhanced 建立），此处不能再次释放——
+         * 否则会 memset 清零并 free 刚加密的 encrypted_value，导致
+         * statement_data->param_map 悬垂（后续读取到被清零的残留字节，
+         * 服务端报 "invalid byte sequence/invalid encrypted data"）。
+         * extract 内部已负责释放旧映射（若 statement_data 复用）。 */
     } else {
         /* No encryption needed, free parameter map */
         if (param_map != NULL) {
@@ -2975,289 +3385,13 @@ tecc_values_processor_process_parameters(TeccStatementData *statement_data)
     return TECC_VALUES_PROCESSOR_SUCCESS;
 }
 
-/*
- * Decrypt and restore value (参考openGauss设计)
- */
-TeccDecryptResult
-tecc_values_processor_deprocess_value(PGconn *conn,
-                                     const unsigned char *processed_data,
-                                     size_t processed_data_size,
-                                     int original_typeid,
-                                     int format,
-                                     unsigned char **plain_text,
-                                     size_t *plain_text_size,
-                                     TeccProcessStatus process_status,
-                                     const char *table_name,
-                                     const char *column_name)
-{
-    /* Begin - ReqID:TECC4.0 - 值反处理函数（解密和恢复） */
-    unsigned char *unescaped_processed_data = NULL;
-    size_t unescaped_processed_data_size = 0;
-    size_t plain_text_size_tmp = 0;
 
-    /* 1. 输入验证 */
-    if (processed_data == NULL || processed_data_size <= 0)
-    {
-        tecc_processor_debug(TECC_LOG_ERROR,
-                           "Invalid input data for deprocessing");
-        return TECC_DECRYPT_ERROR;
-    }
 
-    /* 2. 数据解转义（文本格式） */
-    if (format == 0)  /* 文本格式 */
-    {
-        unsigned char *processed_data_tmp = NULL;
-        char *text_to_deprocess = NULL;
-        char *final = NULL;
 
-        /* 2.1 添加字符串结束符 */
-        processed_data_tmp = (unsigned char *)pg_malloc(processed_data_size + 1);
-        if (processed_data_tmp == NULL)
-        {
-            tecc_processor_debug(TECC_LOG_ERROR,
-                               "Memory allocation failed for text processing");
-            return TECC_MEMORY_ERROR;
-        }
 
-        memcpy(processed_data_tmp, processed_data, processed_data_size);
-        processed_data_tmp[processed_data_size] = 0;
 
-        /* 2.2 处理默认值格式（包含::的部分） */
-        final = strchr((char *)processed_data_tmp, ':');
-        if (final != NULL && final[1] == ':')
-        {
-            /* 提取加密数据部分（跳过::type部分） */
-            text_to_deprocess = (char *)processed_data_tmp;
-            *final = 0;  /* 截断字符串 */
-        }
-        else
-        {
-            text_to_deprocess = (char *)processed_data_tmp;
-        }
 
-        /* 2.3 解转义BYTEA格式数据 */
-        unescaped_processed_data = PQunescapeBytea((const unsigned char *)text_to_deprocess,
-                                                  &unescaped_processed_data_size);
-        pg_free(processed_data_tmp);
 
-        if (unescaped_processed_data == NULL)
-        {
-            tecc_processor_debug(TECC_LOG_ERROR,
-                               "Failed to unescape BYTEA data");
-            return TECC_FORMAT_ERROR;
-        }
-    }
-    else  /* 二进制格式 */
-    {
-        unescaped_processed_data = (unsigned char *)processed_data;
-        unescaped_processed_data_size = processed_data_size;
-    }
-
-    /* 3. 空值处理 */
-    if (unescaped_processed_data_size == 0)
-    {
-        *plain_text_size = 0;
-        if (format == 0)
-            PQfreemem(unescaped_processed_data);
-        return tecc_process_null_value(plain_text, plain_text_size,
-                                      original_typeid, process_status);
-    }
-
-    /* 4. 数据大小验证 */
-    if (unescaped_processed_data_size < sizeof(Oid))
-    {
-        if (format == 0)
-            PQfreemem(unescaped_processed_data);
-        tecc_processor_debug(TECC_LOG_ERROR,
-                           "Invalid data length: %zu", unescaped_processed_data_size);
-        return TECC_INVALID_DATA_LENGTH;
-    }
-
-    /* 5. 核心解密：调用调度器 */
-    {
-        TeccUnifiedDecryptResult *unified_decrypt_result = NULL;
-        const char *hex_string = NULL;
-
-        /* 将处理后的数据转换为十六进制字符串 */
-        /* 注意：unescaped_processed_data可能已经是十六进制格式 */
-        hex_string = (const char *)unescaped_processed_data;
-
-        /* 使用线程安全版本 */
-        unified_decrypt_result = tecc_unified_decrypt_hex(
-            conn,
-            hex_string,
-            table_name ? table_name : "unknown_table",
-            column_name ? column_name : "unknown_column",
-            NULL
-        );
-
-        /* 检查解密结果 */
-        if (unified_decrypt_result == NULL ||
-            unified_decrypt_result->error_code != TECC_CRYPTO_SUCCESS)
-        {
-            tecc_processor_debug(TECC_LOG_ERROR,
-                               "Decryption failed: %s",
-                               unified_decrypt_result ? unified_decrypt_result->error_msg : "Unknown error");
-
-            if (format == 0)
-                PQfreemem(unescaped_processed_data);
-
-            if (unified_decrypt_result != NULL)
-                tecc_unified_free_decrypt_result(unified_decrypt_result);
-
-            return TECC_DECRYPT_ERROR;
-        }
-
-        /* 存储解密结果 */
-        plain_text_size_tmp = unified_decrypt_result->plain_len;
-        *plain_text = (unsigned char *)pg_malloc(plain_text_size_tmp + 1);
-        if (*plain_text == NULL)
-        {
-            if (format == 0)
-                PQfreemem(unescaped_processed_data);
-
-            tecc_unified_free_decrypt_result(unified_decrypt_result);
-            return TECC_MEMORY_ERROR;
-        }
-
-        memcpy(*plain_text, unified_decrypt_result->plaintext, plain_text_size_tmp);
-        (*plain_text)[plain_text_size_tmp] = 0;
-
-        /* 清理解密结果 */
-        tecc_unified_free_decrypt_result(unified_decrypt_result);
-    }
-
-    /* 6. 清理临时数据 */
-    if (format == 0)
-        PQfreemem(unescaped_processed_data);
-
-    /* 8. 特殊处理：无权限情况 */
-    /* 注意：如果解密失败，函数已经返回错误 */
-    /* 如果解密成功但plain_text_size_tmp为0，表示解密结果是空字符串 */
-    if (plain_text_size_tmp == 0)
-    {
-        /* 解密结果是空字符串，这是有效的 */
-        tecc_processor_debug(TECC_LOG_DEBUG1,
-                           "Decryption result is empty string");
-    }
-
-    /* 9. 格式转换 */
-    *plain_text_size = plain_text_size_tmp;
-    if (format == 0)  /* 文本格式 */
-    {
-        tecc_process_text_format(plain_text, plain_text_size,
-                                process_status, original_typeid);
-    }
-    else  /* 二进制格式 */
-    {
-        /* 实现二进制格式恢复 */
-        tecc_process_binary_format(plain_text, plain_text_size,
-                                   process_status, original_typeid);
-    }
-
-    tecc_processor_debug(TECC_LOG_DEBUG1,
-                        "Value deprocessing completed successfully, size: %zu",
-                        *plain_text_size);
-
-    return TECC_DECRYPT_SUCCESS;
-    /* End - ReqID:TECC4.0 - 值反处理函数（解密和恢复） */
-}
-
-/*
- * Process NULL value
- */
-static TeccDecryptResult
-tecc_process_null_value(unsigned char **plain_text,
-                       size_t *plain_text_size,
-                       int original_typeid,
-                       TeccProcessStatus process_status)
-{
-    const char *null_str = "NULL";
-
-    /* 根据处理状态返回适当的NULL表示 */
-    switch (process_status)
-    {
-        case TECC_ONLY_VALUE:
-            null_str = "NULL";
-            break;
-        case TECC_ADD_QUOTATION:
-            null_str = "'NULL'";
-            break;
-        case TECC_ADD_TYPE:
-            null_str = "'NULL'::unknown";
-            break;
-        default:
-            null_str = "NULL";
-            break;
-    }
-
-    *plain_text = (unsigned char *)tecc_processor_strdup(null_str);
-    if (*plain_text == NULL)
-        return TECC_MEMORY_ERROR;
-
-    *plain_text_size = strlen(null_str);
-    return TECC_DECRYPT_SUCCESS;
-}
-
-/*
- * Process text format
- */
-static void
-tecc_process_text_format(unsigned char **plain_text,
-                        size_t *plain_text_size,
-                        TeccProcessStatus process_status,
-                        int original_typeid)
-{
-    char *result = NULL;
-    size_t result_size = 0;
-
-    if (*plain_text == NULL || *plain_text_size == 0)
-        return;
-
-    /* 根据处理状态调整文本格式 */
-    switch (process_status)
-    {
-        case TECC_ONLY_VALUE:
-            /* 保持原样 */
-            break;
-        case TECC_ADD_QUOTATION:
-            /* 添加引号 */
-            result_size = *plain_text_size + 2;
-            result = (char *)pg_malloc(result_size + 1);
-            if (result != NULL)
-            {
-                result[0] = '\'';
-                memcpy(result + 1, *plain_text, *plain_text_size);
-                result[result_size - 1] = '\'';
-                result[result_size] = 0;
-
-                pg_free(*plain_text);
-                *plain_text = (unsigned char *)result;
-                *plain_text_size = result_size;
-            }
-            break;
-        case TECC_ADD_TYPE:
-            /* 添加类型后缀 */
-            result_size = *plain_text_size + 2 + 10;  /* 引号 + 类型名 */
-            result = (char *)pg_malloc(result_size + 1);
-            if (result != NULL)
-            {
-                result[0] = '\'';
-                memcpy(result + 1, *plain_text, *plain_text_size);
-                result[*plain_text_size + 1] = '\'';
-
-                /* 添加类型后缀（简化实现） */
-                strcpy(result + *plain_text_size + 2, "::text");
-
-                pg_free(*plain_text);
-                *plain_text = (unsigned char *)result;
-                *plain_text_size = strlen(result);
-            }
-            break;
-        default:
-            break;
-    }
-}
 
 /*
  * Rewrite values in SQL query
@@ -3461,6 +3595,17 @@ tecc_values_processor_rewrite_values(TeccStatementData *statement_data)
 
         value_len = strlen(encrypted_value);
 
+        /* ReqID:TECC4.0 - Pseudo-function replacements share the original
+         * byte offsets with encrypted constants, but are already SQL rather
+         * than ciphertext literals.  Pass 1 reserves at least value_len. */
+        if (raw_value->is_sql_expression)
+        {
+            memcpy(new_query + new_query_len, encrypted_value, value_len);
+            new_query_len += value_len;
+            orig_pos = raw_value->location + raw_value->data_size;
+            continue;
+        }
+
         /* Ensure capacity for encrypted value representation:
          * '\xhex...'::type_name
          */
@@ -3484,7 +3629,6 @@ tecc_values_processor_rewrite_values(TeccStatementData *statement_data)
         new_query[new_query_len++] = '\'';
         {
             const char *src = encrypted_value;
-            const char *src_end = encrypted_value + value_len;
             /* Skip \x prefix if present */
             if (value_len >= 2 && src[0] == '\\' && src[1] == 'x')
             {
@@ -3558,297 +3702,6 @@ tecc_values_processor_rewrite_values(TeccStatementData *statement_data)
 }
 
 /*
- * Process binary format for decrypted values
- *
- * This function handles binary format restoration for decrypted values.
- * Binary format requires special handling compared to text format.
- */
-static void
-tecc_process_binary_format(unsigned char **plain_text,
-                          size_t *plain_text_size,
-                          TeccProcessStatus process_status,
-                          int original_typeid)
-{
-    /* 对于二进制格式，通常不需要额外的格式处理 */
-    /* 二进制数据应该保持原样，不需要添加引号或类型后缀 */
-
-    tecc_processor_debug(TECC_LOG_DEBUG1,
-                       "Processing binary format: size=%zu, status=%d, typeid=%d",
-                       *plain_text_size, process_status, original_typeid);
-
-    /* 根据处理状态进行相应处理 */
-    switch (process_status)
-    {
-        case TECC_ONLY_VALUE:
-            /* 二进制格式保持原样 */
-            break;
-
-        case TECC_ADD_QUOTATION:
-            /* 二进制格式通常不需要引号 */
-            tecc_processor_debug(TECC_LOG_DEBUG1,
-                               "Binary format skipping quotation marks");
-            break;
-
-        case TECC_ADD_TYPE:
-            /* 二进制格式可以添加类型转换，但通常不需要 */
-            tecc_processor_debug(TECC_LOG_DEBUG1,
-                               "Binary format skipping type suffix");
-            break;
-
-        default:
-            tecc_processor_debug(TECC_LOG_WARNING,
-                               "Unknown process status for binary format: %d",
-                               process_status);
-            break;
-    }
-}
-
-/*
- * tecc_free_param_map - 释放参数映射表内存
- *
- * 参数:
- *   param_map - 参数映射表指针
- *   param_map_size - 参数映射表大小
- */
-static void
-tecc_free_param_map(TeccParamMapEntry *param_map, int param_map_size)
-{
-    int i;
-
-    if (param_map == NULL) {
-        return;
-    }
-
-    /* 释放每个条目的字符串字段 */
-    for (i = 0; i < param_map_size; i++) {
-        if (param_map[i].column_name != NULL) {
-            pg_free(param_map[i].column_name);
-        }
-        if (param_map[i].table_name != NULL) {
-            pg_free(param_map[i].table_name);
-        }
-        if (param_map[i].schema_name != NULL) {
-            pg_free(param_map[i].schema_name);
-        }
-        if (param_map[i].encrypted_value != NULL) {
-            /* Securely erase encrypted value */
-            memset(param_map[i].encrypted_value, 0, param_map[i].encrypted_value_size);
-            pg_free(param_map[i].encrypted_value);
-        }
-    }
-
-    /* 释放参数映射表本身 */
-    pg_free(param_map);
-}
-
-/*
- * tecc_parameter_needs_encryption - 检查参数是否需要加密
- *
- * 参数:
- *   statement_data - 语句数据
- *   param_index - 参数索引
- *   param_type - 参数类型OID
- *   param_value - 参数值
- *
- * 返回值:
- *   true - 参数需要加密
- *   false - 参数不需要加密
- */
-static bool TECC_ATTR_UNUSED
-tecc_parameter_needs_encryption(TeccStatementData *statement_data,
-                               int param_index,
-                               Oid param_type,
-                               const char *param_value)
-{
-    /* Begin - ReqID:TECC4.0 - 参数加密需求检查 */
-    /* ReqID:TECC4.0 - Fix C90 mixed declaration warning */
-    TeccParamMapEntry *param_entry = NULL;
-    TeccState *state = NULL;
-    TeccCacheManager *cache_manager = NULL;
-    const char *database_name = NULL;
-    const char *schema_name = NULL;
-    TeccColumnCacheItem *column_info = NULL;
-
-    /* 基本参数检查 */
-    if (statement_data == NULL || param_value == NULL) {
-        return false;
-    }
-
-    /* 检查参数映射表中是否有该参数的信息 */
-    if (statement_data->param_map != NULL && param_index < statement_data->param_map_size) {
-        param_entry = &statement_data->param_map[param_index];
-
-        /* 如果参数映射表中已经标记了是否需要加密，直接返回 */
-        if (param_entry->needs_encryption) {
-            tecc_processor_debug(TECC_LOG_DEBUG1,
-                               "Parameter %d marked as needing encryption in param_map",
-                               param_index);
-            return true;
-        }
-
-        /* 如果参数映射表中有列名信息，查询缓存检查是否加密 */
-        if (param_entry->column_name != NULL && param_entry->table_name != NULL) {
-            /* 获取缓存管理器 */
-            state = tecc_get_state(statement_data->conn);
-            cache_manager = tecc_cache_get_manager(state);
-            if (cache_manager != NULL) {
-                /* 查询加密列信息 */
-                /* ReqID:TECC4.0 - database_name declared at function scope beginning */
-                if (statement_data->conn != NULL) {
-                    database_name = PQdb(statement_data->conn);
-                    if (database_name == NULL || database_name[0] == '\0') {
-                        /* 无法获取数据库名，返回false */
-                        tecc_processor_debug(TECC_LOG_WARNING,
-                                           "tecc_values_processor_check_param_needs_encryption: Could not get database name from connection");
-                        return false;
-                    }
-                } else {
-                    /* 没有连接，无法获取数据库名，返回false */
-                    tecc_processor_debug(TECC_LOG_WARNING,
-                                       "tecc_values_processor_check_param_needs_encryption: No connection available");
-                    return false;
-                }
-
-                /* 获取schema名 */
-                /* ReqID:TECC4.0 - schema_name declared at function scope beginning */
-                if (param_entry->schema_name != NULL) {
-                    schema_name = param_entry->schema_name;
-                } else if (state != NULL) {
-                    /* 从缓存获取当前schema */
-                    schema_name = tecc_cache_get_guc_param(state, "current_schema");
-                    if (schema_name == NULL || schema_name[0] == '\0') {
-                        /* 无法获取schema名，返回false */
-                        tecc_processor_debug(TECC_LOG_WARNING,
-                                           "tecc_values_processor_check_param_needs_encryption: Could not get current schema from cache");
-                        return false;
-                    }
-                } else {
-                    /* 没有state，无法获取schema名，返回false */
-                    tecc_processor_debug(TECC_LOG_WARNING,
-                                       "tecc_values_processor_check_param_needs_encryption: No state available");
-                    return false;
-                }
-
-                column_info = tecc_cache_get_encrypted_column_by_name(
-                    state,  /* 使用从连接获取的state参数 */
-                    database_name,  /* 从连接获取数据库名 */
-                    schema_name,
-                    param_entry->table_name,
-                    param_entry->column_name
-                );
-
-                if (column_info != NULL) {
-                    /* 找到加密列信息 */
-                    tecc_processor_debug(TECC_LOG_DEBUG1,
-                                       "Parameter %d corresponds to encrypted column %s.%s",
-                                       param_index, param_entry->table_name, param_entry->column_name);
-                    /* 标记参数需要加密 */
-                    param_entry->needs_encryption = true;
-                    return true;
-                } else {
-                    tecc_processor_debug(TECC_LOG_DEBUG1,
-                                       "Parameter %d corresponds to non-encrypted column %s.%s",
-                                       param_index, param_entry->table_name, param_entry->column_name);
-                    return false;
-                }
-            }
-        }
-    }
-
-    /* 如果没有参数映射信息，使用简化逻辑 */
-    /* 检查查询中是否包含加密类型提示 */
-    if (strstr(statement_data->query, "_enc") != NULL) {
-        tecc_processor_debug(TECC_LOG_DEBUG1,
-                           "Parameter %d may need encryption (query contains '_enc')",
-                           param_index);
-        return true;
-    }
-
-    /* 默认返回false */
-    return false;
-    /* End - ReqID:TECC4.0 */
-}
-
-/*
- * tecc_extract_param_mapping_from_parse_tree - 从解析树中提取参数映射
- *
- * 参数:
- *   statement_data - 语句数据
- *   param_map - 输出参数映射表指针
- *   param_map_size - 输出参数映射表大小
- *
- * 返回值:
- *   0 - 成功
- *   -1 - 失败
- */
-static int TECC_ATTR_UNUSED
-tecc_extract_param_mapping_from_parse_tree(TeccStatementData *statement_data,
-                                          TeccParamMapEntry **param_map,
-                                          int *param_map_size)
-{
-    /* Begin - ReqID:TECC4.0 - 从解析树提取参数映射 */
-
-    /* 初始化输出参数 */
-    *param_map = NULL;
-    *param_map_size = 0;
-
-    /* 基本检查 */
-    if (statement_data == NULL || statement_data->parse_tree == NIL) {
-        tecc_processor_debug(TECC_LOG_DEBUG1,
-                           "No parse tree available for parameter mapping extraction");
-        return -1;
-    }
-
-    /* 检查是否有参数需要处理 */
-    if (statement_data->nParams == 0) {
-        tecc_processor_debug(TECC_LOG_DEBUG1,
-                           "No parameters to map");
-        return -1;
-    }
-
-    /* 在实际实现中，我们需要:
-       1. 遍历解析树，查找参数节点(ParamRef节点)
-       2. 确定每个参数对应的列(表名、字段名)
-       3. 构建参数映射表
-    */
-
-    /* 简化实现: 创建一个基本的参数映射表 */
-    *param_map_size = statement_data->nParams;
-    *param_map = pg_malloc0(sizeof(TeccParamMapEntry) * (*param_map_size));
-    if (*param_map == NULL) {
-        tecc_processor_debug(TECC_LOG_ERROR,
-                           "Memory allocation failed for parameter map extraction");
-        return -1;
-    }
-
-    /* 初始化参数映射表 */
-    for (int i = 0; i < *param_map_size; i++) {
-        (*param_map)[i].param_index = i;
-        (*param_map)[i].column_name = NULL;
-        (*param_map)[i].table_name = NULL;
-        (*param_map)[i].schema_name = NULL;
-        (*param_map)[i].needs_encryption = false;
-        (*param_map)[i].encrypted_value = NULL;
-        (*param_map)[i].encrypted_value_size = 0;
-
-        /* 在实际实现中，这里会从解析树中提取实际的列名信息 */
-        /* 例如:
-           if (find_param_in_parse_tree(statement_data->parse_tree, i, &table_name, &column_name)) {
-               (*param_map)[i].table_name = pg_strdup(table_name);
-               (*param_map)[i].column_name = pg_strdup(column_name);
-           }
-        */
-    }
-
-    tecc_processor_debug(TECC_LOG_DEBUG1,
-                       "Created basic parameter mapping for %d parameters",
-                       *param_map_size);
-
-    return 0;
-    /* End - ReqID:TECC4.0 */
-}
-
-/*
  * Get encryption key for column with statement data
  */
 const char *
@@ -3916,6 +3769,20 @@ tecc_values_processor_get_column_key_with_state(TeccStatementData *statement_dat
         if (column_item->dek_name != NULL && column_item->dek_name[0] != '\0')
         {
             dek_item = tecc_cache_get_dek_by_name_search_path(state, column_item->dek_name);
+            if (dek_item != NULL && dek_item->key_name != NULL)
+                return dek_item->key_name;
+        }
+
+        /* ReqID:TECC4.0 - 纯 HE 列（无对称 DEK）：用 HE_ADD_DEK/HE_MUL_DEK 名解析 */
+        if (column_item->he_add_dek_name != NULL && column_item->he_add_dek_name[0] != '\0')
+        {
+            dek_item = tecc_cache_get_dek_by_name_search_path(state, column_item->he_add_dek_name);
+            if (dek_item != NULL && dek_item->key_name != NULL)
+                return dek_item->key_name;
+        }
+        if (column_item->he_mul_dek_name != NULL && column_item->he_mul_dek_name[0] != '\0')
+        {
+            dek_item = tecc_cache_get_dek_by_name_search_path(state, column_item->he_mul_dek_name);
             if (dek_item != NULL && dek_item->key_name != NULL)
                 return dek_item->key_name;
         }
@@ -4038,6 +3905,14 @@ tecc_values_processor_get_column_algorithm_with_state(TeccStatementData *stateme
         else if (column_item->encryption_type & 0x04)
         {
             return "SEARCH";
+        }
+        else if (column_item->encryption_type & 0x08)
+        {
+            return "EC-ELGAMAL";    /* ReqID:TECC4.0 - HE_ADD */
+        }
+        else if (column_item->encryption_type & 0x10)
+        {
+            return "ELGAMAL";       /* ReqID:TECC4.0 - HE_MUL */
         }
         else
         {

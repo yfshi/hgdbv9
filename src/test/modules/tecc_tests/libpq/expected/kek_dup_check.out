@@ -1,0 +1,19 @@
+DROP KEK
+DROP KEK
+DROP KEK
+CREATE KEK
+CREATE KEK
+CREATE KEK
+kekdup_a
+kekdup_b
+DROP KEK
+DROP KEK
+psql:/.../kek_dup_check.sql:15: NOTICE:  key encryption key "kekdup_a" does not exist, skipping
+psql:/.../kek_dup_check.sql:16: NOTICE:  key encryption key "kekdup_a2" does not exist, skipping
+psql:/.../kek_dup_check.sql:17: NOTICE:  key encryption key "kekdup_b" does not exist, skipping
+ERROR: KEY_PATH "/tmp/kekdup_a_regress.key" is already used by another KEK
+HINT: Each KEK must use a unique key file.
+psql:/.../kek_dup_check.sql:31: TECC query preprocessing failed: Processor failed to process query
+ERROR: KEK "kekdup_a" already exists
+psql:/.../kek_dup_check.sql:38: TECC query preprocessing failed: Processor failed to process query
+psql:/.../kek_dup_check.sql:45: NOTICE:  KEK "kekdup_a" already exists, skipping

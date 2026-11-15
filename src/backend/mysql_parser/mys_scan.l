@@ -1122,6 +1122,24 @@ other			.
 					char	   *slashstar = strstr(yytext, "/*");
 					char	   *dashdash = strstr(yytext, "--");
 
+					/* Begin - ReqID:SRS-MYSQL-SQL-PREPARE */
+					if (qm_as_param && yytext[nchars -1] == '?')
+					{	/* Begin - bug#7930 */
+						if (nchars != 1)
+						{
+							yyless(yyleng -1);
+						}
+						else
+						/* End - bug#7930 */
+						{
+							SET_YYLLOC();
+							yyextra->param_no++;
+							yylval->ival = yyextra->param_no;
+							return PARAM;
+						}
+					}
+					/* End - ReqID:SRS-MYSQL-SQL-PREPARE */
+
 					if (slashstar && dashdash)
 					{
 						/* if both appear, take the first one */

@@ -5,8 +5,6 @@ DROP KEK
  === SWXA SEARCH Setup ===
 (1 row)
 
-Setting up SWXA KEK: swxa_search_kek (key index: 1)
-SUCCESS: Key found in SWXA password machine at index 1
 CREATE KEK
 CREATE DEK
           stage          
@@ -27,9 +25,10 @@ INSERT 0 7
  1b_vc_like_ban_pct |  3 | banana
 (1 row)
 
- tc | id | c_bp 
-----+----+------
-(0 rows)
+         tc         | id |  c_bp  
+--------------------+----+--------
+ 1c_bp_like_ana_pct |  3 | banana
+(1 row)
 
           tc          | id |  c_text   
 ----------------------+----+-----------

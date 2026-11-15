@@ -16,9 +16,11 @@ OBJS = \
 	globals.o \
 	miscinit.o \
 	postinit.o \
+	tecc_conn_type.o \
 	tecc_global_mark.o
 
 include $(top_srcdir)/src/backend/common.mk
 
 # TECC后端文件头文件依赖
+tecc_conn_type.o: $(top_srcdir)/src/include/utils/tecc_conn_type.h
 tecc_global_mark.o: $(top_srcdir)/src/include/utils/tecc_global_mark.h

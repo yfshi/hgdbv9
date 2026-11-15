@@ -37,7 +37,11 @@ typedef enum TeccWhereClauseProcessorResult
     TECC_WHERE_PROCESSOR_MISSING_DET = -6,     /* 需要DET算法但列没有 */
     TECC_WHERE_PROCESSOR_MISSING_OPE = -7,     /* 需要OPE算法但列没有 */
     TECC_WHERE_PROCESSOR_MISSING_SEARCH = -8,  /* 需要SEARCH算法但列没有 */
-    TECC_WHERE_PROCESSOR_MISSING_DET_OPE = -9  /* =/<>等需DET或OPE但列都没有 */
+    TECC_WHERE_PROCESSOR_MISSING_DET_OPE = -9, /* =/<>等需DET或OPE但列都没有 */
+    TECC_WHERE_PROCESSOR_DEK_MISMATCH = -10,   /* 两侧加密列使用不同DEK，禁止比较 */
+    TECC_WHERE_PROCESSOR_LIKE_COLUMN = -11,    /* 密态列与密态列之间不支持LIKE比较 */
+    TECC_WHERE_PROCESSOR_UNSUPPORTED_AGGREGATE = -12, /* 聚合函数不支持加密列 */
+    TECC_WHERE_PROCESSOR_UNSUPPORTED_SCALAR = -13      /* 标量函数不支持加密列 */
 } TeccWhereClauseProcessorResult;
 
 /*

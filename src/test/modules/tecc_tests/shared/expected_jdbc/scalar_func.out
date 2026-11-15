@@ -1,0 +1,338 @@
+NOTICE: table "enc_pgfunc_test_det" does not exist, skipping
+DROP TABLE
+NOTICE: table "enc_pgfunc_test_ope" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "enc_pgfunc_dek" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "enc_pgfunc_kek" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+NOTICE: data encryption key "enc_pgfunc_he_mul_dek" does not exist, skipping
+DROP DEK
+NOTICE: data encryption key "enc_pgfunc_he_add_dek" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "enc_pgfunc_he_kek" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+CREATE OR
+CREATE OR
+COALESCE(c_int4,0)-OPE|9999
+COALESCE(c_int4,0)-OPE|-1000
+COALESCE(c_int4,0)-OPE|0
+COALESCE(c_int4,0)-OPE|0
+COALESCE(c_int4,0)-OPE|8888
+COALESCE(c_text,'def')-OPE|Hello World
+COALESCE(c_text,'def')-OPE|中文字符串🎉
+COALESCE(c_text,'def')-OPE|
+COALESCE(c_text,'def')-OPE|仅部分列为NULL
+COALESCE(c_text,'def')-OPE|Special: !@#$%^&*()_+-=[]{}|;:''",.<>?/~`
+COALESCE(c_numeric,0)-OPE|123.456
+COALESCE(c_numeric,0)-OPE|-500.0
+COALESCE(c_numeric,0)-OPE|0.0
+COALESCE(c_numeric,0)-OPE|0
+COALESCE(c_numeric,0)-OPE|99999.9999
+COALESCE(c_int4,0)-DET|9999
+COALESCE(c_int4,0)-DET|-1000
+COALESCE(c_int4,0)-DET|0
+COALESCE(c_int4,0)-DET|0
+COALESCE(c_int4,0)-DET|8888
+COALESCE(c_text,'def')-DET|Hello World
+COALESCE(c_text,'def')-DET|中文字符串🎉
+COALESCE(c_text,'def')-DET|
+COALESCE(c_text,'def')-DET|仅部分列为NULL
+COALESCE(c_text,'def')-DET|Special: !@#$%^&*()_+-=[]{}|;:''",.<>?/~`
+COALESCE(c_numeric,0)-DET|123.456
+COALESCE(c_numeric,0)-DET|-500.0
+COALESCE(c_numeric,0)-DET|0.0
+COALESCE(c_numeric,0)-DET|0
+COALESCE(c_numeric,0)-DET|99999.9999
+COALESCE(n_int4,0)-OPE-plain|9999
+COALESCE(n_int4,0)-OPE-plain|-1000
+COALESCE(n_int4,0)-OPE-plain|0
+COALESCE(n_int4,0)-OPE-plain|0
+COALESCE(n_int4,0)-OPE-plain|8888
+COALESCE(n_text,'def')-DET-plain|Hello World
+COALESCE(n_text,'def')-DET-plain|中文字符串🎉
+COALESCE(n_text,'def')-DET-plain|
+COALESCE(n_text,'def')-DET-plain|仅部分列为NULL
+COALESCE(n_text,'def')-DET-plain|Special: !@#$%^&*()_+-=[]{}|;:'",.<>?/~`
+NULLIF(c_int4,0)-OPE|9999
+NULLIF(c_int4,0)-OPE|-1000
+NULLIF(c_int4,0)-OPE|
+NULLIF(c_int4,0)-OPE|
+NULLIF(c_int4,0)-OPE|8888
+NULLIF(c_text,'')-OPE|Hello World
+NULLIF(c_text,'')-OPE|中文字符串🎉
+NULLIF(c_text,'')-OPE|
+NULLIF(c_text,'')-OPE|仅部分列为NULL
+NULLIF(c_text,'')-OPE|Special: !@#$%^&*()_+-=[]{}|;:''",.<>?/~`
+NULLIF(c_int4,0)-DET|9999
+NULLIF(c_int4,0)-DET|-1000
+NULLIF(c_int4,0)-DET|
+NULLIF(c_int4,0)-DET|
+NULLIF(c_int4,0)-DET|8888
+NULLIF(c_text,'')-DET|Hello World
+NULLIF(c_text,'')-DET|中文字符串🎉
+NULLIF(c_text,'')-DET|
+NULLIF(c_text,'')-DET|仅部分列为NULL
+NULLIF(c_text,'')-DET|Special: !@#$%^&*()_+-=[]{}|;:''",.<>?/~`
+NULLIF(n_int4,0)-OPE-plain|9999
+NULLIF(n_int4,0)-OPE-plain|-1000
+NULLIF(n_int4,0)-OPE-plain|
+NULLIF(n_int4,0)-OPE-plain|
+NULLIF(n_int4,0)-OPE-plain|8888
+NULLIF(n_text,'')-DET-plain|Hello World
+NULLIF(n_text,'')-DET-plain|中文字符串🎉
+NULLIF(n_text,'')-DET-plain|
+NULLIF(n_text,'')-DET-plain|仅部分列为NULL
+NULLIF(n_text,'')-DET-plain|Special: !@#$%^&*()_+-=[]{}|;:'",.<>?/~`
+GREATEST(c_int4,0)-OPE|9999
+GREATEST(c_int4,0)-OPE|0
+GREATEST(c_int4,0)-OPE|0
+GREATEST(c_int4,0)-OPE|0
+GREATEST(c_int4,0)-OPE|8888
+GREATEST(c_int8,100)-OPE|1234567890123
+GREATEST(c_int8,100)-OPE|100
+GREATEST(c_int8,100)-OPE|100
+GREATEST(c_int8,100)-OPE|500
+GREATEST(c_int8,100)-OPE|999999999999
+GREATEST(c_numeric,0)-OPE|123.456
+GREATEST(c_numeric,0)-OPE|0
+GREATEST(c_numeric,0)-OPE|0.0
+GREATEST(c_numeric,0)-OPE|0
+GREATEST(c_numeric,0)-OPE|99999.9999
+GREATEST(n_int4,0)-OPE-plain|9999
+GREATEST(n_int4,0)-OPE-plain|0
+GREATEST(n_int4,0)-OPE-plain|0
+GREATEST(n_int4,0)-OPE-plain|0
+GREATEST(n_int4,0)-OPE-plain|8888
+GREATEST(n_numeric,0)-OPE-plain|123.456
+GREATEST(n_numeric,0)-OPE-plain|0
+GREATEST(n_numeric,0)-OPE-plain|0.0
+GREATEST(n_numeric,0)-OPE-plain|0
+GREATEST(n_numeric,0)-OPE-plain|99999.9999
+ERROR: TECC strict: function 'GREATEST' requires OPE on encrypted column [enc_pgfunc_test_det.c_int4], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'GREATEST' requires OPE on encrypted column [enc_pgfunc_test_det.c_int8], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'GREATEST' requires OPE on encrypted column [enc_pgfunc_test_det.c_numeric], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+GREATEST(n_int4,0)-DET-plain|9999
+GREATEST(n_int4,0)-DET-plain|0
+GREATEST(n_int4,0)-DET-plain|0
+GREATEST(n_int4,0)-DET-plain|0
+GREATEST(n_int4,0)-DET-plain|8888
+LEAST(c_int4,9999)-OPE|9999
+LEAST(c_int4,9999)-OPE|-1000
+LEAST(c_int4,9999)-OPE|0
+LEAST(c_int4,9999)-OPE|9999
+LEAST(c_int4,9999)-OPE|8888
+LEAST(c_int8,0)-OPE|0
+LEAST(c_int8,0)-OPE|-999999999
+LEAST(c_int8,0)-OPE|0
+LEAST(c_int8,0)-OPE|0
+LEAST(c_int8,0)-OPE|0
+LEAST(c_numeric,99999)-OPE|123.456
+LEAST(c_numeric,99999)-OPE|-500.0
+LEAST(c_numeric,99999)-OPE|0.0
+LEAST(c_numeric,99999)-OPE|99999
+LEAST(c_numeric,99999)-OPE|99999
+LEAST(n_int4,9999)-OPE-plain|9999
+LEAST(n_int4,9999)-OPE-plain|-1000
+LEAST(n_int4,9999)-OPE-plain|0
+LEAST(n_int4,9999)-OPE-plain|9999
+LEAST(n_int4,9999)-OPE-plain|8888
+LEAST(n_numeric,99999)-OPE-plain|123.456
+LEAST(n_numeric,99999)-OPE-plain|-500.0
+LEAST(n_numeric,99999)-OPE-plain|0.0
+LEAST(n_numeric,99999)-OPE-plain|99999
+LEAST(n_numeric,99999)-OPE-plain|99999
+ERROR: TECC strict: function 'LEAST' requires OPE on encrypted column [enc_pgfunc_test_det.c_int4], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'LEAST' requires OPE on encrypted column [enc_pgfunc_test_det.c_int8], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'LEAST' requires OPE on encrypted column [enc_pgfunc_test_det.c_numeric], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+LEAST(n_int4,9999)-DET-plain|9999
+LEAST(n_int4,9999)-DET-plain|-1000
+LEAST(n_int4,9999)-DET-plain|0
+LEAST(n_int4,9999)-DET-plain|9999
+LEAST(n_int4,9999)-DET-plain|8888
+CASE-WHEN-OPE|positive
+CASE-WHEN-OPE|non-positive
+CASE-WHEN-OPE|non-positive
+CASE-WHEN-OPE|non-positive
+CASE-WHEN-OPE|positive
+ERROR: case does not support this argument combination: the switch form (CASE expression WHEN constant) is not supported; use the CASE WHEN condition form instead
+CASE-text-OPE|match
+CASE-text-OPE|no
+CASE-text-OPE|no
+CASE-text-OPE|no
+CASE-text-OPE|no
+CASE-eq-DET|max
+CASE-eq-DET|other
+CASE-eq-DET|other
+CASE-eq-DET|other
+CASE-eq-DET|other
+CASE-text-DET|match
+CASE-text-DET|no
+CASE-text-DET|no
+CASE-text-DET|no
+CASE-text-DET|no
+ERROR: case does not support this argument combination: the switch form (CASE expression WHEN constant) is not supported; use the CASE WHEN condition form instead
+CASE-plain-OPE|positive
+CASE-plain-OPE|non-positive
+CASE-plain-OPE|non-positive
+CASE-plain-OPE|non-positive
+CASE-plain-OPE|positive
+CASE-plain-DET|match
+CASE-plain-DET|no
+CASE-plain-DET|no
+CASE-plain-DET|no
+CASE-plain-DET|no
+decode(c_int4)-OPE|max
+decode(c_int4)-OPE|min
+decode(c_int4)-OPE|other
+decode(c_int4)-OPE|other
+decode(c_int4)-OPE|other
+ERROR: ERROR: function decode(text_enc, text_enc, text_enc, text_enc) does not exist
+  Hint: No function matches the given name and argument types. You might need to add explicit type casts.
+  Position: 43
+decode(c_int4)-DET|max
+decode(c_int4)-DET|min
+decode(c_int4)-DET|other
+decode(c_int4)-DET|other
+decode(c_int4)-DET|other
+ERROR: ERROR: function decode(text_enc, text_enc, text_enc, text_enc) does not exist
+  Hint: No function matches the given name and argument types. You might need to add explicit type casts.
+  Position: 43
+ERROR: ERROR: function decode(integer, integer, unknown, integer, unknown, unknown) does not exist
+  Hint: No function matches the given name and argument types. You might need to add explicit type casts.
+  Position: 53
+ERROR: ERROR: function decode(text, unknown, unknown, unknown) does not exist
+  Hint: No function matches the given name and argument types. You might need to add explicit type casts.
+  Position: 53
+ERROR: TECC strict: function 'power' requires HE-MUL on encrypted column [enc_pgfunc_test_ope.c_int4], but column uses OPE. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'power' requires HE-MUL on encrypted column [enc_pgfunc_test_ope.c_int8], but column uses OPE. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'power' requires HE-MUL on encrypted column [enc_pgfunc_test_ope.c_float8], but column uses OPE. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'power' requires HE-MUL on encrypted column [enc_pgfunc_test_det.c_int4], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'power' requires HE-MUL on encrypted column [enc_pgfunc_test_det.c_int8], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'power' requires HE-MUL on encrypted column [enc_pgfunc_test_det.c_float8], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+power(n_int4,2)-OPE-plain|99980001
+power(n_int4,2)-OPE-plain|1000000
+power(n_int4,2)-OPE-plain|0
+power(n_int4,2)-OPE-plain|
+power(n_int4,2)-OPE-plain|78996544
+power(n_int4,2)-DET-plain|99980001
+power(n_int4,2)-DET-plain|1000000
+power(n_int4,2)-DET-plain|0
+power(n_int4,2)-DET-plain|
+power(n_int4,2)-DET-plain|78996544
+power(n_numeric,2)-OPE-plain|15241.3839360000000000
+power(n_numeric,2)-OPE-plain|250000.0000000000000000
+power(n_numeric,2)-OPE-plain|0.0000000000000000
+power(n_numeric,2)-OPE-plain|
+power(n_numeric,2)-OPE-plain|9999999980.0000000100000000
+ERROR: ERROR: COALESCE types int4_enc and integer cannot be matched
+  Position: 59
+ERROR: ERROR: COALESCE types int4_enc and integer cannot be matched
+  Position: 59
+GREATEST-in-WHERE-OPE|9999|Hello World
+GREATEST-in-WHERE-OPE|8888|Special: !@#$%^&*()_+-=[]{}|;:''",.<>?/~`
+ERROR: TECC strict: function 'LEAST' requires OPE on encrypted column [enc_pgfunc_test_det.c_int4], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'power' requires HE-MUL on encrypted column [enc_pgfunc_test_ope.c_int4], but column uses OPE. Reconfigure the column with the required algorithm or rewrite the SQL.
+CASE-in-WHERE-OPE|9999
+CASE-in-WHERE-OPE|8888
+CASE-in-WHERE-DET|9999
+COALESCE(c_int4,0)-he-add|100
+COALESCE(c_int4,0)-he-add|-50
+COALESCE(c_int4,0)-he-add|0
+COALESCE(c_int4,0)-he-add|700
+COALESCE(c_int4,0)-he-add|0
+COALESCE(m_int4,0)-he-mul|3
+COALESCE(m_int4,0)-he-mul|-3
+COALESCE(m_int4,0)-he-mul|0
+COALESCE(m_int4,0)-he-mul|5
+COALESCE(m_int4,0)-he-mul|0
+COALESCE(c_int2,0)-he-add|10
+COALESCE(c_int2,0)-he-add|-5
+COALESCE(c_int2,0)-he-add|0
+COALESCE(c_int2,0)-he-add|7
+COALESCE(c_int2,0)-he-add|0
+COALESCE(m_int8,0)-he-mul|4
+COALESCE(m_int8,0)-he-mul|-4
+COALESCE(m_int8,0)-he-mul|0
+COALESCE(m_int8,0)-he-mul|6
+COALESCE(m_int8,0)-he-mul|0
+COALESCE(n_int4,0)-HE-plain|100
+COALESCE(n_int4,0)-HE-plain|-50
+COALESCE(n_int4,0)-HE-plain|0
+COALESCE(n_int4,0)-HE-plain|700
+COALESCE(n_int4,0)-HE-plain|0
+power(m_int2,3)-he-mul|8
+power(m_int2,3)-he-mul|-8
+power(m_int2,3)-he-mul|0
+power(m_int2,3)-he-mul|27
+power(m_int2,3)-he-mul|
+power(m_int4,3)-he-mul|27
+power(m_int4,3)-he-mul|-27
+power(m_int4,3)-he-mul|0
+power(m_int4,3)-he-mul|125
+power(m_int4,3)-he-mul|
+power(m_int8,3)-he-mul|64
+power(m_int8,3)-he-mul|-64
+power(m_int8,3)-he-mul|0
+power(m_int8,3)-he-mul|216
+power(m_int8,3)-he-mul|
+ERROR: TECC strict: function 'power' requires HE-MUL on encrypted column [enc_pgfunc_test_he.c_int2], but column uses he-add. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'power' requires HE-MUL on encrypted column [enc_pgfunc_test_he.c_int4], but column uses he-add. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'power' requires HE-MUL on encrypted column [enc_pgfunc_test_he.c_int8], but column uses he-add. Reconfigure the column with the required algorithm or rewrite the SQL.
+power(n_int4,2)-HE-plain|10000
+power(n_int4,2)-HE-plain|2500
+power(n_int4,2)-HE-plain|0
+power(n_int4,2)-HE-plain|490000
+power(n_int4,2)-HE-plain|
+ERROR: TECC strict: function 'power' requires HE-MUL on encrypted column [enc_pgfunc_test_he.c_int2], but column uses he-add. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'power' requires HE-MUL on encrypted column [enc_pgfunc_test_he.c_int4], but column uses he-add. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'power' requires HE-MUL on encrypted column [enc_pgfunc_test_he.c_int8], but column uses he-add. Reconfigure the column with the required algorithm or rewrite the SQL.
+ERROR: TECC strict: function 'power' requires HE-MUL on encrypted column [enc_pgfunc_test_det.c_int4], but column uses DET. Reconfigure the column with the required algorithm or rewrite the SQL.
+Bug9259-pwr-he-mul-i4-ok|9
+Bug9259-pwr-he-mul-i4-ok|9
+Bug9259-pwr-he-mul-i4-ok|0
+Bug9259-pwr-he-mul-i4-ok|25
+Bug9259-pwr-he-mul-i4-ok|
+Bug9259-pwr-he-mul-i2-ok|8
+Bug9259-pwr-he-mul-i2-ok|-8
+Bug9259-pwr-he-mul-i2-ok|0
+Bug9259-pwr-he-mul-i2-ok|27
+Bug9259-pwr-he-mul-i2-ok|
+Bug9259-pwr-he-mul-i8-ok|16
+Bug9259-pwr-he-mul-i8-ok|16
+Bug9259-pwr-he-mul-i8-ok|0
+Bug9259-pwr-he-mul-i8-ok|36
+Bug9259-pwr-he-mul-i8-ok|
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP FUNCTION
+DROP FUNCTION
+DROP DEK
+DROP KEK
+DROP DEK
+DROP DEK
+DROP KEK

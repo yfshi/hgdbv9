@@ -1,0 +1,11 @@
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+hg_tecc.mode is enabled.
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../tecc_decrypt_raw_prepare_reject.sql:19: TECC query preprocessing failed: tecc_decrypt_raw is not supported in PREPARE ... AS statements
+psql:/.../tecc_decrypt_raw_prepare_reject.sql:20: TECC query preprocessing failed: tecc_decrypt_raw is not supported in PREPARE ... AS statements
+psql:/.../tecc_decrypt_raw_prepare_reject.sql:21: TECC query preprocessing failed: tecc_decrypt_raw is not supported in PREPARE ... AS statements

@@ -120,9 +120,43 @@ create_dek_args(Oid dekId, const char *function_name, const char *key, const byt
     Datum values[Natts_hg_dek_args];
     bool nulls[Natts_hg_dek_args];
     Oid args_oid;
+    /* ReqID:TECC4.0 - Upsert: check for existing (dek_id, key) tuple first */
+    SysScanDesc scan;
+    ScanKeyData skey[2];
+    HeapTuple existing;
+    bool found = false;
 
     /* Open hg_dek_args relation */
     rel = table_open(HgDekArgsRelationId, RowExclusiveLock);
+
+    /* Check if (dek_id, key) already exists (e.g. frontend-injected KEY_ALGO
+     * vs backend-parsed key_algo) — if so, update value instead of inserting */
+    ScanKeyInit(&skey[0], Anum_hg_dek_args_dek_id, BTEqualStrategyNumber, F_OIDEQ,
+                ObjectIdGetDatum(dekId));
+    ScanKeyInit(&skey[1], Anum_hg_dek_args_key, BTEqualStrategyNumber, F_NAMEEQ,
+                CStringGetDatum(key));
+    scan = systable_beginscan(rel, HgDekArgsPkeyIndexId, true, NULL, 2, skey);
+    existing = systable_getnext(scan);
+    if (HeapTupleIsValid(existing))
+        found = true;
+    systable_endscan(scan);
+
+    if (found)
+    {
+        /* Update value of existing tuple */
+        bool replaces[Natts_hg_dek_args];
+
+        memset(replaces, false, sizeof(replaces));
+        values[Anum_hg_dek_args_value - 1] = PointerGetDatum(value);
+        replaces[Anum_hg_dek_args_value - 1] = true;
+
+        tuple = heap_modify_tuple(existing, RelationGetDescr(rel),
+                                  values, nulls, replaces);
+        CatalogTupleUpdate(rel, &existing->t_self, tuple);
+        heap_freetuple(tuple);
+        table_close(rel, RowExclusiveLock);
+        return;
+    }
 
     /* Prepare tuple data */
     memset(values, 0, sizeof(values));
@@ -224,6 +258,21 @@ CreateDek(CreateDekStmt *stmt)
 	{
 		/* Use current active creation namespace */
 		namespaceId = GetActiveCreationNamespace();
+
+		/*
+		 * ReqID:TECC4.0 - Bug 9332: 与 CreateKek / PG 的
+		 * RangeVarGetCreationNamespace（catalog/namespace.c:497）一致。
+		 *
+		 * 本处原先没有守卫，DEK 靠 generate_distributed_id() 里的
+		 * get_namespace_name(0) == NULL 偶然报
+		 * "namespace with OID 0 does not exist" 才没落库 —— 那是个实现细节
+		 * 外泄的报错，语义上并不表示"没有可创建的模式"。补上守卫后与 KEK
+		 * 路径、以及 PG 原生对象（CREATE TABLE）的报错统一。
+		 */
+		if (!OidIsValid(namespaceId))
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_SCHEMA),
+					 errmsg("no schema has been selected to create in")));
 	}
 
     /* Get current user as owner */
@@ -288,6 +337,22 @@ CreateDek(CreateDekStmt *stmt)
             encrypted_value = value;
             elog(DEBUG1, "CreateDek: received encrypted_value from frontend, first 32 chars: %.32s", encrypted_value);
         }
+        else if (strcmp(defname, "key_algo") == 0)
+        {
+            /* KEY_ALGO for DEKs (sm4/he-add/he-mul). Stored in hg_dek_args. */
+        }
+        else if (strcmp(defname, "he_ec_pubkey") == 0 ||
+                 strcmp(defname, "he_ec_privkey") == 0 ||
+                 strcmp(defname, "he_eg_pubkey") == 0 ||
+                 strcmp(defname, "he_eg_privkey") == 0)
+        {
+            /* ReqID:TECC4.0 - HE key pair material.
+             * he_ec_pubkey/he_ec_privkey = EC-ElGamal (add),
+             * he_eg_pubkey/he_eg_privkey = FF ElGamal (mul).
+             * Public keys plaintext hex; private keys KEK-encrypted hex.
+             * Stored in hg_dek_args; used by client encrypt/decrypt and
+             * server homomorphic ops. */
+        }
         else if (strcmp(defname, "_tecc_processed") == 0)
         {
             /* ReqID:TECC4.0 - Internal marker injected by frontend TECC processor */
@@ -306,6 +371,21 @@ CreateDek(CreateDekStmt *stmt)
         opt = (DekOption *) palloc(sizeof(DekOption));  /* ReqID:TECC4.0 - Fix C90 mixed declaration warning */
         opt->defname = pstrdup(defname);
         opt->value = pstrdup(value);
+        /*
+         * ReqID:TECC4.0 - Normalize the KEK reference before storing:
+         * keep only the unqualified name (split at the first dot, same
+         * rule as the lookup logic below).  Storing the qualified string
+         * would make pg_dump prepend the KEK's catalog namespace again
+         * and emit "schema.schema.kek", which cannot be restored.
+         */
+        if (strcmp(defname, "kek") == 0 && value != NULL)
+        {
+            const char *dotp = strchr(value, '.');
+
+            opt->value = pstrdup(dotp != NULL ? dotp + 1 : value);
+        }
+        else
+            opt->value = pstrdup(value);
         dek_options = lappend(dek_options, opt);
     }
 

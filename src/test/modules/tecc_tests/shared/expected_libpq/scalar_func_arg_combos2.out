@@ -1,0 +1,74 @@
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+[N1] nullif(10::int2_enc, 10) -- F: 裸 cast
+[N2] nullif(10::int2_enc ew(dek), 10) -- F: 密态常量×普通常量
+[N3] nullif(c_int4, 10) -- 成功锚点
+ nullif 
+--------
+ 
+ 
+(2 rows)
+
+[N4] nullif(c_int4, abc) -- F: 常量类型不匹配
+[N5] nullif(c_text, 10) -- F: 常量类型不匹配
+[N6] nullif(c_int4, 10::int2_enc) -- F: 裸 cast
+[N7] nullif(c_int4, n_int4) -- F: 密态列×普通列
+[N8] nullif(c_int4, NULL) -- 成功锚点
+ nullif 
+--------
+ 10
+ 
+(2 rows)
+
+[O1] decode(10::int2_enc, 1, a, 2, b) -- F: 裸 cast
+[O2] decode(10::int2_enc ew(dek), 1, a, 2, b) -- F: 密态常量×普通常量
+[O5] decode(c_int4, abc, x) -- F: 搜索常量类型不匹配
+[O6] decode(c_int4, 1, a, n_int4, b, x) -- F: 密态列×普通列
+[O7] decode(c_text, 1, a, 2, b) -- F: 搜索常量类型不匹配
+[O8] decode(c_int4, 10::int2_enc, x) -- F: 裸 cast
+[O4] decode(c_text, a, b, c, d, e) -- 已知 gap: 服务端签名不存在
+[P1] power(10::int2_enc, 2) -- F: 裸 cast
+[P2] power(10::int2_enc ew(dek), 2) -- F: 密态常量×普通常量
+[P3] power(c_int4, 2) -- power 既有固定文案（非HE列）
+[P4] power(c_int4, abc) -- power 既有固定文案（非HE列）
+[P5] power(c_int4, 10::int2_enc) -- F: 裸 cast
+[P6] power(c_int4, n_int4) -- power 既有固定文案（非HE列）
+[P7] power(c_text, 2) -- power 既有固定文案（非HE列）
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../scalar_func_arg_combos2.sql:14: NOTICE:  table "enc_pgfunc_test_det" does not exist, skipping
+psql:/.../scalar_func_arg_combos2.sql:15: NOTICE:  table "enc_pgfunc_test_ope" does not exist, skipping
+psql:/.../scalar_func_arg_combos2.sql:16: NOTICE:  table "enc_arg_combos2_ope" does not exist, skipping
+psql:/.../scalar_func_arg_combos2.sql:17: NOTICE:  data encryption key "enc_pgfunc_dek" does not exist, skipping
+psql:/.../scalar_func_arg_combos2.sql:18: NOTICE:  key encryption key "enc_pgfunc_kek" does not exist, skipping
+psql:/.../scalar_func_arg_combos2.sql:35: TECC query preprocessing failed: nullif does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos2.sql:37: TECC query preprocessing failed: nullif does not support this argument combination: encrypted-type constants and plain constants cannot be mixed
+psql:/.../scalar_func_arg_combos2.sql:41: TECC query preprocessing failed: nullif does not support this argument combination: the constant type does not match the encrypted column type
+psql:/.../scalar_func_arg_combos2.sql:43: TECC query preprocessing failed: nullif does not support this argument combination: the constant type does not match the encrypted column type
+psql:/.../scalar_func_arg_combos2.sql:45: TECC query preprocessing failed: nullif does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos2.sql:47: TECC query preprocessing failed: nullif does not support this argument combination: encrypted columns and plain columns cannot be mixed
+psql:/.../scalar_func_arg_combos2.sql:53: TECC query preprocessing failed: decode does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos2.sql:55: TECC query preprocessing failed: decode does not support this argument combination: encrypted-type constants and plain constants cannot be mixed
+psql:/.../scalar_func_arg_combos2.sql:57: TECC query preprocessing failed: decode does not support this argument combination: the constant type does not match the encrypted column type
+psql:/.../scalar_func_arg_combos2.sql:59: TECC query preprocessing failed: decode does not support this argument combination: encrypted columns and plain columns cannot be mixed
+psql:/.../scalar_func_arg_combos2.sql:61: TECC query preprocessing failed: decode does not support this argument combination: the constant type does not match the encrypted column type
+psql:/.../scalar_func_arg_combos2.sql:63: TECC query preprocessing failed: decode does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos2.sql:65: ERROR:  function decode(text_enc, text_enc, text_enc, text_enc, text_enc, text_enc) does not exist
+LINE 1: select decode(c_text, 'HEX_STR...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+psql:/.../scalar_func_arg_combos2.sql:69: TECC query preprocessing failed: power does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos2.sql:71: TECC query preprocessing failed: power does not support this argument combination: encrypted-type constants and plain constants cannot be mixed
+psql:/.../scalar_func_arg_combos2.sql:73: TECC query preprocessing failed: function "power" is not supported on encrypted column "c_int4": power requires he-mul encryption on int2/int4/int8 columns
+psql:/.../scalar_func_arg_combos2.sql:75: TECC query preprocessing failed: function "power" is not supported on encrypted column "c_int4": power requires he-mul encryption on int2/int4/int8 columns
+psql:/.../scalar_func_arg_combos2.sql:77: TECC query preprocessing failed: power does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos2.sql:79: TECC query preprocessing failed: function "power" is not supported on encrypted column "c_int4": power requires he-mul encryption on int2/int4/int8 columns
+psql:/.../scalar_func_arg_combos2.sql:81: TECC query preprocessing failed: function "power" is not supported on encrypted column "c_text": power requires he-mul encryption on int2/int4/int8 columns

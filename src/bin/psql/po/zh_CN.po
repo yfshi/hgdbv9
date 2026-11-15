@@ -6510,3 +6510,63 @@ msgid ""
 msgstr ""
 "\"%2$s\"的不能识别的值\"%1$s\"\n"
 "可用值为\"%3$s\"."
+
+#: help.c:256
+msgid "  \\ddek[+]  [PATTERN]      list TECC DEKs\n"
+msgstr "  \\ddek[+]  [PATTERN]      列出 TECC DEK\n"
+
+#: help.c:257
+msgid "  \\dkek[+]  [PATTERN]      list TECC KEKs\n"
+msgstr "  \\dkek[+]  [PATTERN]      列出 TECC KEK\n"
+
+#: help.c:280
+msgid "  \\sk    DEKNAME         show CREATE DEK statement\n"
+msgstr "  \\sk    DEKNAME         显示 CREATE DEK 语句\n"
+
+#: help.c:281
+msgid "  \\sK    KEKNAME         show CREATE KEK statement\n"
+msgstr "  \\sK    KEKNAME         显示 CREATE KEK 语句\n"
+
+#: help.c:282
+msgid "  \\sT    TABLENAME       show CREATE TABLE statement with TECC clauses\n"
+msgstr "  \\sT    TABLENAME       显示带 TECC 子句的 CREATE TABLE 语句\n"
+
+#: help.c:288
+msgid "  Connection parameter: enable_tecc=true|false (env: PGENABLETECC, default: true)\n"
+msgstr "  连接参数: enable_tecc=true|false (环境变量: PGENABLETECC, 默认值: true)\n"
+
+#: help.c:289
+msgid "  psql option:          -k on|off controls TECC connection preprocessing\n"
+msgstr "  psql 选项:            -k on|off 控制 TECC 连接前处理\n"
+
+#: help.c:290
+msgid "  Session GUC:          hg_tecc_mode=on|off (default: on)\n"
+msgstr "  会话级 GUC:           hg_tecc_mode=on|off (默认值: on)\n"
+
+#: help.c:291
+msgid "  Session usage:        SET/SHOW hg_tecc_mode; SET LOCAL is supported\n"
+msgstr "  会话用法:             支持 SET/SHOW hg_tecc_mode; 也支持 SET LOCAL\n"
+
+#: help.c:292
+msgid "  Syntax help:          \\h CREATE KEK, \\h ALTER KEK, \\h CREATE DEK, \\h DROP KEK, \\h DROP DEK\n"
+msgstr "  语法帮助:             \\h CREATE KEK, \\h ALTER KEK, \\h CREATE DEK, \\h DROP KEK, \\h DROP DEK\n"
+
+#: help.c:293
+msgid "  Show DDL:             \\sT table_name, \\sK kek_name, \\sk dek_name\n"
+msgstr "  显示 DDL:             \\sT table_name, \\sK kek_name, \\sk dek_name\n"
+
+#: help.c:294
+msgid "  Show TECC objects:    \\dkek[+] [PATTERN], \\ddek[+] [PATTERN]\n"
+msgstr "  显示 TECC 对象:       \\dkek[+] [PATTERN], \\ddek[+] [PATTERN]\n"
+
+#: help.c:295
+msgid "  Column clause:        ENCRYPTED WITH (DEK = dek_name [, SUPPORT_ALGO = 'DET|OPE|SEARCH'])\n"
+msgstr "  列子句:               ENCRYPTED WITH (DEK = dek_name [, SUPPORT_ALGO = 'DET|OPE|SEARCH'])\n"
+
+#: describe.c:4575
+msgid "KMS type"
+msgstr "KMS 类型"
+
+#: describe.c:4590
+msgid "DEKs"
+msgstr "DEK 列表"

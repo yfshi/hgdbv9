@@ -121,6 +121,11 @@ typedef struct
 
 static HTAB *collation_cache = NULL;
 
+#ifdef USE_ICU
+/* ReqID:TECC4.0 - Cached ICU locale for default database collation (OID=100).
+ * Created once per session, reused across all bttextcmp() calls. */
+static pg_locale_t cached_default_locale = NULL;
+#endif
 
 #if defined(WIN32) && defined(LC_MESSAGES)
 static char *IsoLocaleName(const char *);	/* MSVC specific */
@@ -1424,7 +1429,7 @@ lc_ctype_is_c(Oid collation)
 
 /* simple subroutine for reporting errors from newlocale() */
 #ifdef HAVE_LOCALE_T
-static void
+__attribute__((unused)) static void
 report_newlocale_failure(const char *localename)
 {
 	int			save_errno;
@@ -1525,6 +1530,71 @@ pg_newlocale_from_collation(Oid collid)
 						datcollate),
 				 errdetail("TECC requires the database default collation "
 						   "to be usable with ICU.")));
+		/*
+		 * ReqID:TECC4.0 - Cache ICU collator for default database collation.
+		 * Created once per session on first use, reused for all subsequent
+		 * bttextcmp() / varstr_cmp() calls to avoid leaking one UCollator
+		 * (10-200+ KB) per comparison.
+		 */
+
+		/* C/POSIX: no ICU collator needed */
+		if (lc_collate_is_c(collid))
+			return (pg_locale_t) 0;
+
+		/* Fast path: return session-cached locale */
+		if (cached_default_locale != NULL)
+			return cached_default_locale;
+
+		/* First call: create and cache the ICU collator */
+		{
+			HeapTuple	dtp;
+			Form_pg_database dbform;
+			char	   *datcollate_copy;
+			UCollator  *collator;
+			UErrorCode	status;
+			MemoryContext oldcontext;
+
+			dtp = SearchSysCache1(DATABASEOID, ObjectIdGetDatum(MyDatabaseId));
+			if (!HeapTupleIsValid(dtp))
+				elog(ERROR, "cache lookup failed for database %u", MyDatabaseId);
+			dbform = (Form_pg_database) GETSTRUCT(dtp);
+			datcollate_copy = pstrdup(NameStr(dbform->datcollate));
+			ReleaseSysCache(dtp);
+
+			status = U_ZERO_ERROR;
+			collator = ucol_open(datcollate_copy, &status);
+			if (U_SUCCESS(status))
+			{
+				pg_locale_t resultp;
+
+				/* Allocate in TopMemoryContext for session lifetime */
+				oldcontext = MemoryContextSwitchTo(TopMemoryContext);
+				resultp = (pg_locale_t) palloc0(sizeof(struct pg_locale_struct));
+				resultp->provider = COLLPROVIDER_ICU;
+				resultp->deterministic = true;
+				resultp->info.icu.locale = datcollate_copy;
+				resultp->info.icu.ucol = collator;
+				MemoryContextSwitchTo(oldcontext);
+
+				cached_default_locale = resultp;
+			}
+			else
+			{
+				/*
+				 * ucol_open failed — this is a configuration error.
+				 * datcollate_copy is intentionally not freed here because
+				 * ereport(FATAL) terminates the process.
+				 */
+				ereport(FATAL,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("database default collation \"%s\" is not supported by ICU",
+								datcollate_copy),
+						 errdetail("TECC requires the database default collation "
+								   "to be usable with ICU.")));
+			}
+		}
+
+		return cached_default_locale;
 #else
 		return (pg_locale_t) 0;
 #endif

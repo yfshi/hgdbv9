@@ -412,44 +412,6 @@ tecc_free_parsed_pattern(TeccParsedPattern *parsed_pattern)
     tecc_pattern_free(parsed_pattern);
 }
 
-
-/*
- * tecc_encrypt_pattern_segments - Encrypt fixed string segments in parsed pattern
- */
-TeccPatternErrorCode
-tecc_encrypt_pattern_segments(
-    TeccParsedPattern *parsed_pattern,
-    const unsigned char *key,
-    size_t key_len)
-{
-    size_t i;
-
-    /* Validate parameters */
-    if (!parsed_pattern || !key || key_len == 0)
-        return TECC_PATTERN_ERROR_INVALID_PARAM;
-
-    /* Encrypt each fixed string segment */
-    for (i = 0; i < parsed_pattern->segment_count; i++)
-    {
-        TeccPatternSegment *segment = &parsed_pattern->segments[i];
-
-        if (segment->type == TECC_PATTERN_SEGMENT_FIXED_STRING &&
-            segment->data.fixed_string && segment->length > 0)
-        {
-            /* TODO: Implement actual encryption using SM4 algorithm */
-            /* For now, just copy the data as placeholder */
-            segment->encrypted_data = (unsigned char *)tecc_pattern_alloc(segment->length);
-            if (!segment->encrypted_data)
-                return TECC_PATTERN_ERROR_MEMORY_ALLOC;
-
-            memcpy(segment->encrypted_data, segment->data.fixed_string, segment->length);
-            segment->encrypted_len = segment->length;
-        }
-    }
-
-    return TECC_PATTERN_SUCCESS;
-}
-
 /*
  * tecc_create_match_context - Create pattern matching context
  */

@@ -26,6 +26,7 @@ insert into b2 select generate_series(1,100);
 ERROR:  role's disk space quota exceeded
 alter table b owner to u2;
 select pg_sleep(5);
+select pg_sleep(2);
  pg_sleep 
 ----------
  
@@ -66,6 +67,7 @@ insert into b2 select generate_series(1,100);
 ERROR:  role's disk space quota exceeded
 drop table b ;
 select pg_sleep(5);
+select pg_sleep(2);
  pg_sleep 
 ----------
  

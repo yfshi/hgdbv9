@@ -1,0 +1,59 @@
+NOTICE: key encryption key "kek_multi_cond" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+=== 1 Setup Tables ===
+NOTICE: table "multi_cond_plain" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+NOTICE: table "multi_cond_enc" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+=== 2 Insert Data ===
+INSERT 0 10
+INSERT 0 10
+=== 3 Multi-Condition Queries ===
+3a_text_eq_int4_range
+1|test数据|100|test文本|123.45
+1|test数据|100|test文本|123.45
+3b_int8_range_varchar_like
+2|测试文本|2000|测试数据|56.789
+3|测试test|3000|test测试|67.89
+5|测试样例|20000|测试示例|89.012
+7|包含测试的变长字符|40000|这是一个测试长文本数据|1.234
+2|测试文本|2000|测试数据|56.789
+3|测试test|3000|test测试|67.89
+5|测试样例|20000|测试示例|89.012
+7|包含测试的变长字符|40000|这是一个测试长文本数据|1.234
+3c_bpchar_like_int2_eq
+3|test测试                                                                                              |3|测试test|3.45
+3|test测试|3|测试test|3.45
+3d_float4_eq_precision_diff
+1|1|123.45|1.23|test数据
+3e_int4_eq_float8_range
+2|200|56.789|测试文本|测试字符                                                                                                
+2|200|56.789|测试文本|测试字符
+3f_int8_range_text_like
+4|10000|test示例|456.78|4.56
+6|30000|这是一个test长文本数据|678.90|6.78
+8|50000|test test test|890.12|8.9
+4|10000|test示例|456.78|4.56
+6|30000|这是一个test长文本数据|678.90|6.78
+8|50000|test test test|890.12|8.9
+3g_numeric_eq_varchar_like
+3|345.67|测试test|3|67.89
+3|345.67|测试test|3|67.89
+3h_float4_eq_precision_diff
+3|3.45|3000|3|test测试
+3i_float8_range_bpchar_like
+3|67.89|test测试                                                                                              |300|345.67
+5|89.012|测试demo                                                                                              |2000|567.89
+3|67.89|test测试|300|345.67
+5|89.012|测试demo|2000|567.89
+3j_combo_float4_precision_diff
+1|test数据|test文本|test字符|1|100|1000|123.45|1.23|45.678
+=== 4 Cleanup ===
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK

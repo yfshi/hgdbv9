@@ -1,0 +1,183 @@
+DROP KEK
+DROP KEK
+DROP DEK
+DROP DEK
+CREATE KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 5
+INSERT 0 4
+INSERT 0 3
+INSERT 0 2
+INSERT 0 3
+INSERT 0 2
+=== 1 basic DET JOIN ===
+(1 row)
+Sort
+Sort Key: a.id
+->  Hash Join
+Hash Cond: (d.v = a.v)
+->  Seq Scan on dj_t_d d
+->  Hash
+->  Seq Scan on dj_t_a a
+(7 rows)
+1b_inner|1
+1b_inner|3
+1b_inner|4
+1b_inner|5
+(4 rows)
+1c_where|1
+1c_where|3
+1c_where|4
+1c_where|5
+(4 rows)
+1d_left|1|t
+1d_left|2|t
+1d_left|2|t
+1d_left|3|t
+1d_left|4|f
+(5 rows)
+1e_right|1|t
+1e_right|2|t
+1e_right|2|t
+1e_right|3|t
+1e_right|4|f
+(5 rows)
+1f_full|1|1
+1f_full|2|
+1f_full|3|2
+1f_full|4|2
+1f_full|5|3
+1f_full||4
+(6 rows)
+1g_self|3|4
+1g_self|4|3
+(2 rows)
+=== 2 multi-table / subquery JOIN ===
+(1 row)
+2a_3way|4
+(1 row)
+2b_subq|4
+(1 row)
+2c_in|1
+2c_in|3
+2c_in|4
+2c_in|5
+(4 rows)
+2d_any|1
+2d_any|3
+2d_any|4
+2d_any|5
+(4 rows)
+2e_exists|1
+2e_exists|3
+2e_exists|4
+2e_exists|5
+(4 rows)
+2f_not_exists|2
+(1 row)
+=== 3 mixed scenarios ===
+(1 row)
+3a_det_ope_eq|0
+(1 row)
+3b_mix|3
+3b_mix|4
+(2 rows)
+3c_join_group|1|1
+3c_join_group|2|2
+3c_join_group|3|1
+3c_join_group|4|0
+(4 rows)
+=== 4 set ops ===
+(1 row)
+4a_union|5
+(1 row)
+4b_intersect|3
+(1 row)
+4c_except|1
+(1 row)
+4d_union_join|4
+(1 row)
+=== 5 JOIN error scenarios ===
+(1 row)
+5j_ope_orderby|1
+5j_ope_orderby|2
+5j_ope_orderby|3
+5j_ope_orderby|4
+5j_ope_orderby|5
+(5 rows)
+=== 6 cross DEK ===
+(1 row)
+6b_same_dek|4
+(1 row)
+=== 7 complex multi-table JOIN ===
+(1 row)
+7a_nest_inner|4
+(1 row)
+7b_nest_4way|6
+(1 row)
+7c_left_then_inner|4
+(1 row)
+7d_right_then_inner|4
+(1 row)
+7e_full_then_inner|4
+(1 row)
+7f_multi_left|5
+(1 row)
+7g_left_then_right|4
+(1 row)
+7h_ope_range|9
+(1 row)
+7i_mix_equality|3|4
+7i_mix_equality|4|3
+(2 rows)
+=== 9 CLEANUP ===
+(1 row)
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+NOTICE: key encryption key "djk_kek_b" does not exist, skipping
+NOTICE: key encryption key "djk_kek_c" does not exist, skipping
+NOTICE: data encryption key "djk_dek_b" does not exist, skipping
+NOTICE: data encryption key "djk_dek_c" does not exist, skipping
+NOTICE: table "dj_t_a" does not exist, skipping
+NOTICE: table "dj_t_d" does not exist, skipping
+NOTICE: table "dj_t_e" does not exist, skipping
+NOTICE: table "dj_t_f" does not exist, skipping
+NOTICE: table "dj_t_o" does not exist, skipping
+ERROR: cannot compare encrypted values for ordering: column has DET but not OPE encryption
+HINT:  DET only supports equality comparison. Add OPE encryption to the column to support ordering.
+ERROR: cannot compare encrypted values for ordering: OPE ciphertext not available
+HINT:  Enable OPE encryption on the column to support range comparison.
+psql:/.../det_join_plan.sql:144: TECC query preprocessing failed: Operator requires OPE (order-preserving encryption) algorithm, but the column is not configured with OPE.
+ERROR: cannot compare encrypted values for ordering: OPE ciphertext not available
+HINT:  Enable OPE encryption on the column to support range comparison.
+ERROR: cannot compare encrypted values for ordering: OPE ciphertext not available
+HINT:  Enable OPE encryption on the column to support range comparison.
+ERROR: FULL JOIN is only supported with merge-joinable or hash-joinable join conditions
+psql:/.../det_join_plan.sql:152: TECC query preprocessing failed: JOIN clause processing failed
+ERROR: operator does not exist: int4_enc = integer
+LINE 1: SELECT a.id FROM dj_t_a a JOIN dj_t_p p ON a.v = p.c;
+^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+psql:/.../det_join_plan.sql:156: TECC query preprocessing failed: JOIN clause processing failed
+TECC ERROR: Cannot compare encrypted columns with different DEKs: djk_dek_b vs djk_dek_c
+psql:/.../det_join_plan.sql:167: TECC query preprocessing failed: Cannot compare encrypted columns with different DEKs. Please ensure the compared columns use the same DEK.
+TECC ERROR: Cannot compare encrypted columns with different DEKs: djk_dek_b vs djk_dek_c
+psql:/.../det_join_plan.sql:171: TECC query preprocessing failed: Cannot compare encrypted columns with different DEKs. Please ensure the compared columns use the same DEK.
+TECC ERROR: Cannot compare encrypted columns with different DEKs: djk_dek_b vs djk_dek_c
+psql:/.../det_join_plan.sql:173: TECC query preprocessing failed: Cannot compare encrypted columns with different DEKs. Please ensure the compared columns use the same DEK.
+TECC ERROR: Cannot compare encrypted columns with different DEKs: djk_dek_b vs djk_dek_c
+psql:/.../det_join_plan.sql:175: TECC query preprocessing failed: Cannot compare encrypted columns with different DEKs. Please ensure the compared columns use the same DEK.
+TECC ERROR: Cannot compare encrypted columns with different DEKs: djk_dek_b vs djk_dek_c
+psql:/.../det_join_plan.sql:177: TECC query preprocessing failed: Cannot compare encrypted columns with different DEKs. Please ensure the compared columns use the same DEK.

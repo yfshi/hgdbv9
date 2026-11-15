@@ -45,6 +45,14 @@ void tecc_column_ref_data_init(TeccColumnRefData *data,
 /* ReqID:TECC4.0 - Set table alias (for multi-table UPDATE/DELETE FROM/USING) */
 void tecc_column_ref_data_set_alias(TeccColumnRefData *data, const char *alias_name);
 
+/* Bug 9323 - Set the name under which a subquery/CTE exposes this column
+ * (SELECT col AS n / WITH cte(n) AS ... / FROM (...) s(n)). */
+void tecc_column_ref_data_set_column_alias(TeccColumnRefData *data, const char *column_alias);
+
+/* Bug 9323 - Name the parent query can use for this column:
+ * column_alias when renamed, column_name otherwise. */
+const char *tecc_column_ref_data_get_exposed_name(const TeccColumnRefData *data);
+
 /* Check if column reference is fully qualified */
 bool tecc_column_ref_data_is_fqdn(const TeccColumnRefData *data);
 
@@ -86,6 +94,12 @@ const char *tecc_column_ref_data_get_support_algo(const TeccColumnRefData *data)
 
 /* Set supported algorithms */
 void tecc_column_ref_data_set_support_algo(TeccColumnRefData *data, const char *support_algo);
+
+/* ReqID:TECC4.0 - 一列多 DEK：he-add / he-mul DEK 存取 */
+const char *tecc_column_ref_data_get_he_add_dek_name(const TeccColumnRefData *data);
+void tecc_column_ref_data_set_he_add_dek_name(TeccColumnRefData *data, const char *dek_name);
+const char *tecc_column_ref_data_get_he_mul_dek_name(const TeccColumnRefData *data);
+void tecc_column_ref_data_set_he_mul_dek_name(TeccColumnRefData *data, const char *dek_name);
 
 /* Copy column reference data */
 TeccColumnRefData *tecc_column_ref_data_copy(const TeccColumnRefData *src);

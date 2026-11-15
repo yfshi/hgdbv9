@@ -353,10 +353,11 @@ tecc_key_log(LogLevel level, const char *function_name,
             default:                level_str = "UNKNOWN"; break;
         }
 
-        fprintf(logging_config.log_fp, "[%s] [%s] [%s:%d %s] %s\n",
+        /* ReqID:TECC4.0 - 报错信息不输出源码行号（与 PG 设计原则及其他
+         * TECC 模块一致；行号会随代码改动漂移，导致回归期望频繁失效） */
+        fprintf(logging_config.log_fp, "[%s] [%s] [%s %s] %s\n",
                 timestamp, level_str,
                 file_name ? file_name : "unknown",
-                line_number,
                 function_name ? function_name : "unknown",
                 message);
 
@@ -366,10 +367,9 @@ tecc_key_log(LogLevel level, const char *function_name,
     /* Log to stdout if configured */
     if (logging_config.log_to_stdout && logging_config.log_fp != stdout)
     {
-        fprintf(stdout, "[%s] [%s] [%s:%d %s] %s\n",
+        fprintf(stdout, "[%s] [%s] [%s %s] %s\n",
                 timestamp, "INFO",
                 file_name ? file_name : "unknown",
-                line_number,
                 function_name ? function_name : "unknown",
                 message);
         fflush(stdout);

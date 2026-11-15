@@ -176,16 +176,6 @@ tecc_sm4_ope_clear_memory(void *data, size_t len)
 }
 
 /*
- * Get SM4-OPE output buffer size
- */
-size_t
-tecc_sm4_ope_get_format_size(size_t plain_len)
-{
-    /* Legacy function, use tecc_sm4_ope_calc_encrypt_buffer_size instead */
-    return tecc_sm4_ope_calc_encrypt_buffer_size(plain_len);
-}
-
-/*
  * Validate SM4-OPE data format
  */
 int
@@ -333,16 +323,120 @@ tecc_sm4_ope_calc_encrypt_buffer_size(size_t plain_len)
 }
 
 /*
+ * Recover one OPE chunk plaintext from ciphertext via order-preserving
+ * bit search (MSB-first).  Returns 1 on success.
+ * ReqID:TECC4.0
+ */
+static int
+dec_bytes_internal(const uint8_t *ct, int ctlen, const uint8_t *key, int keylen,
+                   uint8_t *out)
+{
+    int         n;
+    int         bit;
+    int         byte_i;
+    int         shift;
+    uint8_t     tmp_ct[2 * SM4_OPE_CHUNK_SIZE];
+
+    if (!ct || ctlen <= 0 || (ctlen % 2) || !key || !out)
+        return 0;
+
+    n = ctlen / 2;
+    if (n > SM4_OPE_CHUNK_SIZE)
+        return 0;
+
+    memset(out, 0, (size_t)n);
+    for (bit = 0; bit < n * 8; bit++)
+    {
+        byte_i = bit / 8;
+        shift = 7 - (bit % 8);
+        out[byte_i] |= (uint8_t)(1u << shift);
+
+        if (!enc_bytes_internal(out, n, (uint8_t *) key, keylen, tmp_ct))
+            return 0;
+
+        /* Order-preserving: candidate > target means this bit must be 0. */
+        if (OPE_cmp(tmp_ct, ct, ctlen) > 0)
+            out[byte_i] &= (uint8_t)~(1u << shift);
+    }
+
+    if (!enc_bytes_internal(out, n, (uint8_t *) key, keylen, tmp_ct))
+        return 0;
+    return OPE_cmp(tmp_ct, ct, ctlen) == 0;
+}
+
+/*
+ * SM4-OPE decryption - recover the normalized plaintext that was fed to
+ * OPE encryption (debug / tecc_decrypt_raw path; not a business original).
+ * Chunk layout mirrors tecc_sm4_ope_encrypt (12-byte plaintext chunks).
+ * ReqID:TECC4.0
+ */
+int
+tecc_sm4_ope_decrypt(const unsigned char *key, size_t key_len,
+                     const unsigned char *ciphertext, size_t cipher_len,
+                     unsigned char *output_buffer, size_t buffer_size,
+                     size_t *output_len)
+{
+    size_t      total_plain;
+    size_t      offset = 0;
+    size_t      chunk_size;
+
+    if (!key || key_len != TECC_SM4_KEY_SIZE || !ciphertext || cipher_len == 0 ||
+        !output_buffer || !output_len)
+    {
+        SM4_OPE_DEBUG_PRINT("SM4-OPE DEBUG: Invalid decrypt parameters\n");
+        return SM4_OPE_ERROR_INVALID_PARAM;
+    }
+
+    if (cipher_len % 2 != 0)
+        return SM4_OPE_ERROR_INVALID_FORMAT;
+
+    total_plain = cipher_len / 2;
+    if (total_plain > SM4_OPE_MAX_DATA_LEN)
+        return SM4_OPE_ERROR_DATA_TOO_LARGE;
+
+    if (buffer_size < total_plain)
+    {
+        SM4_OPE_DEBUG_PRINT("SM4-OPE DEBUG: Decrypt buffer too small: %zu < %zu\n",
+                            buffer_size, total_plain);
+        return SM4_OPE_ERROR_MEMORY_ALLOC;
+    }
+
+    *output_len = 0;
+
+    while (offset < total_plain)
+    {
+        size_t      remain = total_plain - offset;
+
+        chunk_size = (remain > SM4_OPE_CHUNK_SIZE) ? SM4_OPE_CHUNK_SIZE : remain;
+
+        if (!dec_bytes_internal(ciphertext + offset * 2, (int) (chunk_size * 2),
+                                key, (int) key_len, output_buffer + offset))
+        {
+            SM4_OPE_DEBUG_PRINT("SM4-OPE DEBUG: dec_bytes_internal failed at offset=%zu\n",
+                                offset);
+            tecc_sm4_ope_clear_memory(output_buffer, buffer_size);
+            *output_len = 0;
+            return SM4_OPE_ERROR_DECRYPT_FAILED;
+        }
+
+        offset += chunk_size;
+    }
+
+    *output_len = total_plain;
+    return SM4_OPE_SUCCESS;
+}
+
+/*
  * Calculate required buffer size for decryption
  */
 size_t
 tecc_sm4_ope_calc_decrypt_buffer_size(size_t cipher_len)
 {
-    /* Suppress unused parameter warning */
-    (void)cipher_len;
+    /* ReqID:TECC4.0 - OPE ciphertext is twice the plaintext length */
+    if (cipher_len == 0 || (cipher_len % 2) != 0)
+        return 0;
 
-    /* OPE algorithm does not support decryption */
-    return 0;
+    return cipher_len / 2;
 }
 
 /* End - ReqID:TECC4.0 */

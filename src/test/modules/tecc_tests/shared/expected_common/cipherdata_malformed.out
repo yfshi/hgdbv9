@@ -1,0 +1,18 @@
+9028
+(1 row)
+92
+(1 row)
+server survived malformed ciphertexts
+(1 row)
+ERROR: invalid CipherDataType structure
+LINE 1: SELECT pg_column_size('HEX_STR...
+^
+ERROR: invalid encrypted data: size mismatch
+LINE 1: SELECT pg_column_size('HEX_STR...
+^
+ERROR: invalid encrypted data: negative segment length
+LINE 1: SELECT pg_column_size('HEX_STR...
+^
+ERROR: invalid encrypted data: truncated header
+LINE 1: SELECT pg_column_size('HEX_STR...
+^

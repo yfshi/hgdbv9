@@ -6,7 +6,6 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
- *
  * IDENTIFICATION
  *	  src/interfaces/libpq/fe-connect.c
  *
@@ -261,7 +260,7 @@ static const internalPQconninfoOption PQconninfoOptions[] = {
 	{"client.mac", NULL, NULL, NULL,
 		"Client-MAC", "", 64,
 	offsetof(struct pg_conn, client_mac)},
-	/* End ReqID: SRS-SESSION-VIEWS */
+	/*End ReqID: SRS-SESSION-VIEWS */
 
 	{"keepalives", NULL, NULL, NULL,
 		"TCP-Keepalives", "", 1,	/* should be just '0' or '1' */
@@ -418,7 +417,7 @@ static const internalPQconninfoOption PQconninfoOptions[] = {
 		"Enable-Transparent-Encrypted-Column-Computing", "", 5,
 	offsetof(struct pg_conn, enable_tecc)},
 
-	/* Terminating entry --- MUST BE LAST */
+		/* Terminating entry --- MUST BE LAST */
 	{NULL, NULL, NULL, NULL,
 	NULL, NULL, 0}
 };
@@ -2248,6 +2247,63 @@ connect_errReturn:
 
 
 /*
+ * tecc_apply_connection_mode
+ *		Decide once per connection how much of the TECC client machinery it may
+ *		run, then initialize its per-connection TECC state.
+ *
+ * Why a shared helper: there are two ways a connection becomes usable, and the
+ * decision has to happen on both.
+ *
+ *   - connectDBComplete(): blocking PQconnectdb()/PQconnectdbParams().
+ *   - PQconnectPoll(): the non-blocking PQconnectStartParams() + poll loop.
+ *
+ * The second one is not a corner case: distributed plugins open their internal
+ * connections that way (Citus drives PQconnectPoll itself and never calls
+ * connectDBComplete).  A decision placed only in the blocking path therefore
+ * never applies to exactly the connections this feature exists for.
+ *
+ * Idempotent: safe if both paths run for the same connection.
+ */
+static void
+tecc_apply_connection_mode(PGconn *conn)
+{
+	if (conn == NULL || !conn->enable_tecc)
+		return;
+
+	/*
+	 * Begin - ReqID:TECC4.0
+	 *
+	 * Connections opened from inside a server process (plugin internal
+	 * connections, dblink, postgres_fdw) must never run TECC's data path:
+	 * shard ciphertext would be decrypted inside the coordinator backend and
+	 * constants encrypted twice.  They DO need the DDL path, because
+	 * distributed plugins rebuild worker-side DDL from the tuple descriptor and
+	 * that text cannot carry the ENCRYPTED WITH clause; see
+	 * plan/2026-10-28-hgdde分布式适配可行性分析.md §0.3.
+	 *
+	 * Hence DDL-only rather than fully off.  See tecc_running_in_server_process().
+	 */
+	if (tecc_running_in_server_process())
+		conn->tecc_ddl_only = true;
+	/* End - ReqID:TECC4.0 */
+
+	/* Initialize TECC state for the connection */
+	/* Begin - ReqID:TECC4.0 */
+	if (conn->tecc_state == NULL)
+	{
+		TeccState *tecc_state = tecc_state_init(conn);
+
+		if (tecc_state == NULL)
+		{
+			/* Log error but don't fail the connection */
+			/* TECC will be disabled for this connection */
+		}
+	}
+	/* End - ReqID:TECC4.0 */
+}
+
+
+/*
  *		connectDBComplete
  *
  * Block and complete a connection.
@@ -2319,17 +2375,13 @@ connectDBComplete(PGconn *conn)
 		switch (flag)
 		{
 			case PGRES_POLLING_OK:
-				/* Initialize TECC state for the connection */
 				/* Begin - ReqID:TECC4.0 */
-				if (conn->enable_tecc)
-				{
-					TeccState *tecc_state = tecc_state_init(conn);
-					if (tecc_state == NULL)
-					{
-						/* Log error but don't fail the connection */
-						/* TECC will be disabled for this connection */
-					}
-				}
+				/*
+				 * 决定本连接允许跑多少 TECC（服务端进程内 ⇒ DDL-only），并初始化
+				 * 每条连接各自的 TECC 状态。两条连接完成路径共用同一个入口，
+				 * 见 tecc_apply_connection_mode()。
+				 */
+				tecc_apply_connection_mode(conn);
 				/* End - ReqID:TECC4.0 */
 				return 1;		/* success! */
 
@@ -3850,6 +3902,15 @@ keep_going:						/* We will come back to here until there is
 
 				/* We are open for business! */
 				conn->status = CONNECTION_OK;
+
+				/*
+				 * ReqID:TECC4.0 - 非阻塞连接（PQconnectStartParams + 调用方自己
+				 * 轮询 PQconnectPoll）也必须走同一套 TECC 连接态判定。分布式插件
+				 * 的内部连接正是这条路径，只挂在 connectDBComplete() 里的话，
+				 * 那些连接永远拿不到 DDL-only 模式。
+				 */
+				tecc_apply_connection_mode(conn);
+
 				return PGRES_POLLING_OK;
 			}
 

@@ -288,6 +288,104 @@ DROP TABLE IF EXISTS test_ev_t2 CASCADE;
 DROP TABLE IF EXISTS test_ev_edge CASCADE;
 
 -- ============================================================
+-- 7b. UNION/INTERSECT/EXCEPT with encrypted cols
+-- ============================================================
+SELECT '=== 7b UNION/INTERSECT/EXCEPT + Encrypted ===';
+
+CREATE TABLE test_set_a (
+    id INT4,
+    name VARCHAR(100),
+    salary INT4_ENC ENCRYPTED WITH (DEK = dek_expr, SUPPORT_ALGO = 'DET'),
+    dept VARCHAR(50)
+);
+
+CREATE TABLE test_set_b (
+    id INT4,
+    name VARCHAR(100),
+    salary INT4_ENC ENCRYPTED WITH (DEK = dek_expr, SUPPORT_ALGO = 'DET'),
+    dept VARCHAR(50)
+);
+
+-- 注：salary 为 DET 加密列（无 OPE），不能作排序键，故下面集合操作的
+-- ORDER BY 一律用普通列 id（选择列里带上 id 以保证输出确定）；
+-- 不便于排序取值的用例改用 count(*) 断言。
+INSERT INTO test_set_a VALUES (1, 'Alice', 50000, 'Engineering'), (2, 'Bob', 60000, 'Sales'),
+    (3, 'Charlie', 50000, 'Engineering'), (4, 'Diana', 70000, 'Marketing');
+
+INSERT INTO test_set_b VALUES (3, 'Charlie', 50000, 'Engineering'), (4, 'Diana', 70000, 'Marketing'),
+    (5, 'Eve', 80000, 'Sales'), (6, 'Frank', 60000, 'HR');
+
+-- UNION ALL (control: no dedup)
+SELECT '7b1_union_all', id, salary, dept FROM test_set_a WHERE dept = 'Engineering'
+UNION ALL
+SELECT '7b1_union_all', id, salary, dept FROM test_set_b WHERE dept = 'Engineering'
+ORDER BY 2;
+
+-- UNION DISTINCT (dedup over DET ciphertext)
+SELECT '7b2_union_distinct', id, salary, dept FROM test_set_a WHERE dept = 'Engineering'
+UNION
+SELECT '7b2_union_distinct', id, salary, dept FROM test_set_b WHERE dept = 'Engineering'
+ORDER BY 2;
+
+-- INTERSECT
+SELECT '7b3_intersect', id, salary, dept FROM test_set_a
+INTERSECT
+SELECT '7b3_intersect', id, salary, dept FROM test_set_b
+ORDER BY 2;
+
+-- EXCEPT
+SELECT '7b4_except', id, salary, dept FROM test_set_a
+EXCEPT
+SELECT '7b4_except', id, salary, dept FROM test_set_b
+ORDER BY 2;
+
+-- UNION DISTINCT with single encrypted col (8 行输入去重为 4 个 salary)
+SELECT '7b5_union_col', count(*) FROM (
+    SELECT salary FROM test_set_a UNION SELECT salary FROM test_set_b) u;
+
+-- INTERSECT with WHERE on encrypted col（DET 列仅支持等值，不支持范围）
+SELECT '7b6_intersect_where', id, salary, dept FROM test_set_a WHERE salary = 50000
+INTERSECT
+SELECT '7b6_intersect_where', id, salary, dept FROM test_set_b WHERE salary = 50000
+ORDER BY 2;
+
+-- EXCEPT with specific value
+SELECT '7b7_except_specific', id, name, salary FROM test_set_a
+EXCEPT
+SELECT '7b7_except_specific', id, name, salary FROM test_set_b
+ORDER BY id;
+
+-- MULTI-set: UNION DISTINCT with 3 branches（去重后 5 行，dept 有重复故用 count 断言）
+SELECT '7b8_multi_set', count(*) FROM (
+    SELECT salary, dept FROM test_set_a WHERE id <= 2
+    UNION
+    SELECT salary, dept FROM test_set_a WHERE id >= 2
+    UNION
+    SELECT salary, dept FROM test_set_b WHERE id >= 5) u;
+
+-- 7b9. enable_hashagg=off 强制规划器走原"排序去重"分支：DET 列无 OPE 段，
+--      排序比较会报 "cannot compare encrypted values for ordering"，
+--      规划期分流须改走 hash 去重，结果与默认路径一致
+SET enable_hashagg = off;
+SELECT '7b9_union_distinct_off', count(*) FROM (
+    SELECT salary FROM test_set_a UNION SELECT salary FROM test_set_b) u;
+SELECT '7b9_intersect_off', count(*) FROM (
+    SELECT salary, dept FROM test_set_a INTERSECT SELECT salary, dept FROM test_set_b) u;
+SELECT '7b9_except_off', count(*) FROM (
+    SELECT salary, dept FROM test_set_a EXCEPT SELECT salary, dept FROM test_set_b) u;
+RESET enable_hashagg;
+-- 对照：默认 hash 分支，结果应与上面三条一致
+SELECT '7b9_union_distinct_on', count(*) FROM (
+    SELECT salary FROM test_set_a UNION SELECT salary FROM test_set_b) u;
+SELECT '7b9_intersect_on', count(*) FROM (
+    SELECT salary, dept FROM test_set_a INTERSECT SELECT salary, dept FROM test_set_b) u;
+SELECT '7b9_except_on', count(*) FROM (
+    SELECT salary, dept FROM test_set_a EXCEPT SELECT salary, dept FROM test_set_b) u;
+
+DROP TABLE IF EXISTS test_set_a CASCADE;
+DROP TABLE IF EXISTS test_set_b CASCADE;
+
+-- ============================================================
 -- 8. Encrypted + plain function expressions (bug7874)
 -- ============================================================
 SELECT '=== 8 Enc + Plain Function ===';

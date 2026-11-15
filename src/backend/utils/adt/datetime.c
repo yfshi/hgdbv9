@@ -6,7 +6,6 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
- *
  * IDENTIFICATION
  *	  src/backend/utils/adt/datetime.c
  *
@@ -4655,6 +4654,11 @@ DecodeInterval(char **field, int *ftype, int nf, int range,
 						case INTERVAL_MASK(DAY) | INTERVAL_MASK(HOUR) | INTERVAL_MASK(MINUTE) | INTERVAL_MASK(SECOND):
 							type = DTK_SECOND;
 							break;
+						/* Begin - bug#8026 */
+						case INTERVAL_MASK(MICROSECOND):
+							type = DTK_MICROSEC;
+							break;
+						/* End - bug#8026 */
 						default:
 							type = DTK_SECOND;
 							break;
@@ -4697,6 +4701,7 @@ DecodeInterval(char **field, int *ftype, int nf, int range,
 							((double) val * mulit + val2) < INT_MIN)
 							return DTERR_FIELD_OVERFLOW;
 						val = val * mulit + val2;
+						fval = 0;
 					}
 				}
 				/* End - bug#8026 */

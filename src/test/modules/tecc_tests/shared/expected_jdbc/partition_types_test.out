@@ -1,0 +1,206 @@
+CREATE KEK
+CREATE DEK
+NOTICE: table "partition_text_main" does not exist, skipping
+NOTICE: table "partition_text_type_aa" does not exist, skipping
+NOTICE: table "partition_text_type_ba" does not exist, skipping
+NOTICE: table "partition_text_type_ca" does not exist, skipping
+NOTICE: table "partition_text_type_other" does not exist, skipping
+DROP TABLE
+NOTICE: table "partition_varchar_main" does not exist, skipping
+NOTICE: table "partition_varchar_type_aa" does not exist, skipping
+NOTICE: table "partition_varchar_type_ba" does not exist, skipping
+NOTICE: table "partition_varchar_type_ca" does not exist, skipping
+NOTICE: table "partition_varchar_type_other" does not exist, skipping
+DROP TABLE
+NOTICE: table "partition_bpchar_main" does not exist, skipping
+NOTICE: table "partition_bpchar_type_aa" does not exist, skipping
+NOTICE: table "partition_bpchar_type_ba" does not exist, skipping
+NOTICE: table "partition_bpchar_type_ca" does not exist, skipping
+NOTICE: table "partition_bpchar_type_other" does not exist, skipping
+DROP TABLE
+NOTICE: table "partition_int2_main" does not exist, skipping
+NOTICE: table "partition_int2_range1" does not exist, skipping
+NOTICE: table "partition_int2_range2" does not exist, skipping
+NOTICE: table "partition_int2_range3" does not exist, skipping
+NOTICE: table "partition_int2_range4" does not exist, skipping
+DROP TABLE
+NOTICE: table "partition_int4_main" does not exist, skipping
+NOTICE: table "partition_int4_neg_large" does not exist, skipping
+NOTICE: table "partition_int4_neg_small" does not exist, skipping
+NOTICE: table "partition_int4_pos_small" does not exist, skipping
+NOTICE: table "partition_int4_pos_large" does not exist, skipping
+DROP TABLE
+NOTICE: table "partition_int8_main" does not exist, skipping
+NOTICE: table "partition_int8_level_a" does not exist, skipping
+NOTICE: table "partition_int8_level_b" does not exist, skipping
+NOTICE: table "partition_int8_level_c" does not exist, skipping
+NOTICE: table "partition_int8_level_d" does not exist, skipping
+DROP TABLE
+NOTICE: table "partition_numeric_main" does not exist, skipping
+NOTICE: table "partition_numeric_range_neg" does not exist, skipping
+NOTICE: table "partition_numeric_range_a" does not exist, skipping
+NOTICE: table "partition_numeric_range_b" does not exist, skipping
+NOTICE: table "partition_numeric_range_c" does not exist, skipping
+NOTICE: table "partition_numeric_range_d" does not exist, skipping
+DROP TABLE
+NOTICE: table "partition_float4_main" does not exist, skipping
+NOTICE: table "partition_float4_zone_f" does not exist, skipping
+NOTICE: table "partition_float4_zone_c" does not exist, skipping
+NOTICE: table "partition_float4_zone_n" does not exist, skipping
+NOTICE: table "partition_float4_zone_w" does not exist, skipping
+DROP TABLE
+NOTICE: table "partition_float8_main" does not exist, skipping
+NOTICE: table "partition_float8_scale_n" does not exist, skipping
+NOTICE: table "partition_float8_scale_z" does not exist, skipping
+NOTICE: table "partition_float8_scale_p" does not exist, skipping
+NOTICE: table "partition_float8_scale_l" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+text_enc|partition_text_type_aa|1
+text_enc|partition_text_type_ba|1
+text_enc|partition_text_type_ca|1
+text_enc|partition_text_type_other|1
+1|文本内容1|AA
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+varchar_enc|partition_varchar_type_aa|1
+varchar_enc|partition_varchar_type_ba|1
+varchar_enc|partition_varchar_type_ca|1
+varchar_enc|partition_varchar_type_other|1
+2|文本内容2|BB
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+bpchar_enc|partition_bpchar_type_aa|1
+bpchar_enc|partition_bpchar_type_ba|1
+bpchar_enc|partition_bpchar_type_ca|1
+bpchar_enc|partition_bpchar_type_other|1
+3|文本内容3|CC
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+int2_enc|partition_int2_range1|1
+int2_enc|partition_int2_range2|1
+int2_enc|partition_int2_range3|1
+int2_enc|partition_int2_range4|1
+3|5000|C
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+int4_enc|partition_int4_neg_large|1
+int4_enc|partition_int4_neg_small|1
+int4_enc|partition_int4_pos_small|1
+int4_enc|partition_int4_pos_large|1
+2|-500000|B
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+int8_enc|partition_int8_level_a|1
+int8_enc|partition_int8_level_b|1
+int8_enc|partition_int8_level_c|1
+int8_enc|partition_int8_level_d|1
+3|500000|C
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 5
+numeric_enc|partition_numeric_range_neg|1
+numeric_enc|partition_numeric_range_a|1
+numeric_enc|partition_numeric_range_b|1
+numeric_enc|partition_numeric_range_c|1
+numeric_enc|partition_numeric_range_d|1
+1|-500.00|N
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+float4_enc|partition_float4_zone_f|1
+float4_enc|partition_float4_zone_c|1
+float4_enc|partition_float4_zone_n|1
+float4_enc|partition_float4_zone_w|1
+3|10|N
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+float8_enc|partition_float8_scale_n|1
+float8_enc|partition_float8_scale_z|1
+float8_enc|partition_float8_scale_p|1
+float8_enc|partition_float8_scale_l|1
+3|5.5|P
+bpchar|partition_bpchar_type_aa|1
+bpchar|partition_bpchar_type_ba|1
+bpchar|partition_bpchar_type_ca|1
+bpchar|partition_bpchar_type_other|1
+float4|partition_float4_zone_f|1
+float4|partition_float4_zone_c|1
+float4|partition_float4_zone_n|1
+float4|partition_float4_zone_w|1
+float8|partition_float8_scale_n|1
+float8|partition_float8_scale_z|1
+float8|partition_float8_scale_p|1
+float8|partition_float8_scale_l|1
+int2|partition_int2_range1|1
+int2|partition_int2_range2|1
+int2|partition_int2_range3|1
+int2|partition_int2_range4|1
+int4|partition_int4_neg_large|1
+int4|partition_int4_neg_small|1
+int4|partition_int4_pos_small|1
+int4|partition_int4_pos_large|1
+int8|partition_int8_level_a|1
+int8|partition_int8_level_b|1
+int8|partition_int8_level_c|1
+int8|partition_int8_level_d|1
+numeric|partition_numeric_range_neg|1
+numeric|partition_numeric_range_a|1
+numeric|partition_numeric_range_b|1
+numeric|partition_numeric_range_c|1
+numeric|partition_numeric_range_d|1
+text|partition_text_type_aa|1
+text|partition_text_type_ba|1
+text|partition_text_type_ca|1
+text|partition_text_type_other|1
+varchar|partition_varchar_type_aa|1
+varchar|partition_varchar_type_ba|1
+varchar|partition_varchar_type_ca|1
+varchar|partition_varchar_type_other|1
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK

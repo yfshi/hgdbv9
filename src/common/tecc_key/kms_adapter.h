@@ -38,7 +38,6 @@ typedef struct KmsConfig
 {
     KmsType kms_type;           /* KMS type: LOCAL/HSM/CLOUD */
     char *kms_path;             /* KMS path or identifier */
-    char *kms_args;             /* Additional KMS arguments */
     char *algorithm;            /* Encryption algorithm */
     int key_length;             /* Key length */
     bool require_hmac;          /* Whether HMAC is required */
@@ -138,8 +137,7 @@ extern KmsAdapter *kms_adapter_create(KmsType kms_type, const KmsConfig *config)
 extern void kms_adapter_destroy(KmsAdapter *adapter);
 
 /* KMS configuration */
-extern KmsConfig *kms_config_create(KmsType kms_type, const char *kms_path,
-                                   const char *kms_args);
+extern KmsConfig *kms_config_create(KmsType kms_type, const char *kms_path);
 extern void kms_config_destroy(KmsConfig *config);
 extern int kms_config_validate(const KmsConfig *config);
 

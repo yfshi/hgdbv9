@@ -5000,8 +5000,8 @@ connectDatabase(const char *dbname, const char *connection_string,
 					argcount++;
 			}
 
-			keywords = pg_malloc0((argcount + 1) * sizeof(*keywords));
-			values = pg_malloc0((argcount + 1) * sizeof(*values));
+			keywords = pg_malloc0((argcount + 2) * sizeof(*keywords));
+			values = pg_malloc0((argcount + 2) * sizeof(*values));
 
 			for (conn_opt = conn_opts; conn_opt->keyword != NULL; conn_opt++)
 			{
@@ -5014,11 +5014,37 @@ connectDatabase(const char *dbname, const char *connection_string,
 					i++;
 				}
 			}
+
+			/* Begin - ReqID:TECC4.0 */
+			/*
+			 * 导出工具默认不做客户端密态处理（理由见 pg_backup_db.c 里的同名
+			 * 默认值）。调用方在连接串里显式给了 enable_tecc 时尊重其选择。
+			 */
+			{
+				bool		teccOptionGiven = false;
+				int			k;
+
+				for (k = 0; k < i; k++)
+				{
+					if (strcmp(keywords[k], "enable_tecc") == 0)
+					{
+						teccOptionGiven = true;
+						break;
+					}
+				}
+				if (!teccOptionGiven)
+				{
+					keywords[i] = "enable_tecc";
+					values[i] = "false";
+					i++;
+				}
+			}
+			/* End - ReqID:TECC4.0 */
 		}
 		else
 		{
-			keywords = pg_malloc0((argcount + 1) * sizeof(*keywords));
-			values = pg_malloc0((argcount + 1) * sizeof(*values));
+			keywords = pg_malloc0((argcount + 2) * sizeof(*keywords));
+			values = pg_malloc0((argcount + 2) * sizeof(*values));
 		}
 
 		if (pghost)
@@ -5045,6 +5071,12 @@ connectDatabase(const char *dbname, const char *connection_string,
 			values[i] = password;
 			i++;
 		}
+		/* Begin - ReqID:TECC4.0 */
+		/* 导出工具默认不做客户端密态处理；放 dbname 之前，好让连接串覆盖它。 */
+		keywords[i] = "enable_tecc";
+		values[i] = "false";
+		i++;
+		/* End - ReqID:TECC4.0 */
 		if (dbname)
 		{
 			keywords[i] = "dbname";

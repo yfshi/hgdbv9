@@ -34,8 +34,6 @@ typedef struct TeccErrorInfo TeccErrorInfo;
 typedef struct TeccConfig TeccConfig;
 typedef struct TeccStats TeccStats;
 typedef struct TeccPreparedStatementContext TeccPreparedStatementContext;
-typedef struct TeccAsyncState TeccAsyncState;
-typedef struct TeccAsyncStats TeccAsyncStats;
 typedef struct TeccCryptoScheduler TeccCryptoScheduler;
 /* TeccStatementData is now defined in tecc_common_types.h */
 
@@ -59,19 +57,6 @@ typedef enum TeccErrorCode
 
 /* Processor result enumeration - defined in tecc_processor_types.h */
 typedef enum TeccProcessorResult TeccProcessorResult;
-
-/* Asynchronous operation type enumeration */
-typedef enum TeccAsyncOpType
-{
-	TECC_ASYNC_QUERY = 1,				/* Asynchronous query */
-	TECC_ASYNC_QUERY_PARAMS,			/* Asynchronous parameterized query */
-	TECC_ASYNC_PREPARE,					/* Asynchronous prepared statement creation */
-	TECC_ASYNC_QUERY_PREPARED,			/* Asynchronous prepared statement execution */
-	TECC_ASYNC_COPY_DATA,				/* Asynchronous COPY data sending */
-	TECC_ASYNC_COPY_RESULT,				/* Asynchronous COPY result receiving */
-	TECC_ASYNC_DESCRIBE,				/* Asynchronous describe operation */
-	TECC_ASYNC_FLUSH					/* Asynchronous flush operation */
-} TeccAsyncOpType;
 
 /* Error information structure */
 typedef struct TeccErrorInfo
@@ -119,6 +104,7 @@ typedef struct TeccUpdateGucValues
 	bool		update_backslash_quote;		/* Update backslash_quote */
 	bool		update_escape_string_warning; /* Update escape_string_warning */
 	bool		update_searchpath;			/* Update searchpath */
+	bool		update_tecc_mode;			/* Update TECC result decryption mode */
 
 	/* Values to update (only valid if corresponding flag is true) */
 	char		new_role[64];				/* New role value */
@@ -126,6 +112,7 @@ typedef struct TeccUpdateGucValues
 	int			new_backslash_quote;		/* New backslash_quote value */
 	bool		new_escape_string_warning;	/* New escape_string_warning value */
 	char		new_searchpath[1024];		/* New searchpath value */
+	bool		new_tecc_mode;				/* New TECC result decryption mode */
 
 	/* End - ReqID:TECC4.0 - 简化GUC更新值结构体 */
 } TeccUpdateGucValues;
@@ -169,6 +156,20 @@ typedef struct TeccState
 	/* Basic state */
 	bool		enabled;					/* Whether TECC is enabled */
 	bool		initialized;				/* Whether state is initialized */
+
+	/*
+	 * ReqID:TECC4.0 - DDL-only mode（分布式内部连接）：
+	 * 只做 DDL 解析与 ENCRYPTED WITH 子句合成，不做结果解密/常量加密/密钥处理。
+	 * 见 plan/2026-10-28-hgdde分布式适配可行性分析.md §0.3。
+	 */
+	bool		ddl_only;
+
+	/*
+	 * ReqID:TECC4.0 - 取数目标覆盖（DDL-only 专用）。
+	 * 内部连接连的是 worker，而逻辑表的加密声明在协调节点上；本字段非 NULL 时
+	 * 取数器改用它建临时连接（见 tecc_create_temp_connection）。
+	 */
+	char	   *fetch_conninfo_override;
 
 	/* Cache management */
 	void	   *metadata_cache;				/* Metadata cache pointer */
@@ -223,16 +224,10 @@ typedef struct TeccState
 	int		last_drop_remove_type;		/* Last DROP removeType for selective cache clear */
 	int		last_drop_behavior;			/* Last DROP behavior (CASCADE/RESTRICT) */
 	Oid		last_drop_key_oid;			/* ReqID:TECC4.0 - Last DROP KEK/DEK OID for adapter cache invalidation */
-	char	last_kek_path[256];			/* ReqID:TECC4.0 - Last DROP KEK key_path for client-side file deletion */
 
-	/* ReqID:TECC4.0 - CASCADE DROP KEK file cleanup.
-	 * Pre-snapshot of all plaintext KEK paths (KEY_PATH in hg_kek_args)
-	 * captured before a CASCADE DDL (DROP SCHEMA/OWNED CASCADE) executes.
-	 * After the DDL succeeds, we diff against the surviving paths and
-	 * unlink() files whose KEKs are gone (server can't reach client FS). */
-#define TECC_MAX_CASCADE_KEK_PATHS 256
-	int		cascade_kek_path_count;		/* Number of pre-snapshot KEK paths */
-	char	cascade_kek_paths[TECC_MAX_CASCADE_KEK_PATHS][256];	/* Pre-snapshot KEK paths */
+	/* ReqID:TECC4.0 - 密钥文件生命周期由 tecc_ktool 管理（generate/delete）：
+	 * SQL DROP KEK/DEK 只清理目录元数据 + 客户端元数据缓存，不再触碰磁盘
+	 * 密钥文件（.key/.priv/.pub），因此无需 last_kek_path/延迟队列/CASCADE 快照。 */
 	/* Last result status (借鉴openGauss m_lastResultStatus) */
 	ExecStatusType last_result_status;		/* Last query result status (新增) */
 
@@ -258,6 +253,7 @@ typedef struct TeccState
 
 	/* Connection pool for data fetcher internal queries (独立连接，避免嵌套PQexec) */
 	char	   *conninfo;						/* 连接信息字符串，用于创建临时连接 */
+	
 
 	/* ReqID:TECC4.0 - Pending tables bridge for same-transaction DDL+DML.
 	 * Non-NULL during the window between DDL preprocessing and the next
@@ -273,6 +269,65 @@ typedef struct TeccState
 
 	/* ReqID:TECC4.0 - Prepared statement query text store */
 	struct TeccStoredQuery *stored_queries;
+
+	/* ReqID:TECC4.0 - SELECT 表达式结果列（聚合/运算）的底层加密列元数据。
+	 * PG 协议对表达式结果（如 sum(enc_col)）不返回 table_oid/attnum，
+	 * 客户端预处理（tecc_stmt_processor_process_select）解析表达式参数中
+	 * 的加密列，按名保存（schema/table/column），结果解密时
+	 * （tecc_processor_run_post_query）按名查缓存恢复列元数据，保证解密
+	 * 使用正确的 DEK 与算法（HE-only 走 HE 路径，对称列走对称路径）。 */
+#define TECC_MAX_EXPR_RESULT_COLS 64
+	int			pending_expr_col_count;
+	char		pending_expr_col_schemas[TECC_MAX_EXPR_RESULT_COLS][NAMEDATALEN];
+	char		pending_expr_col_tables[TECC_MAX_EXPR_RESULT_COLS][NAMEDATALEN];
+	char		pending_expr_col_columns[TECC_MAX_EXPR_RESULT_COLS][NAMEDATALEN];
+	bool		pending_decrypt_raw_call;
+	bool		pending_expr_col_raw_hex[TECC_MAX_EXPR_RESULT_COLS];
+	int			pending_expr_col_field_indexes[TECC_MAX_EXPR_RESULT_COLS];
+	char		pending_expr_col_raw_algorithms[TECC_MAX_EXPR_RESULT_COLS][16];
+
+	/* ReqID:TECC4.0 - 会话级临时表清单。
+	 * 记录本会话 CREATE TEMP TABLE 创建的表名（PG 语义：未限定表名解析时临时表
+	 * 优先于 search_path）。临时表在数据获取器池连接中不可见（会话私有），
+	 * 前端必须靠此清单识别，避免把未限定名误解析到 search_path 中的同名表。 */
+#define TECC_MAX_TEMP_TABLES 64
+	int			temp_table_count;		/* 临时表数量 */
+	char		temp_table_names[TECC_MAX_TEMP_TABLES][NAMEDATALEN];	/* 临时表名 */
+
+	/* ReqID:TECC4.0 - 连接级 HSM 设备缓存（替代 tecc_setup_hsm_context 中的 static 变量）
+	 * 每个 PGconn 独立缓存 HSM adapter/device 句柄，连接关闭时自动清理。
+	 * adapter 是进程级单例 vtable（pthread_once 保护），不需要释放；
+	 * device 是 init() 分配的，需要在 cleanup 时 disconnect + free。 */
+	void	   *hsm_tz_adapter;		/* 天正 HsmAdapterInterface*（单例，不释放） */
+	void	   *hsm_tz_device;			/* 天正 HsmDevice*（需 cleanup 释放） */
+	int			hsm_tz_tried;			/* 0=未尝试, 1=成功, -1=失败 */
+	void	   *hsm_swxa_adapter;		/* 三未 HsmAdapterInterface*（单例，不释放） */
+	void	   *hsm_swxa_device;		/* 三未 HsmDevice*（需 cleanup 释放） */
+	int			hsm_swxa_tried;			/* 0=未尝试, 1=成功, -1=失败 */
+
+	/* ReqID:TECC4.0 - 连接级 HSM 初始化锁（pthread_mutex_t*，由
+	 * tecc_hsm_init_lock_create/tecc_hsm_init_lock_destroy 管理）。
+	 * 同态字段级并行的多个 worker 线程会并发进入 tecc_setup_hsm_context 的
+	 * 首次初始化段，无锁时各自 init + SDF_OpenSession，而上面的缓存槽只有
+	 * 一份、只留最后一个，其余会话（含各自的会话密钥句柄缓存）无人回收、
+	 * 一直挂到进程退出。本锁只串行化这**一次性**的初始化段，不进每值热路径。
+	 * 软加密（localkms）列在 KEK 路由阶段即早退，不经过该段，不受本锁影响。
+	 * NULL 表示未创建（此时降级为不加锁，行为与加锁前一致）。 */
+	void	   *hsm_init_lock;
+
+	/* ReqID:TECC4.0 - pg_upgrade V4.0.0 兼容：V4.0.0 的
+	 * hg_encrypted_columns_info 视图没有 he_add_dek/he_mul_dek 两列
+	 * （V4.0.1 新增 HE 功能才引入）。首次探测后缓存，缺列时数据获取器
+	 * 查询不再引用这两列，保证 V4.0.1 前端工具可连接 V4.0.0 库。 */
+	bool		he_cols_probed;			/* 是否已完成探测 */
+	bool		has_he_cols;			/* 视图是否含 he_add_dek/he_mul_dek */
+
+	/* ReqID:TECC4.0 - 库默认排序规则的 locale 文本（ICU 归一化用），每连接查一次后缓存。
+	 * 用于"加密时目标列还不存在"的路径（加密列 DEFAULT、CTAS、视图/物化视图
+	 * 定义里的密态 cast）：这类列未写 COLLATE 时继承的就是库默认排序规则。
+	 * 一条 PG 连接绑定一个库（换库必须重连），因此该值连接内恒定。
+	 * NULL 表示尚未成功解析过（解析失败不缓存，下次重试并告警）。 */
+	char	   *default_collation_locale;
 } TeccState;
 
 /* ReqID:TECC4.0 - Prepared statement query text store */
@@ -342,6 +397,8 @@ typedef struct TeccResultInfo
 extern TeccState *tecc_state_init(PGconn *conn);
 extern void tecc_state_cleanup(TeccState *state);
 extern bool tecc_is_enabled(const TeccState *state);
+/* ReqID:TECC4.0 - server-process detection for the internal-connection fallback */
+extern bool tecc_running_in_server_process(void);
 
 /* ReqID:TECC4.0 - Pending table bridge for same-transaction DDL+DML */
 /* pending_tables functions removed, replaced by tecc_cache_*_pending() */
@@ -372,6 +429,14 @@ extern const char *tecc_get_last_error(const PGconn *conn);
 extern TeccState *tecc_get_state(const PGconn *conn);
 extern bool tecc_is_initialized(const PGconn *conn);
 extern int tecc_get_stats(const PGconn *conn, TeccStats *stats);
+/* ReqID:TECC4.0 - Detect tecc_decrypt_raw() in query text outside literals */
+extern bool tecc_query_calls_decrypt_raw(const char *query);
+
+/* ReqID:TECC4.0 - 会话级临时表清单管理（CREATE TEMP TABLE 记录，DROP 移除，
+ * 未限定表名解析时优先命中，语义与 PG 的 pg_temp 优先一致） */
+extern bool tecc_state_is_temp_table(const TeccState *state, const char *relname);
+extern void tecc_state_add_temp_table(TeccState *state, const char *relname);
+extern void tecc_state_remove_temp_table(TeccState *state, const char *relname);
 
 /* Unified state management interfaces */
 extern bool tecc_state_check_cache_refresh(TeccState *state);
@@ -400,81 +465,7 @@ extern List *tecc_processor_get_encrypted_columns(TeccStatementData *statement_d
 /* See fe-tecc-copy.h for COPY and batch processing declarations */
 #include "fe-tecc-copy.h"
 
-/* ==================== Prepared Statement Processing Interfaces ==================== */
-
-/* 准备语句预处理接口 */
-extern TeccPreparedStatementContext *tecc_preprocess_prepared_statement(
-    PGconn *conn, const char *stmt_name, const char *query,
-    int nParams, const Oid *paramTypes);
-
-/* 准备语句参数预处理接口 */
-extern TeccQueryParams *tecc_preprocess_prepared_params(
-    PGconn *conn, const char *stmt_name, int nParams,
-    const char *const *paramValues, const int *paramLengths,
-    const int *paramFormats);
-
-/* 准备语句清理接口 */
-extern void tecc_cleanup_prepared_statement(PGconn *conn, const char *stmt_name);
-
-/* 检查准备语句是否存在 */
-extern bool tecc_prepared_statement_exists(TeccPreparedStatementContext *context, const char *stmt_name);
-
-/* ==================== Asynchronous API Processing Interfaces ==================== */
-
-/* Asynchronous state management interfaces */
-extern TeccAsyncState *tecc_async_state_create(PGconn *conn,
-                                               TeccAsyncOpType op_type,
-                                               const char *op_id);
-extern int tecc_async_state_save(PGconn *conn, TeccAsyncState *async_state);
-extern TeccAsyncState *tecc_async_state_get(PGconn *conn, const char *op_id);
-extern void tecc_async_state_cleanup(PGconn *conn, const char *op_id);
-extern void tecc_async_state_cleanup_all(PGconn *conn);
-
-/* Asynchronous query preprocessing interfaces */
-extern TeccAsyncState *tecc_async_preprocess_query(PGconn *conn,
-                                                   const char *query,
-                                                   const char *async_id);
-extern TeccAsyncState *tecc_async_preprocess_params(PGconn *conn,
-                                                    const char *command,
-                                                    int nParams,
-                                                    const Oid *paramTypes,
-                                                    const char *const *paramValues,
-                                                    const int *paramLengths,
-                                                    const int *paramFormats,
-                                                    const char *async_id);
-
-/* Asynchronous prepared statement processing interfaces */
-extern TeccAsyncState *tecc_async_preprocess_prepared_statement(
-    PGconn *conn, const char *stmt_name, const char *query,
-    int nParams, const Oid *paramTypes, const char *async_id);
-extern TeccAsyncState *tecc_async_preprocess_prepared_params(
-    PGconn *conn, const char *stmt_name, int nParams,
-    const char *const *paramValues, const int *paramLengths,
-    const int *paramFormats, const char *async_id);
-
-/* Asynchronous result processing interfaces */
-extern int tecc_async_process_result(PGconn *conn, PGresult *result,
-                                     const char *async_id);
-extern int tecc_async_process_copy_data(PGconn *conn, const char *data,
-                                        int data_len, char **processed_data,
-                                        int *processed_len, const char *async_id);
-extern int tecc_async_process_copy_result(PGconn *conn,
-                                          const char *encrypted_data,
-                                          int encrypted_len,
-                                          char **decrypted_data,
-                                          int *decrypted_len,
-                                          const char *async_id);
-
-/* Asynchronous state query interfaces */
-extern bool tecc_async_is_completed(PGconn *conn, const char *async_id);
-extern const char *tecc_async_get_error(PGconn *conn, const char *async_id);
-extern int tecc_async_cancel(PGconn *conn, const char *async_id);
-extern int tecc_async_get_stats(PGconn *conn, TeccAsyncStats *stats);
-
 /* ==================== New State Management Interfaces (借鉴openGauss PGClientLogic) ==================== */
-
-/* Get pending statements list */
-extern TeccPendingStatementNode *tecc_state_get_pending_statements(TeccState *state);
 
 /* Disable TECC once (temporary disable) */
 extern void tecc_disable_once(PGconn *conn);

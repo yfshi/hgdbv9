@@ -1,0 +1,74 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+     ?column?     
+------------------
+ === Setup OK ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+      ?column?      
+--------------------
+ === 1 Baseline ===
+(1 row)
+
+  ?column?   | col_int | col_det | col_ope 
+-------------+---------+---------+---------
+ 1a_baseline |       1 | Alice   | 10
+ 1a_baseline |       3 | Alice   | 30
+(2 rows)
+
+  ?column?   | col_int | col_det | col_ope 
+-------------+---------+---------+---------
+ 1b_baseline |       4 | Carol   | 40
+(1 row)
+
+         ?column?          
+---------------------------
+ === 2 Simple Subquery ===
+(1 row)
+
+     ?column?     | col_int | col_det | col_ope 
+------------------+---------+---------+---------
+ 2a_star_subquery |       1 | Alice   | 10
+ 2a_star_subquery |       2 | Bob     | 20
+ 2a_star_subquery |       3 | Alice   | 30
+ 2a_star_subquery |       4 | Carol   | 40
+(4 rows)
+
+        ?column?         | col_int | col_det | col_ope 
+-------------------------+---------+---------+---------
+ 2b_subquery_inner_where |       1 | Alice   | 10
+ 2b_subquery_inner_where |       3 | Alice   | 30
+(2 rows)
+
+            ?column?             
+---------------------------------
+ === 3 Nested Subquery WHERE ===
+(1 row)
+
+ ?column? | col_int | col_det | col_ope 
+----------+---------+---------+---------
+(0 rows)
+
+    ?column?     | col_int | col_det | col_ope 
+-----------------+---------+---------+---------
+ 3b_nested_match |       1 | Alice   | 10
+ 3b_nested_match |       3 | Alice   | 30
+(2 rows)
+
+     ?column?      
+-------------------
+ === 4 Cleanup ===
+(1 row)
+
+DROP TABLE
+DROP KEK
+psql:/.../nested_subquery.sql:9: NOTICE:  key encryption key "kek_ns" does not exist, skipping
+psql:/.../nested_subquery.sql:20: NOTICE:  table "t_base_ns" does not exist, skipping
+psql:/.../nested_subquery.sql:68: NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to data encryption key dek_det_ns
+drop cascades to data encryption key dek_ope_ns

@@ -1,0 +1,156 @@
+NOTICE: table "enc_types_t" does not exist, skipping
+DROP TABLE
+NOTICE: table "enc_types_def" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "dek_enc_types" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "kek_enc_types" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+=== 1 CREATE TABLE (9 types) ===
+CREATE TABLE
+=== 2 INSERT row 1 ===
+INSERT 0 1
+=== 2 INSERT row 2 ===
+INSERT 0 1
+=== 2 INSERT row 3 ===
+INSERT 0 1
+=== 3 SELECT all types ===
+1|10|100|1000|1.5|3.14159|123.45|hello|bpchar1|text1
+2|20|200|2000|2.5|6.28318|678.90|world|bpchar2|text2
+3|30|300|3000|3.5|9.42477|111.22|abc|bpchar3|text3
+=== 3 SELECT numeric types ===
+10|100|1000|1.5|3.14159|123.45
+20|200|2000|2.5|6.28318|678.90
+30|300|3000|3.5|9.42477|111.22
+=== 3 SELECT string types ===
+hello|bpchar1|text1
+world|bpchar2|text2
+abc|bpchar3|text3
+=== 4 UPDATE int4_enc ===
+UPDATE 1
+1|999
+=== 4 UPDATE text_enc ===
+UPDATE 1
+2|updated
+=== 5 DELETE ===
+INSERT 0 1
+DELETE 1
+3
+=== 6 DEFAULT int4_enc ===
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+1|100|row1
+1|200|row2
+DROP TABLE
+=== 6 DEFAULT text_enc ===
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+100|world
+99|only_default
+DROP TABLE
+=== 7 int2 -> int4 ===
+1
+=== 7 int2 -> int8 ===
+1
+=== 7 text -> varchar ===
+hello
+=== 7 text -> bpchar ===
+hello
+=== 7 varchar -> text ===
+hello
+=== 7 varchar -> bpchar ===
+hello
+=== 8 Illegal chain TypeCast (expected errors) ===
+8a_text_to_int2
+ERROR: TECC: Cannot cast encrypted type text_enc to int2_enc: incompatible encrypted types
+8b_text_to_int4
+ERROR: TECC: Cannot cast encrypted type text_enc to int4_enc: incompatible encrypted types
+8c_text_to_int8
+ERROR: TECC: Cannot cast encrypted type text_enc to int8_enc: incompatible encrypted types
+8d_varchar_to_int2
+ERROR: TECC: Cannot cast encrypted type varchar_enc to int2_enc: incompatible encrypted types
+8e_varchar_to_int4
+ERROR: TECC: Cannot cast encrypted type varchar_enc to int4_enc: incompatible encrypted types
+8f_varchar_to_int8
+ERROR: TECC: Cannot cast encrypted type varchar_enc to int8_enc: incompatible encrypted types
+8g_bpchar_to_int2
+ERROR: TECC: Cannot cast encrypted type bpchar_enc to int2_enc: incompatible encrypted types
+8h_bpchar_to_int4
+ERROR: TECC: Cannot cast encrypted type bpchar_enc to int4_enc: incompatible encrypted types
+8i_bpchar_to_int8
+ERROR: TECC: Cannot cast encrypted type bpchar_enc to int8_enc: incompatible encrypted types
+8j_text_to_float4
+ERROR: TECC: Cannot cast encrypted type text_enc to float4_enc: incompatible encrypted types
+8k_text_to_float8
+ERROR: TECC: Cannot cast encrypted type text_enc to float8_enc: incompatible encrypted types
+8l_varchar_to_float4
+ERROR: TECC: Cannot cast encrypted type varchar_enc to float4_enc: incompatible encrypted types
+8m_varchar_to_float8
+ERROR: TECC: Cannot cast encrypted type varchar_enc to float8_enc: incompatible encrypted types
+8n_bpchar_to_float4
+ERROR: TECC: Cannot cast encrypted type bpchar_enc to float4_enc: incompatible encrypted types
+8o_bpchar_to_float8
+ERROR: TECC: Cannot cast encrypted type bpchar_enc to float8_enc: incompatible encrypted types
+8p_int2_to_plain
+ERROR: ERROR: cannot cast type int2_enc to smallint
+  Position: 236
+8q_int4_to_plain
+ERROR: ERROR: cannot cast type int4_enc to integer
+  Position: 236
+8r_int8_to_plain
+ERROR: ERROR: cannot cast type int8_enc to bigint
+  Position: 236
+8s_float4_to_plain
+ERROR: ERROR: cannot cast type float4_enc to real
+  Position: 254
+8t_float8_to_plain
+ERROR: ERROR: cannot cast type float8_enc to double precision
+  Position: 254
+8u_numeric_to_plain
+ERROR: ERROR: cannot cast type numeric_enc to numeric
+  Position: 255
+8v_varchar_to_plain
+ERROR: ERROR: cannot cast type varchar_enc to character varying
+  Position: 249
+8w_bpchar_to_plain
+ERROR: ERROR: cannot cast type bpchar_enc to character
+  Position: 248
+8x_text_to_plain
+ERROR: ERROR: cannot cast type text_enc to text
+  Position: 246
+=== 9 VIEW ===
+CREATE VIEW
+1|10|999
+2|20|200
+3|30|300
+DROP VIEW
+=== cleanup ===
+DROP TABLE
+DROP DEK
+DROP KEK
+=== 10 multi-condition parity ===
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+INSERT 0 5
+INSERT 0 5
+1|test数据|100|test文本|123.45
+1|test数据|100|test文本|123.45
+2|测试文本|2000|测试数据|56.789
+3|测试test|3000|test测试|67.89
+5|测试样例|20000|测试示例|89.012
+2|测试文本|2000|测试数据|56.789
+3|测试test|3000|test测试|67.89
+5|测试样例|20000|测试示例|89.012
+3|test测试                                                                                              |3|测试test|3.45
+3|test测试|3|测试test|3.45
+1|1|123.45|1.23|test数据
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK

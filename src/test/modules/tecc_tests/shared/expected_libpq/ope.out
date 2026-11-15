@@ -1089,14 +1089,12 @@ LINE 1: SELECT '6a_cipher_len', tag, length(ope_vc::text) AS cipher_...
 psql:/.../ope.sql:249: NOTICE:  table "tb_7856_enc" does not exist, skipping
 psql:/.../ope.sql:270: NOTICE:  table "tb_7824_enc" does not exist, skipping
 psql:/.../ope.sql:296: NOTICE:  table "test_reg_emp" does not exist, skipping
-psql:/.../ope.sql:319: ERROR:  cannot compare encrypted values for ordering: no OPE or DET ciphertext available
-HINT:  Enable OPE or DET encryption on the column to support comparison.
-psql:/.../ope.sql:320: ERROR:  cannot compare encrypted values for ordering: no OPE or DET ciphertext available
-HINT:  Enable OPE or DET encryption on the column to support comparison.
+psql:/.../ope.sql:319: TECC query preprocessing failed: function "GREATEST" requires OPE encryption, but column "salary_det" is not configured with OPE
+psql:/.../ope.sql:320: TECC query preprocessing failed: function "LEAST" requires OPE encryption, but column "salary_det" is not configured with OPE
 psql:/.../ope.sql:353: NOTICE:  table "test_ope_eq" does not exist, skipping
 psql:/.../ope.sql:366: NOTICE:  table "tb_int2_enc" does not exist, skipping
 psql:/.../ope.sql:385: NOTICE:  table "test_algo" does not exist, skipping
-psql:/.../ope.sql:410: TECC query preprocessing failed: 操作符需要OPE（保序加密）算法，但该列未配置OPE。
+psql:/.../ope.sql:410: TECC query preprocessing failed: Operator requires OPE (order-preserving encryption) algorithm, but the column is not configured with OPE.
 psql:/.../ope.sql:440: NOTICE:  table "tecc_collation_verify" does not exist, skipping
 psql:/.../ope.sql:457: ERROR:  COLLATE "C" does not match encrypted column "text_col" collation "zh_CN.utf8"
 LINE 1: ..._col FROM tecc_collation_verify ORDER BY text_col COLLATE "C...

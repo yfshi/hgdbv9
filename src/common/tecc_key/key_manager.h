@@ -30,7 +30,6 @@ typedef struct PgTeccKekInfo
     char *kek_name;            /* KEK name */
     KmsType kms_type;          /* KMS type */
     char *kms_path;            /* KMS path */
-    char *kms_args;            /* KMS arguments */
     void *key_data;            /* KEK data (plaintext) */
     size_t key_len;            /* KEK length */
     Oid kek_oid;               /* Server-side KEK OID */

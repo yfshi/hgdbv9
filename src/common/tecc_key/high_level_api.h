@@ -85,6 +85,25 @@ extern TeccKeyApiInfo *tecc_key_get_api_info(void);
 /* tecc_key_get_dek removed - use tecc_cache_get_dek_by_name instead */
 /* tecc_key_get_kek removed - use tecc_key_get_kek_with_state instead */
 extern unsigned char *tecc_key_get_kek_with_state(void *tecc_state, const char *kek_name, size_t *key_len);
+
+/* 绕过连接级明文缓存，强制重读存储（localkms 读 .priv/.key 文件）——供 CREATE DEK
+ * 私钥可用性校验使用，保证同一连接内删除私钥文件后也能稳定报错。 */
+extern unsigned char *tecc_key_get_kek_with_state_refresh(void *tecc_state, const char *kek_name, size_t *key_len);
+
+/*
+ * ReqID:TECC4.0 - Bug 9256: 由 DEK 侧信息取出其 KEK 明文。
+ *
+ * DEK 的目录记录里存的是 KEK 的 OID（kek_id），而 KEK 可以创建在任意 schema。
+ * 若只拿 DEK 上那个裸 KEK 名去按 search_path 解析，KEK 不在 search_path 上时
+ * 永远找不到（在 public 下使用 sch1.kek 建表，INSERT 直接失败）。本函数优先按
+ * OID 精确解析，再以限定名 "schema.name" 取明文；仅当 OID 无效（异常/旧缓存项）
+ * 时才退回按名解析。OID 有效但查不到时不回退 —— 同名 KEK 可能是另一个 schema
+ * 里的另一把密钥，用错密钥只会得到难以定位的解密失败。
+ */
+extern unsigned char *tecc_key_get_kek_by_oid_or_name(void *tecc_state,
+                                                      Oid kek_oid,
+                                                      const char *kek_name,
+                                                      size_t *key_len);
 extern int tecc_key_decrypt_dek(const unsigned char *encrypted_dek,
                                size_t encrypted_len,
                                const unsigned char *kek,

@@ -113,7 +113,8 @@ typedef enum KmsType
     KMS_TYPE_LOCAL,     /* Local file system KMS */
     KMS_TYPE_HSM,       /* Hardware Security Module (Tianzheng/同智伟业) */
     KMS_TYPE_CLOUD,     /* Cloud KMS */
-    KMS_TYPE_HSM_SWXA   /* HSM - SanWeiXinAn/三未信安 SWXA */
+    KMS_TYPE_HSM_SWXA,  /* HSM - SanWeiXinAn/三未信安 SWXA */
+    KMS_TYPE_UNKNOWN    /* ReqID:TECC4.0 - 未知/无法识别的 KMS 类型（用于报错，非静默降级） */
 } KmsType;
 
 #endif /* TECC_COMMON_H */

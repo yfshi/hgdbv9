@@ -86,6 +86,9 @@ RETURN
        THEN null
        WHEN $1 IN (1042, 1043) /* char, varchar */
        THEN $2 - 4
+       /* ReqID:TECC4.0 - 密态字符类型：typmod 编码与 char/varchar 相同 */
+       WHEN $1 IN (50006, 50007) /* varchar_enc, bpchar_enc */
+       THEN $2 - 4
        WHEN $1 IN (1560, 1562) /* bit, varbit */
        THEN $2
        ELSE null
@@ -98,6 +101,13 @@ CREATE FUNCTION _pg_char_octet_length(typid oid, typmod int4) RETURNS integer
     RETURNS NULL ON NULL INPUT
 RETURN
   CASE WHEN $1 IN (25, 1042, 1043) /* text, char, varchar */
+       THEN CASE WHEN $2 = -1 /* default typmod */
+                 THEN CAST(2^30 AS integer)
+                 ELSE information_schema._pg_char_max_length($1, $2) *
+                      pg_catalog.pg_encoding_max_length((SELECT encoding FROM pg_catalog.pg_database WHERE datname = pg_catalog.current_database()))
+            END
+       /* ReqID:TECC4.0 - 密态字符类型：与 char/varchar 一致 */
+       WHEN $1 IN (50006, 50007) /* varchar_enc, bpchar_enc */
        THEN CASE WHEN $2 = -1 /* default typmod */
                  THEN CAST(2^30 AS integer)
                  ELSE information_schema._pg_char_max_length($1, $2) *
@@ -123,6 +133,17 @@ RETURN
                    END
          WHEN 700 /*float4*/ THEN 24 /*FLT_MANT_DIG*/
          WHEN 701 /*float8*/ THEN 53 /*DBL_MANT_DIG*/
+         /* ReqID:TECC4.0 - 密态类型：精度与对应基础类型一致 */
+         WHEN 50000 /*int2_enc*/ THEN 16
+         WHEN 50001 /*int4_enc*/ THEN 32
+         WHEN 50002 /*int8_enc*/ THEN 64
+         WHEN 50005 /*numeric_enc*/ THEN
+              CASE WHEN $2 = -1
+                   THEN null
+                   ELSE (($2 - 4) >> 16) & 65535
+                   END
+         WHEN 50003 /*float4_enc*/ THEN 24 /*FLT_MANT_DIG*/
+         WHEN 50004 /*float8_enc*/ THEN 53 /*DBL_MANT_DIG*/
          ELSE null
   END;
 
@@ -134,6 +155,9 @@ CREATE FUNCTION _pg_numeric_precision_radix(typid oid, typmod int4) RETURNS inte
 RETURN
   CASE WHEN $1 IN (21, 23, 20, 700, 701) THEN 2
        WHEN $1 IN (1700) THEN 10
+       /* ReqID:TECC4.0 - 密态类型：进制与对应基础类型一致 */
+       WHEN $1 IN (50000, 50001, 50002, 50003, 50004) THEN 2
+       WHEN $1 IN (50005) THEN 10
        ELSE null
   END;
 
@@ -145,6 +169,13 @@ CREATE FUNCTION _pg_numeric_scale(typid oid, typmod int4) RETURNS integer
 RETURN
   CASE WHEN $1 IN (21, 23, 20) THEN 0
        WHEN $1 IN (1700) THEN
+            CASE WHEN $2 = -1
+                 THEN null
+                 ELSE ($2 - 4) & 65535
+                 END
+       /* ReqID:TECC4.0 - 密态类型：标度与对应基础类型一致 */
+       WHEN $1 IN (50000, 50001, 50002) THEN 0
+       WHEN $1 IN (50005) THEN
             CASE WHEN $2 = -1
                  THEN null
                  ELSE ($2 - 4) & 65535

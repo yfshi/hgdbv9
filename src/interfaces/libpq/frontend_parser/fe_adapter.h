@@ -200,8 +200,17 @@ typedef struct TeccColumnRefData {
     Oid column_oid;                      /* 列OID */
     Oid table_oid;                       /* 表OID */
     int location;                        /* 在SQL中的位置 */
+    /* Bug 9323 - 输出列重命名：子查询/CTE 可以用别的名字把加密列暴露给外层
+     * （SELECT name AS n、WITH cte(n) AS ...、FROM (...) s(n)），外层只能按
+     * 重命名后的名字引用该列。此处记暴露名，匹配时与 column_name 并列；
+     * 列元数据/DEK 仍按 column_name + table_name 查，二者不可互换。
+     * 位置固定在 location 之后，以保持与 TeccProcessorColumnRef 前缀布局一致。 */
+    char column_alias[NAMEDATALEN];      /* 输出列别名，未重命名时为空 */
     char dek_name[NAMEDATALEN];          /* DEK名称（来自 ENCRYPTED WITH） */
     char support_algo[NAMEDATALEN];      /* 支持的密态查询类型（来自 ENCRYPTED WITH） */
+    /* ReqID:TECC4.0 - 一列多 DEK：he-add/he-mul 各自的同态 DEK */
+    char he_add_dek_name[NAMEDATALEN];   /* he-add DEK（EC-ElGamal，来自 HE_ADD_DEK） */
+    char he_mul_dek_name[NAMEDATALEN];   /* he-mul DEK（FF ElGamal，来自 HE_MUL_DEK） */
     /* ReqID:TECC4.0 - pending_tables support */
     char original_type_name[NAMEDATALEN]; /* 原始加密列类型名（如 int4_enc），用于pending_tables */
     /* ReqID:TECC4.0 - collation locale for ICU sort key generation */

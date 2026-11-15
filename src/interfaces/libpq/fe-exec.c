@@ -6,7 +6,6 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
- *
  * IDENTIFICATION
  *	  src/interfaces/libpq/fe-exec.c
  *
@@ -1489,9 +1488,6 @@ PQsendQueryInternal(PGconn *conn, const char *query, bool newQuery)
 			goto sendFailed;
 		if (pqPutMsgStart('B', conn) < 0 ||
 			pqPuts("", conn) < 0 ||
-			pqPuts("", conn) < 0 ||
-			pqPutInt(0, 2, conn) < 0 ||
-			pqPutInt(0, 2, conn) < 0 ||
 			pqPutInt(0, 2, conn) < 0 ||
 			pqPutMsgEnd(conn) < 0)
 			goto sendFailed;
@@ -1805,6 +1801,10 @@ PQsendQueryStart(PGconn *conn, bool newQuery)
 	/* Check TECC metadata update mark if TECC is initialized */
 	/* Only check in non-pipeline mode to avoid interfering with ongoing operations */
 	if (tecc_is_initialized(conn) && conn->pipelineStatus == PQ_PIPELINE_OFF)
+	/* ReqID:TECC4.0 - 支持管道模式：check_metadata_update_mark 内部已按
+	 * pipelineStatus 选择独立连接（tecc_data_fetcher_get_connection），
+	 * 不再需要在入口处排除管道模式。 */
+	if (tecc_is_initialized(conn))
 	{
 		TeccState *state = tecc_get_state(conn);
 		if (state != NULL)
@@ -1981,6 +1981,12 @@ PQsendQueryGuts(PGconn *conn,
 
 		/* Update command pointer if we have a processed version */
 		if (tecc_processed_command)
+		/* ReqID:TECC4.0 - 仅当原始 command 非空（匿名/无名扩展查询）时才用
+		 * rewritten_query 替换：prepared 语句执行（command==NULL，走已存储的
+		 * 语句）不能重新 Parse 同名语句，否则服务端报
+		 * "prepared statement already exists"。prepared 场景参数加密经
+		 * tecc_param_values 生效，SQL 文本在 PQsendPrepare 时已定。 */
+		if (tecc_processed_command && command != NULL)
 			command = tecc_processed_command;
 
 	entry = pqAllocCmdQueueEntry(conn);
@@ -4664,7 +4670,6 @@ PQescapeInternal(PGconn *conn, const char *str, size_t len, bool as_ident)
 			if (*s == quote_char || (!as_ident && *s == '\\'))
 			{
 				*rp++ = *s;
-				*rp++ = *s;
 			}
 			else if (!IS_HIGHBIT_SET(*s))
 				*rp++ = *s;
@@ -4848,16 +4853,13 @@ PQescapeByteaInternal(PGconn *conn,
 		else if (c == '\'')
 		{
 			*rp++ = '\'';
-			*rp++ = '\'';
 		}
 		else if (c == '\\')
 		{
 			if (!std_strings)
 			{
 				*rp++ = '\\';
-				*rp++ = '\\';
 			}
-			*rp++ = '\\';
 			*rp++ = '\\';
 		}
 		else

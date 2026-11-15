@@ -1,0 +1,287 @@
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP KEK
+DO
+DROP ROLE
+CREATE ROLE
+CREATE ROLE
+CREATE ROLE
+CREATE KEK
+CREATE DEK
+CREATE DEK
+GRANT
+GRANT
+             ?column?              
+-----------------------------------
+ === 1 KEK USAGE -> CREATE DEK ===
+(1 row)
+
+SET
+RESET
+GRANT
+SET
+CREATE DEK
+RESET
+SET
+CREATE DEK
+RESET
+SET
+CREATE DEK
+RESET
+REVOKE
+SET
+RESET
+              ?column?               
+-------------------------------------
+ === 2 DEK USAGE -> CREATE TABLE ===
+(1 row)
+
+SET
+RESET
+GRANT
+SET
+CREATE TABLE
+RESET
+SET
+INSERT 0 3
+RESET
+REVOKE
+SET
+RESET
+          ?column?          
+----------------------------
+ === 3 role inheritance ===
+(1 row)
+
+GRANT
+GRANT ROLE
+SET
+CREATE DEK
+RESET
+REVOKE ROLE
+SET
+RESET
+       ?column?       
+----------------------
+ === 4 owner self ===
+(1 row)
+
+CREATE TABLE
+INSERT 0 2
+ id | c 
+----+---
+  1 | 1
+  2 | 2
+(2 rows)
+
+        ?column?        
+------------------------
+ === 5 error combos ===
+(1 row)
+
+GRANT
+SET
+RESET
+REVOKE
+SET
+RESET
+GRANT
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP KEK
+DO
+DROP ROLE
+CREATE ROLE
+CREATE ROLE
+CREATE ROLE
+CREATE KEK
+CREATE DEK
+ owner_kek 
+-----------
+ t
+(1 row)
+
+ owner_dek 
+-----------
+ t
+(1 row)
+
+ u1_init_kek 
+-------------
+ f
+(1 row)
+
+ u1_init_dek 
+-------------
+ f
+(1 row)
+
+GRANT
+GRANT
+ v1_kek 
+--------
+ t
+(1 row)
+
+ v1_dek 
+--------
+ t
+(1 row)
+
+ has_kek_privilege 
+-------------------
+ t
+(1 row)
+
+ has_dek_privilege 
+-------------------
+ t
+(1 row)
+
+ has_kek_privilege 
+-------------------
+ t
+(1 row)
+
+ has_dek_privilege 
+-------------------
+ t
+(1 row)
+
+ has_kek_privilege 
+-------------------
+ t
+(1 row)
+
+ has_dek_privilege 
+-------------------
+ t
+(1 row)
+
+SET
+ cur_kek 
+---------
+ t
+(1 row)
+
+ cur_dek 
+---------
+ t
+(1 row)
+
+RESET
+SET
+ has_kek_privilege 
+-------------------
+ t
+(1 row)
+
+ has_dek_privilege 
+-------------------
+ t
+(1 row)
+
+RESET
+GRANT
+GRANT
+SET
+GRANT
+GRANT
+RESET
+ u3_after_grant 
+----------------
+ t
+(1 row)
+
+ u3_after_grant 
+----------------
+ t
+(1 row)
+
+REVOKE
+REVOKE
+ u1_after_revoke 
+-----------------
+ f
+(1 row)
+
+ u1_after_revoke 
+-----------------
+ f
+(1 row)
+
+ null_key 
+----------
+ 
+(1 row)
+
+ null_dek 
+----------
+ 
+(1 row)
+
+ null_priv 
+-----------
+ 
+(1 row)
+
+ null_priv 
+-----------
+ 
+(1 row)
+
+ invalid_oid 
+-------------
+ 
+(1 row)
+
+ invalid_oid 
+-------------
+ 
+(1 row)
+
+DROP DEK
+DROP KEK
+DROP ROLE
+DROP ROLE
+DROP ROLE
+psql:/.../he_acl.sql:10: NOTICE:  table "he_acl_owner" does not exist, skipping
+psql:/.../he_acl.sql:11: NOTICE:  table "he_acl_u1" does not exist, skipping
+psql:/.../he_acl.sql:12: NOTICE:  table "he_acl_u1b" does not exist, skipping
+psql:/.../he_acl.sql:13: NOTICE:  table "he_acl_u1c" does not exist, skipping
+psql:/.../he_acl.sql:14: NOTICE:  key encryption key "kek_acl" does not exist, skipping
+psql:/.../he_acl.sql:21: NOTICE:  role "u1" does not exist, skipping
+psql:/.../he_acl.sql:21: NOTICE:  role "u2" does not exist, skipping
+psql:/.../he_acl.sql:21: NOTICE:  role "r1" does not exist, skipping
+psql:/.../he_acl.sql:52: ERROR:  permission denied for key encryption key kek_acl
+psql:/.../he_acl.sql:74: ERROR:  permission denied for key encryption key kek_acl
+psql:/.../he_acl.sql:87: ERROR:  permission denied for DEK "dek_acl_add"
+DETAIL:  You do not have USAGE privilege on DEK "dek_acl_add".
+HINT:  Grant USAGE on the DEK to proceed.
+psql:/.../he_acl.sql:110: ERROR:  permission denied for DEK "dek_acl_add"
+DETAIL:  You do not have USAGE privilege on DEK "dek_acl_add".
+HINT:  Grant USAGE on the DEK to proceed.
+psql:/.../he_acl.sql:128: ERROR:  permission denied for key encryption key kek_acl
+psql:/.../he_acl.sql:154: ERROR:  permission denied for DEK "dek_acl_add"
+DETAIL:  You do not have USAGE privilege on DEK "dek_acl_add".
+HINT:  Grant USAGE on the DEK to proceed.
+psql:/.../he_acl.sql:160: ERROR:  permission denied for schema public
+psql:/.../he_acl.sql:169: NOTICE:  table "he_acl_u1b" does not exist, skipping
+psql:/.../he_acl.sql:170: NOTICE:  table "he_acl_u1c" does not exist, skipping
+psql:/.../he_acl.sql:171: NOTICE:  drop cascades to 6 other objects
+DETAIL:  drop cascades to data encryption key dek_acl_add
+drop cascades to data encryption key dek_acl_mul
+drop cascades to data encryption key dek_u1_add
+drop cascades to data encryption key dek_u1_mul
+drop cascades to data encryption key dek_u1_sym
+drop cascades to data encryption key dek_u2_add
+psql:/.../he_acl.sql:263: ERROR:  unrecognized privilege type: "INVALID"
+psql:/.../he_acl.sql:264: ERROR:  unrecognized privilege type: "INVALID"
+psql:/.../he_acl.sql:267: ERROR:  dependent privileges exist
+HINT:  Use CASCADE to revoke them too.
+psql:/.../he_acl.sql:268: ERROR:  dependent privileges exist
+HINT:  Use CASCADE to revoke them too.

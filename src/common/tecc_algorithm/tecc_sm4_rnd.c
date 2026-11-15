@@ -280,20 +280,20 @@ tecc_sm4_rnd_derive_keys(const unsigned char *master_key, size_t key_len,
     if (!master_key || key_len == 0 || !enc_key || !auth_key)
         return SM4_RND_ERROR_INVALID_PARAM;
 
-    /* Use fixed salt (in real application should use random salt) */
+    /* Fixed salt for HKDF-SM3 key derivation (same MEK always derives same enc/auth keys) */
     memset(salt, 0, 32);
-    memcpy(salt, "TECC-SM4-RND-SALT-20260406", 27);  /* 27 characters including null */
+    memcpy(salt, "TECC-SM4-RND-SALT-20260406", sizeof("TECC-SM4-RND-SALT-20260406") - 1);
 
     /* Derive encryption key using HKDF-SM3 */
     memset(info, 0, 32);
-    memcpy(info, "TECC-SM4-ENC-KEY", 16);  /* 16 characters including null */
+    memcpy(info, "TECC-SM4-ENC-KEY", sizeof("TECC-SM4-ENC-KEY") - 1);
     result = hkdf_sm3_derive(salt, 32, master_key, key_len, info, 32, enc_key, 16);
     if (result != 0)
         return SM4_RND_ERROR_KEY_DERIVATION;
 
     /* Derive authentication key */
     memset(info, 0, 32);
-    memcpy(info, "TECC-SM4-AUTH-KEY", 17);  /* 17 characters including null */
+    memcpy(info, "TECC-SM4-AUTH-KEY", sizeof("TECC-SM4-AUTH-KEY") - 1);
     result = hkdf_sm3_derive(salt, 32, master_key, key_len, info, 32, auth_key, 32);
     if (result != 0)
     {
@@ -323,30 +323,6 @@ tecc_sm4_rnd_validate_format(const unsigned char *ciphertext, size_t cipher_len)
     }
 
     return SM4_RND_SUCCESS;
-}
-
-/*
- * Get SM4-RND output format size
- */
-size_t
-tecc_sm4_rnd_get_format_size(size_t plain_len)
-{
-    /* Calculate padded ciphertext size (PKCS#7 padding to 16-byte multiple) */
-    /* According to PKCS#7 standard, if data length is multiple of block size,
-     * we need to add a full block of padding */
-    size_t padded_len;
-
-    if (plain_len % TECC_SM4_BLOCK_SIZE == 0) {
-        /* Data length is multiple of block size, add full block */
-        padded_len = plain_len + TECC_SM4_BLOCK_SIZE;
-    } else {
-        /* Normal padding calculation */
-        padded_len = ((plain_len + TECC_SM4_BLOCK_SIZE - 1) / TECC_SM4_BLOCK_SIZE) *
-                    TECC_SM4_BLOCK_SIZE;
-    }
-
-    /* Total size = header size + padded ciphertext size */
-    return SM4_RND_HEADER_SIZE + padded_len;
 }
 
 /*

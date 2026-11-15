@@ -1,0 +1,50 @@
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE KEK
+CREATE DEK
+                         stage                         
+-------------------------------------------------------
+ === 1 PREPARE + CTAS AS EXECUTE（混合 det,he-add）===
+(1 row)
+
+PREPARE
+SELECT 1
+INSERT 0 1
+ n | s  
+---+----
+ 2 | 12
+(1 row)
+
+                        stage                        
+-----------------------------------------------------
+ === 2 PREPARE + CTAS AS EXECUTE（纯同态 he-add）===
+(1 row)
+
+PREPARE
+SELECT 1
+INSERT 0 1
+ n | s  
+---+----
+ 2 | 12
+(1 row)
+
+DEALLOCATE
+DEALLOCATE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+psql:/.../he_new_column_paths_execute.sql:17: NOTICE:  table "hencp_pe_mixed" does not exist, skipping
+psql:/.../he_new_column_paths_execute.sql:18: NOTICE:  table "hencp_pe_mixed_pure" does not exist, skipping
+psql:/.../he_new_column_paths_execute.sql:19: NOTICE:  data encryption key "hencp_dek_add" does not exist, skipping
+psql:/.../he_new_column_paths_execute.sql:20: NOTICE:  data encryption key "hencp_dek_sym" does not exist, skipping
+psql:/.../he_new_column_paths_execute.sql:21: NOTICE:  key encryption key "hencp_kek_asym" does not exist, skipping
+psql:/.../he_new_column_paths_execute.sql:22: NOTICE:  key encryption key "hencp_kek_sym" does not exist, skipping

@@ -1,0 +1,24 @@
+NOTICE: table "swxa_he_cross_t" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "swxa_he_cross_add" does not exist, skipping
+DROP DEK
+NOTICE: data encryption key "swxa_he_cross_mul" does not exist, skipping
+DROP DEK
+NOTICE: data encryption key "swxa_he_cross_sym" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "swxa_he_cross_kek" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+=== 008 SWXA-HE CROSS: 写入侧解密 ===
+1|10|3|2|1000
+2|100|7|5|2000
+3|0|0|0|0
+4|-5|-2|-3|-100

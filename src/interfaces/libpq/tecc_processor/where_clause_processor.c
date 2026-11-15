@@ -55,8 +55,6 @@ static TeccWhereClauseProcessorResult where_process_expr(Node *expr,
                                                         TeccStatementData *statement_data);
 static TeccWhereClauseProcessorResult where_process_a_expr(struct A_Expr *expr,
                                                           TeccStatementData *statement_data);
-static TeccWhereClauseProcessorResult where_process_sublink(struct SubLink *sublink,
-                                                            TeccStatementData *statement_data);
 static TeccWhereClauseProcessorResult where_process_subquery_target_consts(
     Node *subquery, Node *testexpr, const char *operator_name,
     TeccStatementData *statement_data);
@@ -65,8 +63,6 @@ static const char *where_get_column_kek_name(TeccStatementData *statement_data,
                                              const char *schema_name,
                                              const char *table_name,
                                              const char *column_name);
-static TeccWhereClauseProcessorResult where_process_bool_expr(struct BoolExpr *expr,
-                                                             TeccStatementData *statement_data);
 static TeccWhereClauseProcessorResult where_process_column_ref(struct ColumnRef *col_ref,
                                                               TeccStatementData *statement_data);
 static bool where_is_encrypted_column(const char *column_name,
@@ -76,6 +72,14 @@ static bool where_is_encrypted_column_full(const char *table_name,
                                           TeccStatementData *statement_data);
 static const TeccOperatorSupport *where_get_operator_support(const char *operator_name);
 static char *where_extract_const_value(Const *const_expr, TeccStatementData *statement_data);
+/* ReqID:TECC4.0 - Resolve DEK name of the encrypted column referenced by expr */
+static char *where_get_column_dek_from_expr(Node *expr, TeccStatementData *statement_data);
+/* ReqID:TECC4.0 - Reject IN/ANY/ALL subquery comparisons across different DEKs */
+static TeccWhereClauseProcessorResult where_check_sublink_dek(struct SubLink *sl,
+                                                             Node *outer_expr,
+                                                             TeccStatementData *statement_data);
+/* ReqID:TECC4.0 - Load subquery FROM-table encrypted columns for DEK resolution */
+static void where_load_sublink_tables(struct SubLink *sl, TeccStatementData *statement_data);
 /* ReqID:TECC4.0 - Extract constant info from Const or A_Expr(UMINUS,Const) */
 static bool where_extract_const_info(Node *node, const char *query,
                                      size_t *loc, size_t *dsize,
@@ -127,8 +131,218 @@ static const TeccOperatorSupport operator_support_table[] = {
     {"IS NULL", false, false, false, false, NULL},
     {"IS NOT NULL", false, false, false, false, NULL},
 
+    /* ReqID:TECC4.0 - Homomorphic encryption operators (server-side only) */
+    {"+", false, false, false, false, "HE"},
+    {"-", false, false, false, false, "HE"},
+    {"*", false, false, false, false, "HE"},
+    /* ReqID:TECC4.0 - Homomorphic power (^) is a HE operator like * :
+     * exponent is a plain constant, server-side repeated FF multiplication. */
+    {"^", false, false, false, false, "HE"},
+
     {NULL, false, false, false, false, NULL}
 };
+
+/*
+ * where_get_column_dek_from_expr
+ *      Resolve the DEK name of the encrypted column referenced by expr
+ *      (ColumnRef, possibly wrapped in CollateClause).  Returns NULL when
+ *      the column is not encrypted or cannot be resolved.
+ */
+static char *
+where_get_column_dek_from_expr(Node *expr, TeccStatementData *statement_data)
+{
+    char *column_name = NULL;
+    char *table_name = NULL;
+    const char *schema_name = "public";
+    Node *col_ref_node = expr;
+    TeccProcessorColumnRef *found_ed = NULL;
+    char *dek_name = NULL;
+
+    if (nodeTag(col_ref_node) == FE_T_CollateClause)
+        col_ref_node = ((CollateClause *) col_ref_node)->arg;
+
+    if (nodeTag(col_ref_node) != FE_T_ColumnRef)
+        return NULL;
+
+    {
+        struct ColumnRef *col_ref = (struct ColumnRef *) col_ref_node;
+        int num_fields;
+
+        if (col_ref->fields == NIL)
+            return NULL;
+        column_name = strVal((Value *) llast(col_ref->fields));
+        if (column_name == NULL)
+            return NULL;
+        num_fields = list_length(col_ref->fields);
+        if (num_fields >= 2)
+            table_name = strVal((Value *) list_nth(col_ref->fields, num_fields - 2));
+        if (num_fields >= 3)
+            schema_name = strVal((Value *) linitial(col_ref->fields));
+    }
+
+    /* Resolve real table name from statement encrypted_columns (alias-aware) */
+    if (statement_data->encrypted_columns != NIL)
+    {
+        ListCell *lc;
+        int match_cnt = 0;
+
+        foreach(lc, statement_data->encrypted_columns)
+        {
+            TeccProcessorColumnRef *ed = (TeccProcessorColumnRef *) lfirst(lc);
+
+            if (ed == NULL || ed->column_name[0] == '\0')
+                continue;
+            if (strcmp(ed->column_name, column_name) != 0)
+                continue;
+            if (table_name != NULL)
+            {
+                if (strcmp(ed->table_alias, table_name) == 0 ||
+                    strcmp(ed->table_name, table_name) == 0)
+                {
+                    found_ed = ed;
+                    match_cnt = 1;
+                    break;
+                }
+            }
+            else
+            {
+                found_ed = ed;
+                match_cnt++;
+            }
+        }
+        if (found_ed != NULL && match_cnt == 1)
+        {
+            table_name = found_ed->table_name;
+            schema_name = found_ed->schema_name[0] != '\0' ? found_ed->schema_name : schema_name;
+        }
+    }
+
+    if (table_name == NULL)
+        return NULL;
+
+    dek_name = tecc_get_column_dek_name(statement_data, schema_name, table_name, column_name);
+    return dek_name;
+}
+
+/*
+ * where_load_sublink_tables
+ *      Load encrypted columns of tables referenced in the subquery's FROM
+ *      clause into statement_data->encrypted_columns, so that DEK resolution
+ *      (where_get_column_dek_from_expr) works for subquery target columns
+ *      (e.g. v IN (SELECT e.v FROM t_e e)) and correlated comparisons inside
+ *      the subquery (e.g. EXISTS ... WHERE e.v = a.v).
+ */
+static void
+where_load_sublink_tables(struct SubLink *sl, TeccStatementData *statement_data)
+{
+    struct SelectStmt *ss;
+    ListCell *lc;
+
+    if (sl == NULL || sl->subselect == NULL ||
+        nodeTag(sl->subselect) != FE_T_SelectStmt)
+        return;
+
+    ss = (struct SelectStmt *) sl->subselect;
+    foreach(lc, ss->fromClause)
+    {
+        Node *from_item = (Node *) lfirst(lc);
+        TeccColumnCacheItem **table_cols = NULL;
+        int table_col_count = 0;
+        int ci;
+        TeccState *state;
+        const char *db_name;
+        RangeVar *rv;
+
+        if (nodeTag(from_item) != FE_T_RangeVar)
+            continue;
+        rv = (RangeVar *) from_item;
+        if (rv->relname == NULL)
+            continue;
+
+        state = statement_data->conn ? tecc_get_state(statement_data->conn) : NULL;
+        if (state == NULL)
+            continue;
+        db_name = statement_data->conn ? PQdb(statement_data->conn) : "postgres";
+        table_cols = tecc_cache_get_columns_by_table_name(state, db_name,
+                    rv->schemaname ? rv->schemaname : "public", rv->relname,
+                    &table_col_count);
+        if (table_cols == NULL || table_col_count <= 0)
+            continue;
+        for (ci = 0; ci < table_col_count; ci++)
+        {
+            TeccProcessorColumnRef *cd;
+
+            if (table_cols[ci] == NULL)
+                continue;
+            cd = (TeccProcessorColumnRef *)tecc_column_ref_data_create();
+            if (cd == NULL)
+                continue;
+            tecc_column_ref_data_init((TeccColumnRefData *)cd, NULL,
+                                      rv->schemaname,
+                                      rv->relname,
+                                      table_cols[ci]->column_name);
+            if (rv->alias != NULL && rv->alias->aliasname != NULL)
+                tecc_column_ref_data_set_alias((TeccColumnRefData *)cd, rv->alias->aliasname);
+            cd->is_encrypted = true;
+            statement_data->encrypted_columns = lappend(
+                statement_data->encrypted_columns, cd);
+        }
+        pg_free(table_cols);
+    }
+}
+
+/*
+ * where_check_sublink_dek
+ *      Reject IN/ANY/ALL subquery comparisons where the subquery target
+ *      column is encrypted with a different DEK than the outer column
+ *      (otherwise the comparison would silently return wrong results).
+ */
+static TeccWhereClauseProcessorResult
+where_check_sublink_dek(struct SubLink *sl, Node *outer_expr,
+                        TeccStatementData *statement_data)
+{
+    char *outer_dek = NULL;
+    struct SelectStmt *ss;
+    ListCell *tlc;
+
+    if (sl == NULL || sl->subselect == NULL ||
+        nodeTag(sl->subselect) != FE_T_SelectStmt)
+        return TECC_WHERE_PROCESSOR_SUCCESS;
+
+    outer_dek = where_get_column_dek_from_expr(outer_expr, statement_data);
+    if (outer_dek == NULL)
+        return TECC_WHERE_PROCESSOR_SUCCESS;
+
+    ss = (struct SelectStmt *) sl->subselect;
+    foreach(tlc, ss->targetList)
+    {
+        ResTarget *rt = (ResTarget *) lfirst(tlc);
+        char *inner_dek;
+
+        if (rt == NULL || rt->val == NULL || nodeTag(rt->val) != FE_T_ColumnRef)
+            continue;
+        inner_dek = where_get_column_dek_from_expr(rt->val, statement_data);
+        if (inner_dek != NULL && strcmp(outer_dek, inner_dek) != 0)
+        {
+            tecc_processor_debug(TECC_LOG_ERROR,
+                               "Cannot compare encrypted columns with different DEKs: %s vs %s",
+                               outer_dek, inner_dek);
+            tecc_processor_set_error(statement_data, TECC_PROCESSOR_ERROR,
+                                   "cannot compare encrypted columns with different DEKs: \"%s\" and \"%s\"",
+                                   outer_dek, inner_dek);
+            if (outer_dek)
+                pg_free(outer_dek);
+            if (inner_dek)
+                pg_free(inner_dek);
+            return TECC_WHERE_PROCESSOR_DEK_MISMATCH;
+        }
+        if (inner_dek)
+            pg_free(inner_dek);
+    }
+    if (outer_dek)
+        pg_free(outer_dek);
+    return TECC_WHERE_PROCESSOR_SUCCESS;
+}
 
 /*
  * Main WHERE clause processing entry point
@@ -641,6 +855,65 @@ tecc_where_clause_processor_process_comparison(Node *left_expr,
     /* Check operator compatibility with encrypted columns */
     if (left_is_encrypted || right_is_encrypted)
     {
+        /* ReqID:TECC4.0 - Both sides are encrypted columns: reject comparing
+         * columns encrypted with different DEKs (otherwise the comparison
+         * would silently return wrong results, e.g. an equality JOIN on
+         * different DEKs returning no rows). */
+        if (left_is_encrypted && right_is_encrypted)
+        {
+            char *left_dek;
+            char *right_dek;
+            /* ReqID:TECC4.0 - LIKE/NOT LIKE/ILIKE between two encrypted
+             * columns is not supported: the frontend encrypts LIKE patterns
+             * differently from plain data columns, so a ciphertext column
+             * cannot serve as a LIKE pattern. Reject explicitly instead of
+             * silently comparing SEARCH segments. */
+            if (strcmp(operator_name, "LIKE") == 0 ||
+                strcmp(operator_name, "NOT LIKE") == 0 ||
+                strcmp(operator_name, "ILIKE") == 0 ||
+                strcmp(operator_name, "NOT ILIKE") == 0)
+            {
+                tecc_processor_set_error(statement_data, TECC_PROCESSOR_ERROR,
+                                       "LIKE/NOT LIKE between two encrypted columns is not supported. "
+                                       "The LIKE pattern must be a plain string constant.");
+                return TECC_WHERE_PROCESSOR_LIKE_COLUMN;
+            }
+
+            /* ReqID:TECC4.0 - A15: HE arithmetic operators (*, +, -, ^) skip
+             * frontend cross-DEK check.  Server-side HE operators validate
+             * ciphertext slot compatibility (EG_ADD/EG_MUL) and report
+             * precise "algorithm not supported" errors.  Frontend DEK check
+             * only applies to comparison operators (=, <, >, etc.) where
+             * cross-DEK would silently return wrong results. */
+            if (strcmp(operator_name, "*") != 0 &&
+                strcmp(operator_name, "+") != 0 &&
+                strcmp(operator_name, "-") != 0 &&
+                strcmp(operator_name, "^") != 0)
+            {
+                left_dek = where_get_column_dek_from_expr(left_expr, statement_data);
+                right_dek = where_get_column_dek_from_expr(right_expr, statement_data);
+
+                if (left_dek != NULL && right_dek != NULL && strcmp(left_dek, right_dek) != 0)
+                {
+                    tecc_processor_debug(TECC_LOG_ERROR,
+                                       "Cannot compare encrypted columns with different DEKs: %s vs %s",
+                                       left_dek, right_dek);
+                    tecc_processor_set_error(statement_data, TECC_PROCESSOR_ERROR,
+                                           "cannot compare encrypted columns with different DEKs: \"%s\" and \"%s\"",
+                                           left_dek, right_dek);
+                    if (left_dek)
+                        pg_free(left_dek);
+                    if (right_dek)
+                        pg_free(right_dek);
+                    return TECC_WHERE_PROCESSOR_DEK_MISMATCH;
+                }
+                if (left_dek)
+                    pg_free(left_dek);
+                if (right_dek)
+                    pg_free(right_dek);
+            }
+        }
+
         result = tecc_where_clause_processor_check_operator(operator_name,
                                                            left_is_encrypted ? "text_enc" : NULL,
                                                            right_is_encrypted ? "text_enc" : NULL,
@@ -660,9 +933,22 @@ tecc_where_clause_processor_process_comparison(Node *left_expr,
         
 
         /* Begin - ReqID:TECC4.0 - 算法兼容性检查 */
-        /* Check if the encrypted column's algorithm supports this operator */
-        if ((left_is_encrypted && nodeTag(right_expr) == FE_T_Const) ||
-            (right_is_encrypted && nodeTag(left_expr) == FE_T_Const))
+        /* Check if the encrypted column's algorithm supports this operator.
+         * ReqID:TECC4.0 - P2-4: also enter for UMINUS+Const (negative
+         * constants like -5 are parsed as A_Expr(UMINUS, Const)), so the
+         * HE scalar-operator skip below covers `a + (-5)` as well. */
+        if ((left_is_encrypted &&
+             (nodeTag(right_expr) == FE_T_Const ||
+              (nodeTag(right_expr) == FE_T_A_Expr &&
+               ((A_Expr *) right_expr)->kind == AEXPR_OP &&
+               (((A_Expr *) right_expr)->lexpr == NULL ||
+                ((A_Expr *) right_expr)->rexpr == NULL)))) ||
+            (right_is_encrypted &&
+             (nodeTag(left_expr) == FE_T_Const ||
+              (nodeTag(left_expr) == FE_T_A_Expr &&
+               ((A_Expr *) left_expr)->kind == AEXPR_OP &&
+               (((A_Expr *) left_expr)->lexpr == NULL ||
+                ((A_Expr *) left_expr)->rexpr == NULL)))))
         {
             /* Get the column name that is encrypted */
             const char *check_col_name = left_is_encrypted ? left_column : right_column;
@@ -745,15 +1031,18 @@ tecc_where_clause_processor_process_comparison(Node *left_expr,
             if (check_col_name != NULL && statement_data->encrypted_columns != NIL)
             {
                 ListCell *lc;
-                TeccProcessorColumnRef *found_ed = NULL;
+                TeccColumnRefData *found_ed = NULL;
                 int ed_match_count = 0;
 
                 foreach(lc, statement_data->encrypted_columns)
                 {
-                    TeccProcessorColumnRef *ed = (TeccProcessorColumnRef *) lfirst(lc);
+                    TeccColumnRefData *ed = (TeccColumnRefData *) lfirst(lc);
                     if (ed == NULL || ed->column_name[0] == '\0')
                         continue;
-                    if (strcmp(ed->column_name, check_col_name) != 0)
+                    /* Bug 9323 - 重命名后的输出列按 column_alias 匹配 */
+                    if (strcmp(ed->column_name, check_col_name) != 0 &&
+                        (ed->column_alias[0] == '\0' ||
+                         strcmp(ed->column_alias, check_col_name) != 0))
                         continue;
 
                     if (check_table_name != NULL)
@@ -777,6 +1066,8 @@ tecc_where_clause_processor_process_comparison(Node *left_expr,
                 if (found_ed != NULL && ed_match_count == 1)
                 {
                     check_table_name = found_ed->table_name;
+                    /* Bug 9323 - 命中可能来自 column_alias，回填底层列名 */
+                    check_col_name = found_ed->column_name;
                     check_schema_name = "public";
                 }
                 else if (ed_match_count > 1)
@@ -824,6 +1115,83 @@ tecc_where_clause_processor_process_comparison(Node *left_expr,
                 {
                     return result;
                 }
+
+                /* ReqID:TECC4.0 - HE 标量运算常量客户端加密：
+                 * + / - 需要 he-add（EC-ElGamal）列，* 需要 he-mul（FF ElGamal）
+                 * 列；常量在前端用列的公钥同态加密成密文，改写为
+                 * `enc + 'hex'::intN_enc` 发往后端做全密文同态运算，
+                 * 常量明文不再出现在网络报文与服务端（he_add_generic /
+                 * he_sub_generic / he_mul_generic 处理密文×密文）。
+                 *
+                 * 例外（保持透传，服务端按现状处理）：
+                 *   - 列仅 he-add 时的 *：EC-ElGamal 标量乘在数学上必须知道
+                 *     明文 k（E(a)×k 无法由 E(k) 计算），保持服务端明文标量乘；
+                 *   - ^ 幂运算的指数：服务端重复乘法的循环次数，必须为明文；
+                 *   - 常量类型非整数（int2/int4/int8）：不支持 HE 常量加密，
+                 *     保持透传（与现状行为一致）。 */
+                if (strcmp(operator_name, "+") == 0 ||
+                    strcmp(operator_name, "-") == 0 ||
+                    strcmp(operator_name, "*") == 0 ||
+                    strcmp(operator_name, "^") == 0)
+                {
+                    bool he_add_col = (col_item->encryption_type & 0x08) != 0;
+                    bool he_mul_col = (col_item->encryption_type & 0x10) != 0;
+                    bool skip_he_encrypt = false;
+
+                    if (strcmp(operator_name, "+") == 0 ||
+                        strcmp(operator_name, "-") == 0)
+                    {
+                        /* he-add 列：前端 EC-ElGamal 加密常量（EG_ADD 段）。
+                         * 列无 he-add 时透传（服务端报错，与现状一致）。 */
+                        if (!he_add_col)
+                            skip_he_encrypt = true;
+                    }
+                    else if (strcmp(operator_name, "*") == 0)
+                    {
+                        /* he-mul 列：前端 FF ElGamal 加密常量（EG_MUL 段）。
+                         * 仅 he-add 列（EC 标量乘需明文 k）透传。 */
+                        if (!he_mul_col)
+                            skip_he_encrypt = true;
+                    }
+                    else
+                    {
+                        /* ^ 幂运算：指数保持明文（服务端循环次数） */
+                        skip_he_encrypt = true;
+                    }
+
+                    if (!skip_he_encrypt)
+                    {
+                        /* 常量类型必须是整数，否则透传（与现状一致） */
+                        Node *he_const_node = (left_is_encrypted) ? right_expr : left_expr;
+                        Oid he_const_type = InvalidOid;
+
+                        if (nodeTag(he_const_node) == FE_T_Const)
+                        {
+                            he_const_type = ((Const *)he_const_node)->consttype;
+                        }
+                        else if (nodeTag(he_const_node) == FE_T_A_Expr)
+                        {
+                            /* UMINUS+Const：取内部 Const 类型 */
+                            A_Expr *he_ae = (A_Expr *)he_const_node;
+                            Node *he_inner = he_ae->rexpr ? he_ae->rexpr : he_ae->lexpr;
+                            if (he_inner != NULL && nodeTag(he_inner) == FE_T_Const)
+                                he_const_type = ((Const *)he_inner)->consttype;
+                        }
+                        if (he_const_type != INT2OID &&
+                            he_const_type != INT4OID &&
+                            he_const_type != INT8OID)
+                        {
+                            skip_he_encrypt = true;
+                        }
+                    }
+
+                    if (skip_he_encrypt)
+                    {
+                        /* 透传：服务端处理明文常量（兼容路径） */
+                        return TECC_WHERE_PROCESSOR_SUCCESS;
+                    }
+                    /* 否则继续走常量加密流程（HE 常量加密分支见下方调度器调用） */
+                }
             }
             else
             {
@@ -841,12 +1209,20 @@ tecc_where_clause_processor_process_comparison(Node *left_expr,
     if (left_is_encrypted && nodeTag(right_expr) == FE_T_SubLink)
     {
         struct SubLink *sl = (struct SubLink *) right_expr;
+        /* ReqID:TECC4.0 - Reject cross-DEK subquery comparisons (e.g. = ANY) */
+        result = where_check_sublink_dek(sl, left_expr, statement_data);
+        if (result != TECC_WHERE_PROCESSOR_SUCCESS)
+            return result;
         where_process_subquery_target_consts(sl->subselect, left_expr,
                                              operator_name, statement_data);
     }
     else if (right_is_encrypted && nodeTag(left_expr) == FE_T_SubLink)
     {
         struct SubLink *sl = (struct SubLink *) left_expr;
+        /* ReqID:TECC4.0 - Reject cross-DEK subquery comparisons (e.g. = ANY) */
+        result = where_check_sublink_dek(sl, right_expr, statement_data);
+        if (result != TECC_WHERE_PROCESSOR_SUCCESS)
+            return result;
         where_process_subquery_target_consts(sl->subselect, right_expr,
                                              operator_name, statement_data);
     }
@@ -961,15 +1337,20 @@ tecc_where_clause_processor_process_comparison(Node *left_expr,
                         if (statement_data->encrypted_columns != NIL)
                         {
                             ListCell *lc;
-                            TeccProcessorColumnRef *found_ed = NULL;
+                            TeccColumnRefData *found_ed = NULL;
                             int match_cnt = 0;
 
                             foreach(lc, statement_data->encrypted_columns)
                             {
-                                TeccProcessorColumnRef *ed = (TeccProcessorColumnRef *) lfirst(lc);
+                                TeccColumnRefData *ed = (TeccColumnRefData *) lfirst(lc);
                                 if (ed == NULL || ed->column_name[0] == '\0')
                                     continue;
-                                if (strcmp(ed->column_name, column_name) != 0)
+                                /* Bug 9323 - 子查询/CTE 重命名后的输出列只以别名
+                                 * 对外可见，column_name 与 column_alias 任一匹配
+                                 * 即算命中。 */
+                                if (strcmp(ed->column_name, column_name) != 0 &&
+                                    (ed->column_alias[0] == '\0' ||
+                                     strcmp(ed->column_alias, column_name) != 0))
                                     continue;
 
                                 if (table_name != NULL)
@@ -997,6 +1378,10 @@ tecc_where_clause_processor_process_comparison(Node *left_expr,
                                                    found_ed->column_name, found_ed->table_name);
                                 table_name = found_ed->table_name;
                                 schema_name = found_ed->schema_name[0] != '\0' ? found_ed->schema_name : schema_name;
+                                /* Bug 9323 - 命中可能是重命名后的输出列
+                                 * （column_alias），后续取 DEK/KEK 必须按底层
+                                 * 列名查缓存，故这里回填 column_name。 */
+                                column_name = found_ed->column_name;
                                 tecc_processor_debug(TECC_LOG_DEBUG1,
                                                    "Resolved table name from statement encrypted_columns: %s.%s",
                                                    schema_name ? schema_name : "public", table_name);
@@ -1014,6 +1399,7 @@ tecc_where_clause_processor_process_comparison(Node *left_expr,
                                     /* Backward compatible: use first match */
                                     table_name = found_ed->table_name;
                                     schema_name = found_ed->schema_name[0] != '\0' ? found_ed->schema_name : schema_name;
+                                    column_name = found_ed->column_name;
                                 }
                             }
                         }
@@ -1039,9 +1425,15 @@ tecc_where_clause_processor_process_comparison(Node *left_expr,
                         }
                         else
                         {
-                            tecc_processor_debug(TECC_LOG_ERROR,
-                                               "Failed to get DEK name from cache, skipping WHERE encryption for this column");
-                            /* Leave kek_name/dek_name as NULL */
+                            /* ReqID:TECC4.0 - Column not encrypted: skip encryption
+                             * and return success (query proceeds unmodified).
+                             * This handles non-encrypted columns in WHERE clauses
+                             * without failing the entire query. */
+                            tecc_processor_debug(TECC_LOG_DEBUG1,
+                                               "Column %s.%s not encrypted, skipping WHERE encryption",
+                                               table_name ? table_name : "unknown",
+                                               column_name ? column_name : "unknown");
+                            return TECC_WHERE_PROCESSOR_SUCCESS;
                         }
                     }
                 }
@@ -1115,8 +1507,11 @@ tecc_where_clause_processor_process_comparison(Node *left_expr,
                         const char *db = PQdb(statement_data->conn);
                         if (s != NULL && db != NULL && table_name != NULL)
                         {
-                            const char *schema = tecc_cache_get_guc_param(
-                                s, "current_schema");
+                            /* 优先用已解析的 schema_name（限定表名如 sch1.tb1），
+                             * 未限定才回退 current_schema */
+                            const char *schema = schema_name;
+                            if (schema == NULL || schema[0] == '\0')
+                                schema = tecc_cache_get_guc_param(s, "current_schema");
                             if (schema != NULL)
                             {
                                 TeccColumnCacheItem *enc_cache =
@@ -1140,10 +1535,13 @@ tecc_where_clause_processor_process_comparison(Node *left_expr,
                 }
                 if (!found_in_fc || dek_name == NULL)
                 {
-                    tecc_processor_debug(TECC_LOG_ERROR,
-                                       "FuncCall: failed to resolve DEK name, skipping");
-                    dek_name = NULL;
-                    kek_name = NULL;
+                    /* ReqID:TECC4.0 - Column not encrypted or not found:
+                     * skip encryption and return success (query proceeds unmodified) */
+                    tecc_processor_debug(TECC_LOG_DEBUG1,
+                                       "FuncCall: column %s.%s not encrypted, skipping WHERE encryption",
+                                       table_name ? table_name : "unknown",
+                                       column_name ? column_name : "unknown");
+                    return TECC_WHERE_PROCESSOR_SUCCESS;
                 }
             }
             else if (nodeTag(col_ref_node) == FE_T_CaseExpr)
@@ -1238,10 +1636,13 @@ tecc_where_clause_processor_process_comparison(Node *left_expr,
                 }
                 if (dek_name == NULL)
                 {
-                    tecc_processor_debug(TECC_LOG_ERROR,
-                                       "CaseExpr: failed to resolve DEK name, skipping");
-                    dek_name = NULL;
-                    kek_name = NULL;
+                    /* ReqID:TECC4.0 - Column not encrypted or not found:
+                     * skip encryption and return success (query proceeds unmodified) */
+                    tecc_processor_debug(TECC_LOG_DEBUG1,
+                                       "CaseExpr: column %s.%s not encrypted, skipping WHERE encryption",
+                                       table_name ? table_name : "unknown",
+                                       column_name ? column_name : "unknown");
+                    return TECC_WHERE_PROCESSOR_SUCCESS;
                 }
             }
             /* ReqID:TECC4.0 - CollateClause wraps a column ref */
@@ -1335,18 +1736,22 @@ tecc_where_clause_processor_process_comparison(Node *left_expr,
                 }
                 if (dek_name == NULL)
                 {
-                    tecc_processor_debug(TECC_LOG_ERROR,
-                                       "CollateClause: failed to resolve DEK name, skipping");
-                    dek_name = NULL;
-                    kek_name = NULL;
+                    /* ReqID:TECC4.0 - Column not encrypted or not found:
+                     * skip encryption and return success (query proceeds unmodified) */
+                    tecc_processor_debug(TECC_LOG_DEBUG1,
+                                       "CollateClause: column %s.%s not encrypted, skipping WHERE encryption",
+                                       table_name ? table_name : "unknown",
+                                       column_name ? column_name : "unknown");
+                    return TECC_WHERE_PROCESSOR_SUCCESS;
                 }
             }
             else
             {
-                tecc_processor_debug(TECC_LOG_ERROR,
+                /* ReqID:TECC4.0 - Unknown node type: skip encryption and return
+                 * success (query proceeds unmodified) */
+                tecc_processor_debug(TECC_LOG_DEBUG1,
                                    "ColumnRef/FuncCall node not available, skipping WHERE encryption");
-                dek_name = NULL;
-                kek_name = NULL;
+                return TECC_WHERE_PROCESSOR_SUCCESS;
             }
             }
 
@@ -1365,8 +1770,36 @@ tecc_where_clause_processor_process_comparison(Node *left_expr,
 
             encrypt_result = NULL;
 
+            /* ReqID:TECC4.0 - HE 标量运算常量加密：+ / - 用 EC-ElGamal 加密
+             * 常量（EG_ADD 段），* 用 FF ElGamal 加密常量（EG_MUL 段），
+             * 生成完整 intN_enc 密文改写为 `enc + 'hex'::intN_enc`，
+             * 服务端走全密文同态操作符（he_add_generic / he_sub_generic /
+             * he_mul_generic），常量明文不出前端。 */
+            if (statement_data->operator_type == TECC_OP_ADD ||
+                statement_data->operator_type == TECC_OP_SUB)
+            {
+                encrypt_result = tecc_unified_encrypt_he_constant(
+                    statement_data->conn,
+                    const_value,
+                    table_name,
+                    column_name,
+                    schema_name,
+                    true    /* use_he_add: EC-ElGamal EG_ADD 段 */
+                );
+            }
+            else if (statement_data->operator_type == TECC_OP_MUL)
+            {
+                encrypt_result = tecc_unified_encrypt_he_constant(
+                    statement_data->conn,
+                    const_value,
+                    table_name,
+                    column_name,
+                    schema_name,
+                    false   /* use_he_add=false: FF ElGamal EG_MUL 段 */
+                );
+            }
             /* Determine which encryption function to call based on operator type */
-            if (statement_data->operator_type == TECC_OP_LIKE ||
+            else if (statement_data->operator_type == TECC_OP_LIKE ||
                 statement_data->operator_type == TECC_OP_NOT_LIKE ||
                 statement_data->operator_type == TECC_OP_ILIKE ||
                 statement_data->operator_type == TECC_OP_NOT_ILIKE)
@@ -1379,9 +1812,11 @@ tecc_where_clause_processor_process_comparison(Node *left_expr,
                     const_value,
                     table_name,
                     column_name,
+                    schema_name,
                     kek_name,
                     dek_name,
                     statement_data->operator_type,
+                    statement_data->like_escape_char,
                     NULL
                 );
             }
@@ -1395,9 +1830,11 @@ tecc_where_clause_processor_process_comparison(Node *left_expr,
                     const_value,
                     table_name,
                     column_name,
+                    schema_name,
                     kek_name,
                     dek_name,
                     statement_data->operator_type,
+                    0,
                     NULL
                 );
             }
@@ -1449,8 +1886,10 @@ tecc_where_clause_processor_process_comparison(Node *left_expr,
                                 const char *db = PQdb(statement_data->conn);
                                 if (s != NULL && db != NULL)
                                 {
-                                    const char *schema = tecc_cache_get_guc_param(
-                                        s, "current_schema");
+                                    const char *schema = schema_name;
+                                    if (schema == NULL || schema[0] == '\0')
+                                        schema = tecc_cache_get_guc_param(
+                                            s, "current_schema");
                                     if (schema != NULL)
                                     {
                                         TeccColumnCacheItem *col_cache =
@@ -1632,6 +2071,330 @@ tecc_where_clause_processor_has_encrypted_columns(Node *where_clause,
     return false;
 }
 
+/* Begin - ReqID:TECC4.0 - CASE 分支常量按密态列算法模式加密 */
+
+/*
+ * where_case_const_type_compatible - 判断常量类型能否按密态列的原始类型加密。
+ *
+ * 密态列原始类型（original_type_oid）与常量 consttype 兼容时返回 true：
+ *   - 整数密态类型（int2/int4/int8_enc）接受整型常量（int2/4/8）；
+ *   - 浮点/数值密态类型（float4/float8/numeric_enc）接受整型、浮点、数值常量；
+ *   - 字符密态类型（varchar/bpchar/text_enc）接受字符串常量（text/varchar/bpchar/cstring）；
+ *   - 其余组合不兼容（如 int2_enc 列配字符串常量），前端无法确定加密方式，报错。
+ */
+static bool
+where_case_const_type_compatible(Oid enc_original_type_oid, Oid consttype)
+{
+    switch (enc_original_type_oid)
+    {
+        case INT2OID:
+        case INT4OID:
+        case INT8OID:
+            return (consttype == INT2OID || consttype == INT4OID ||
+                    consttype == INT8OID);
+
+        case FLOAT4OID:
+        case FLOAT8OID:
+        case NUMERICOID:
+            return (consttype == INT2OID || consttype == INT4OID ||
+                    consttype == INT8OID || consttype == FLOAT4OID ||
+                    consttype == FLOAT8OID || consttype == NUMERICOID);
+
+        case VARCHAROID:
+        case BPCHAROID:
+        case TEXTOID:
+            return (consttype == TEXTOID || consttype == VARCHAROID ||
+                    consttype == BPCHAROID || consttype == CSTRINGOID);
+
+        default:
+            return false;
+    }
+}
+
+/*
+ * where_process_case_branch_const - 加密 CASE 分支中的普通常量。
+ *
+ * 当 CASE 的某个分支返回密态列、兄弟分支返回普通常量时，将常量按密态列的
+ * 完整算法模式（RND + 列配置的全部对称算法段，与 INSERT 路径一致）加密，
+ * 使服务端返回的常量密文与密态列存储密文格式一致，客户端可统一解密。
+ *
+ * 与 WHERE 比较常量加密（tecc_unified_encrypt_for_where，仅加密单算法段）
+ * 不同，分支常量作为结果返回，必须与列存储格式一致，因此走
+ * tecc_unified_encrypt_string_with_schema（INSERT 全算法路径）。
+ *
+ * 返回 true 表示处理成功（常量已加密并登记改写）；返回 false 表示处理失败
+ * （类型不兼容或加密失败，错误信息已设置到 statement_data）。
+ */
+static bool
+where_process_case_branch_const(Node *encrypted_colref, Node *const_node,
+                                TeccStatementData *statement_data)
+{
+    struct ColumnRef *col_ref;
+    char *col_name = NULL;
+    const char *schema_name = NULL;
+    const char *table_name = NULL;
+    Const *const_expr;
+    char *const_value = NULL;
+    TeccUnifiedEncryptResult *encrypt_result = NULL;
+    TeccState *state = NULL;
+    TeccColumnCacheItem *cache_item = NULL;
+    const char *db_name;
+    const char *kek_name = NULL;
+    const char *dek_name = NULL;
+    TeccRawValue *raw_value = NULL;
+    Oid enc_oid;
+    int replace_result;
+
+    if (encrypted_colref == NULL || const_node == NULL || statement_data == NULL)
+        return false;
+
+    /* 仅处理 ColumnRef（密态列）与 Const（普通常量） */
+    if (nodeTag(encrypted_colref) != FE_T_ColumnRef ||
+        nodeTag(const_node) != FE_T_Const)
+        return false;
+
+    col_ref = (struct ColumnRef *) encrypted_colref;
+    const_expr = (Const *) const_node;
+
+    /* 提取列名（最后一个字段） */
+    if (col_ref->fields != NIL)
+    {
+        int nf = list_length(col_ref->fields);
+        Node *f = (Node *) list_nth(col_ref->fields, nf - 1);
+        col_name = strVal((Value *) f);
+    }
+    if (col_name == NULL)
+        return false;
+
+    /* 解析 schema/table：优先取 ColumnRef 中的限定名，否则从
+     * statement_data->encrypted_columns 列表解析（与 WHERE 处理一致） */
+    if (list_length(col_ref->fields) >= 2)
+    {
+        Node *t = (Node *) list_nth(col_ref->fields, list_length(col_ref->fields) - 2);
+        table_name = strVal((Value *) t);
+    }
+    if (list_length(col_ref->fields) >= 3)
+    {
+        Node *s = (Node *) list_nth(col_ref->fields, list_length(col_ref->fields) - 3);
+        schema_name = strVal((Value *) s);
+    }
+
+    /* 从 statement_data->encrypted_columns 解析真实表名/模式名 */
+    if (statement_data->encrypted_columns != NIL)
+    {
+        ListCell *lc;
+        TeccColumnRefData *found_ed = NULL;
+        int match_cnt = 0;
+
+        foreach(lc, statement_data->encrypted_columns)
+        {
+            TeccColumnRefData *ed = (TeccColumnRefData *) lfirst(lc);
+            if (ed == NULL || ed->column_name[0] == '\0')
+                continue;
+            /* Bug 9323 - 重命名后的输出列按 column_alias 匹配 */
+            if (strcmp(ed->column_name, col_name) != 0 &&
+                (ed->column_alias[0] == '\0' ||
+                 strcmp(ed->column_alias, col_name) != 0))
+                continue;
+            if (table_name != NULL)
+            {
+                if (strcmp(ed->table_alias, table_name) == 0 ||
+                    strcmp(ed->table_name, table_name) == 0)
+                {
+                    found_ed = ed;
+                    match_cnt = 1;
+                    break;
+                }
+            }
+            else
+            {
+                found_ed = ed;
+                match_cnt++;
+            }
+        }
+
+        if (found_ed != NULL && match_cnt == 1)
+        {
+            table_name = found_ed->table_name;
+            /* Bug 9323 - 命中可能来自 column_alias，回填底层列名 */
+            col_name = found_ed->column_name;
+            schema_name = (found_ed->schema_name[0] != '\0') ?
+                found_ed->schema_name : "public";
+        }
+        else if (found_ed != NULL)
+        {
+            /* 多表歧义时回退：使用第一个匹配 */
+            table_name = found_ed->table_name;
+            col_name = found_ed->column_name;
+            schema_name = (found_ed->schema_name[0] != '\0') ?
+                found_ed->schema_name : "public";
+        }
+    }
+
+    if (table_name == NULL || schema_name == NULL)
+    {
+        tecc_processor_debug(TECC_LOG_WARNING,
+                           "CASE branch: cannot resolve table for column %s",
+                           col_name ? col_name : "?");
+        return false;
+    }
+
+    /* 查列缓存获取原始类型与密钥信息 */
+    state = tecc_get_state(statement_data->conn);
+    if (state == NULL)
+        return false;
+
+    db_name = PQdb(statement_data->conn);
+    if (db_name == NULL || db_name[0] == '\0')
+        db_name = "postgres";
+
+    cache_item = tecc_cache_get_encrypted_column_by_name(
+        state, db_name, schema_name, table_name, col_name);
+    if (cache_item == NULL)
+    {
+        tecc_processor_debug(TECC_LOG_WARNING,
+                           "CASE branch: column %s.%s not found in cache",
+                           table_name, col_name);
+        return false;
+    }
+
+    /* 类型兼容校验：常量类型须能按密态列原始类型加密。
+     * ReqID:TECC4.0 - 需求 4.4.1.4 固定错误格式（F 模板）。
+     * 注意：浮点字面量在前端被原样保留为 TEXTOID 字符串常量以保精度
+     * （见 frontend_parser/tecc_grammar.y 的 FLOAT 产生式），其 consttype
+     * 不能直接参与判定，否则 CASE WHEN c_f4 > 10 THEN c_f4 ELSE 0.5 END
+     * 会被误判为"分支常量类型无法按密态列加密"。带 text_numeric_literal
+     * 标记的常量按其数值语义处理。 */
+    if (!where_case_const_type_compatible(
+            cache_item->original_type_oid,
+            (const_expr->consttype == TEXTOID &&
+             const_expr->text_numeric_literal)
+                ? NUMERICOID : const_expr->consttype))
+    {
+        {
+            char reason_buf[512];
+
+            snprintf(reason_buf, sizeof(reason_buf),
+                     stmt_f_reason_text(STMT_F_REASON_CASE_BRANCH), col_name);
+            tecc_processor_set_error(statement_data, TECC_PROCESSOR_ERROR,
+                stmt_f_template(), "case", reason_buf);
+        }
+        return false;
+    }
+
+    /* 提取常量值（用于 raw_value 原始值登记） */
+    const_value = where_extract_const_value(const_expr, statement_data);
+    if (const_value == NULL)
+        return false;
+
+    /* 获取 KEK/DEK 名称 */
+    kek_name = where_get_column_kek_name(statement_data, schema_name,
+                                         table_name, col_name);
+    dek_name = tecc_get_column_dek_name(statement_data, schema_name,
+                                        table_name, col_name);
+    if (kek_name == NULL || dek_name == NULL)
+    {
+        tecc_processor_debug(TECC_LOG_ERROR,
+                           "CASE branch: cannot resolve KEK/DEK for %s.%s",
+                           table_name, col_name);
+        pg_free(const_value);
+        return false;
+    }
+
+    /* 按 INSERT 全算法路径加密（RND + 列配置的全部对称算法段） */
+    encrypt_result = tecc_unified_encrypt_string_with_schema(
+        statement_data->conn,
+        schema_name,
+        const_value,
+        table_name,
+        col_name,
+        kek_name,
+        dek_name,
+        NULL);
+    if (encrypt_result == NULL ||
+        encrypt_result->error_code != TECC_CRYPTO_SUCCESS ||
+        encrypt_result->hex_string == NULL)
+    {
+        tecc_processor_debug(TECC_LOG_ERROR,
+                           "CASE branch: failed to encrypt constant for %s.%s",
+                           table_name, col_name);
+        if (encrypt_result != NULL)
+            tecc_unified_free_encrypt_result(encrypt_result);
+        pg_free(const_value);
+        return false;
+    }
+
+    /* 创建 raw_value 登记改写：original 存明文，processed 存密文，
+     * location/data_size 用于 SQL 文本替换 */
+    raw_value = tecc_raw_value_create_from_string(const_value, strlen(const_value));
+    pg_free(const_value);
+    if (raw_value == NULL)
+    {
+        tecc_unified_free_encrypt_result(encrypt_result);
+        return false;
+    }
+
+    if (raw_value->processed.encrypted_value != NULL)
+        pg_free(raw_value->processed.encrypted_value);
+    raw_value->processed.encrypted_value =
+        tecc_processor_strdup(encrypt_result->hex_string);
+    raw_value->state = TECC_RAW_VALUE_STATE_PROCESSED;
+    tecc_unified_free_encrypt_result(encrypt_result);
+    if (raw_value->processed.encrypted_value == NULL)
+    {
+        tecc_raw_value_destroy(raw_value);
+        return false;
+    }
+
+    if (const_expr->location >= 0 && const_expr->data_size > 0)
+    {
+        raw_value->location = (size_t) const_expr->location;
+        raw_value->data_size = (size_t) const_expr->data_size;
+    }
+    tecc_raw_value_set_column_info(raw_value, col_name,
+                                   get_enc_type_name_from_base_oid(
+                                       cache_item->original_type_oid),
+                                   InvalidOid);
+    tecc_raw_value_set_table_info(raw_value, schema_name, table_name);
+
+    /* 替换 parse tree 中的常量
+     * ReqID:TECC4.0 - 浮点字面量（TEXTOID 承载）须按密态列基类型映射 enc
+     * 类型；若仍用 consttype 会被映射成 text_enc，与列类型不匹配。 */
+    enc_oid = where_get_encrypted_type_oid(
+        (const_expr->consttype == TEXTOID && const_expr->text_numeric_literal)
+            ? cache_item->original_type_oid : const_expr->consttype);
+    replace_result = where_replace_const_value(&const_node, raw_value->processed.encrypted_value,
+                                               statement_data, enc_oid);
+    if (replace_result != 0)
+    {
+        tecc_processor_debug(TECC_LOG_ERROR,
+                           "CASE branch: failed to replace constant value");
+        tecc_raw_value_destroy(raw_value);
+        return false;
+    }
+
+    /* 登记到 raw_values_list 供改写阶段替换 SQL 文本 */
+    if (statement_data->raw_values_list == NULL)
+        statement_data->raw_values_list = tecc_raw_values_list_create(16);
+    if (statement_data->raw_values_list != NULL)
+    {
+        if (tecc_raw_values_list_add(statement_data->raw_values_list, raw_value) < 0)
+            tecc_raw_value_destroy(raw_value);
+        else
+            raw_value = NULL;
+    }
+    else
+    {
+        tecc_raw_value_destroy(raw_value);
+        return false;
+    }
+
+    statement_data->needs_rewrite = 1;
+    return true;
+}
+
+/* End - ReqID:TECC4.0 */
+
 /*
  * Post-visit: second-pass encryption for CaseExpr result branches.
  *
@@ -1647,12 +2410,75 @@ where_process_case_post(struct CaseExpr *ce, TeccStatementData *statement_data)
     Node *encrypted_colref = NULL;
     int   branch_count = 0;
     ListCell *clc;
-    const char *eq_op = "=";
 
     if (ce == NULL)
         return true;
 
-    /* Find first encrypted ColumnRef in CaseWhen result branches */
+    /* ReqID:TECC4.0 - 需求 4.4.1.4：CASE 参数组合统一校验（F 模板）。
+     * 1) switch 形式（CASE 表达式 WHEN 常量）：表达式引用加密列时不支持
+     *    （常量未按列加密，服务端无匹配操作符）；
+     * 2) 分支/switch 表达式中出现裸 ::密态类型 cast 普通常量：服务端无
+     *    明文→密态 cast 行，必报错，统一由前端拦截。 */
+    if (ce->arg != NULL)
+    {
+        struct ColumnRef *cr = extract_first_column_ref_from_node(ce->arg);
+        bool arg_has_enc_col = false;
+
+        if (cr != NULL && cr->fields != NIL)
+        {
+            int nf = list_length(cr->fields);
+            char *cn = strVal((Value *) list_nth(cr->fields, nf - 1));
+
+            if (cn != NULL && where_is_encrypted_column(cn, statement_data))
+                arg_has_enc_col = true;
+        }
+        if (arg_has_enc_col)
+        {
+            tecc_processor_set_error(statement_data, TECC_PROCESSOR_ERROR,
+                stmt_f_template(), "case",
+                stmt_f_reason_text(STMT_F_REASON_CASE_SWITCH));
+            statement_data->where_processor_result = TECC_WHERE_PROCESSOR_ERROR;
+            return false;
+        }
+        if (stmt_node_has_bare_enc_cast((Node *) ce->arg, statement_data))
+        {
+            tecc_processor_set_error(statement_data, TECC_PROCESSOR_ERROR,
+                stmt_f_template(), "case",
+                stmt_f_reason_text(STMT_F_REASON_BARE_CAST));
+            statement_data->where_processor_result = TECC_WHERE_PROCESSOR_ERROR;
+            return false;
+        }
+    }
+    if (ce->args != NIL)
+    {
+        foreach(clc, ce->args)
+        {
+            struct CaseWhen *cw = (struct CaseWhen *) lfirst(clc);
+
+            if (cw != NULL && cw->result != NULL &&
+                stmt_node_has_bare_enc_cast((Node *) cw->result, statement_data))
+            {
+                tecc_processor_set_error(statement_data, TECC_PROCESSOR_ERROR,
+                    stmt_f_template(), "case",
+                    stmt_f_reason_text(STMT_F_REASON_BARE_CAST));
+                statement_data->where_processor_result = TECC_WHERE_PROCESSOR_ERROR;
+                return false;
+            }
+        }
+    }
+    if (ce->defresult != NULL &&
+        stmt_node_has_bare_enc_cast((Node *) ce->defresult, statement_data))
+    {
+        tecc_processor_set_error(statement_data, TECC_PROCESSOR_ERROR,
+            stmt_f_template(), "case",
+            stmt_f_reason_text(STMT_F_REASON_BARE_CAST));
+        statement_data->where_processor_result = TECC_WHERE_PROCESSOR_ERROR;
+        return false;
+    }
+
+    /* Find first encrypted ColumnRef in CaseWhen result branches.
+     * ReqID:TECC4.0 - 递归提取分支中的列引用（支持嵌套 CASE 分支），
+     * 使外层 CASE 能识别"分支包含加密列"并加密兄弟常量分支。 */
     if (ce->args != NIL)
     {
         foreach(clc, ce->args)
@@ -1660,12 +2486,13 @@ where_process_case_post(struct CaseExpr *ce, TeccStatementData *statement_data)
             struct CaseWhen *cw = (struct CaseWhen *) lfirst(clc);
             if (cw != NULL && cw->result != NULL)
             {
-                if (encrypted_colref == NULL &&
-                    nodeTag(cw->result) == FE_T_ColumnRef)
+                if (encrypted_colref == NULL)
                 {
-                    struct ColumnRef *cr = (struct ColumnRef *) cw->result;
+                    struct ColumnRef *cr;
                     char *col_name = NULL;
-                    if (cr->fields != NIL)
+
+                    cr = extract_first_column_ref_from_node(cw->result);
+                    if (cr != NULL && cr->fields != NIL)
                     {
                         int nf = list_length(cr->fields);
                         Node *f = (Node *) list_nth(cr->fields, nf - 1);
@@ -1673,7 +2500,7 @@ where_process_case_post(struct CaseExpr *ce, TeccStatementData *statement_data)
                     }
                     if (col_name != NULL &&
                         where_is_encrypted_column(col_name, statement_data))
-                        encrypted_colref = cw->result;
+                        encrypted_colref = (Node *) cr;
                 }
                 branch_count++;
             }
@@ -1683,12 +2510,13 @@ where_process_case_post(struct CaseExpr *ce, TeccStatementData *statement_data)
     /* Also check ELSE (defresult) */
     if (ce->defresult != NULL)
     {
-        if (encrypted_colref == NULL &&
-            nodeTag(ce->defresult) == FE_T_ColumnRef)
+        if (encrypted_colref == NULL)
         {
-            struct ColumnRef *cr = (struct ColumnRef *) ce->defresult;
+            struct ColumnRef *cr;
             char *col_name = NULL;
-            if (cr->fields != NIL)
+
+            cr = extract_first_column_ref_from_node(ce->defresult);
+            if (cr != NULL && cr->fields != NIL)
             {
                 int nf = list_length(cr->fields);
                 Node *f = (Node *) list_nth(cr->fields, nf - 1);
@@ -1696,12 +2524,14 @@ where_process_case_post(struct CaseExpr *ce, TeccStatementData *statement_data)
             }
             if (col_name != NULL &&
                 where_is_encrypted_column(col_name, statement_data))
-                encrypted_colref = ce->defresult;
+                encrypted_colref = (Node *) cr;
         }
         branch_count++;
     }
 
-    /* Second pass: encrypt plain Const branches */
+    /* Second pass: encrypt plain Const branches.
+     * ReqID:TECC4.0 - 分支常量按密态列完整算法模式加密（INSERT 路径），
+     * 使常量密文与列存储密文格式一致，服务端返回后客户端统一解密。 */
     if (encrypted_colref != NULL && branch_count > 1)
     {
         if (ce->args != NIL)
@@ -1712,16 +2542,26 @@ where_process_case_post(struct CaseExpr *ce, TeccStatementData *statement_data)
                 if (cw != NULL && cw->result != NULL &&
                     nodeTag(cw->result) == FE_T_Const)
                 {
-                    tecc_where_clause_processor_process_comparison(
-                        encrypted_colref, cw->result, eq_op, statement_data);
+                    if (!where_process_case_branch_const(
+                            encrypted_colref, cw->result, statement_data))
+                    {
+                        statement_data->where_processor_result =
+                            TECC_WHERE_PROCESSOR_ERROR;
+                        return false;
+                    }
                 }
             }
         }
         if (ce->defresult != NULL &&
             nodeTag(ce->defresult) == FE_T_Const)
         {
-            tecc_where_clause_processor_process_comparison(
-                encrypted_colref, ce->defresult, eq_op, statement_data);
+            if (!where_process_case_branch_const(
+                    encrypted_colref, ce->defresult, statement_data))
+            {
+                statement_data->where_processor_result =
+                    TECC_WHERE_PROCESSOR_ERROR;
+                return false;
+            }
         }
     }
 
@@ -1765,6 +2605,15 @@ where_process_sublink_post(struct SubLink *sl, TeccStatementData *statement_data
         char *operator_name = NULL;
         Node *op_node = (Node *) llast(sl->operName);
 
+        /* ReqID:TECC4.0 - Reject cross-DEK subquery comparisons
+         * (e.g. v IN (SELECT ...) / v = ANY (SELECT ...) with different DEKs) */
+        result = where_check_sublink_dek(sl, sl->testexpr, statement_data);
+        if (result != TECC_WHERE_PROCESSOR_SUCCESS)
+        {
+            statement_data->where_processor_result = (int) result;
+            return false;
+        }
+
         if (op_node != NULL && nodeTag(op_node) == FE_T_String)
             operator_name = strVal((Value *) op_node);
 
@@ -1803,6 +2652,34 @@ where_process_post_visit(Node *node, void *context)
         }
         case FE_T_FuncCall:
             stmt_process_funcall_constants((FuncCall *) node, statement_data);
+            /* ReqID:TECC4.0 - Validate aggregate functions against column
+             * encryption algorithms (MIN/MAX need OPE; SUM/AVG/string_agg
+             * rejected). This catches aggregates nested in expressions
+             * (e.g. sum(x) + 1, HAVING min(x) > 5). */
+            if (!stmt_validate_aggregate_funcall((FuncCall *) node, statement_data))
+            {
+                statement_data->where_processor_result =
+                    TECC_WHERE_PROCESSOR_UNSUPPORTED_AGGREGATE;
+                return false;
+            }
+            /* ReqID:TECC4.0 - 需求 4.4.1.4：参数组合统一校验
+             * （coalesce/greatest/least，固定错误格式 F 模板）。 */
+            if (!stmt_validate_scalar_arg_combos((FuncCall *) node, statement_data))
+            {
+                statement_data->where_processor_result =
+                    TECC_WHERE_PROCESSOR_UNSUPPORTED_SCALAR;
+                return false;
+            }
+
+            /* ReqID:TECC4.0 - Validate scalar functions against column
+             * encryption algorithms (power rejected).  Catches scalar
+             * functions nested in expressions. */
+            if (!stmt_validate_scalar_funcall((FuncCall *) node, statement_data))
+            {
+                statement_data->where_processor_result =
+                    TECC_WHERE_PROCESSOR_UNSUPPORTED_SCALAR;
+                return false;
+            }
             return true;
         case FE_T_CaseExpr:
             return where_process_case_post((struct CaseExpr *) node,
@@ -1823,6 +2700,15 @@ where_process_pre_visit(Node *node, void *context)
     {
         where_process_column_ref((struct ColumnRef *) node,
                                  (TeccStatementData *) context);
+    }
+    /* ReqID:TECC4.0 - Load subquery FROM-table encrypted columns before
+     * descending into the subquery, so correlated comparisons inside
+     * (e.g. EXISTS ... WHERE e.v = a.v) can resolve the DEK of the
+     * subquery-side column. */
+    else if (nodeTag(node) == FE_T_SubLink)
+    {
+        where_load_sublink_tables((struct SubLink *) node,
+                                  (TeccStatementData *) context);
     }
     return true;
 }
@@ -1947,6 +2833,16 @@ where_process_a_expr(struct A_Expr *expr, TeccStatementData *statement_data)
                 char *operator_name = strVal((Value *)op_node);
                 if (operator_name != NULL)
                 {
+                    /* ReqID:TECC4.0 - Extract ESCAPE character from AEXPR_LIKE node.
+                     * TECC frontend parser stores ESCAPE in expr->escape (dedicated field),
+                     * NOT in expr->name[1]. expr->name only has 1 element (operator name). */
+                    if (expr->escape != NULL && IsA(expr->escape, String))
+                    {
+                        char *esc_str = strVal((Value *)expr->escape);
+                        if (esc_str != NULL && esc_str[0] != '\0')
+                            statement_data->like_escape_char = esc_str[0];
+                    }
+
                     result = tecc_where_clause_processor_process_comparison(
                         expr->lexpr, expr->rexpr, operator_name, statement_data);
                     return result;
@@ -1991,32 +2887,6 @@ where_process_a_expr(struct A_Expr *expr, TeccStatementData *statement_data)
             tecc_processor_debug(TECC_LOG_DEBUG1,
                                "Unhandled A_Expr kind: %d", expr->kind);
             break;
-    }
-
-    return TECC_WHERE_PROCESSOR_SUCCESS;
-}
-
-static TeccWhereClauseProcessorResult
-where_process_bool_expr(struct BoolExpr *expr, TeccStatementData *statement_data)
-{
-    TeccWhereClauseProcessorResult result;
-
-    if (expr == NULL)
-        return TECC_WHERE_PROCESSOR_SUCCESS;
-
-    tecc_processor_debug(TECC_LOG_DEBUG1,
-                        "Processing BoolExpr with boolop: %d", expr->boolop);
-
-    /* Process all arguments */
-    {
-        ListCell *lc;
-        foreach(lc, expr->args)
-        {
-            Node *arg = (Node *) lfirst(lc);
-            result = where_process_expr(arg, statement_data);
-            if (result != TECC_WHERE_PROCESSOR_SUCCESS)
-                return result;
-        }
     }
 
     return TECC_WHERE_PROCESSOR_SUCCESS;
@@ -2178,74 +3048,6 @@ where_process_subquery_target_consts(Node *subquery, Node *testexpr,
     }
 }
 
-/* ReqID:TECC4.0 - Process SubLink (subquery expression) for constant encryption */
-static TeccWhereClauseProcessorResult
-where_process_sublink(struct SubLink *sublink, TeccStatementData *statement_data)
-{
-    TeccWhereClauseProcessorResult result;
-    bool testexpr_is_encrypted = false;
-    char *encrypted_col_name = NULL;
-
-    if (sublink == NULL)
-        return TECC_WHERE_PROCESSOR_SUCCESS;
-
-    tecc_processor_debug(TECC_LOG_DEBUG1,
-                       "Processing SubLink: type=%d", sublink->subLinkType);
-
-    /* Process testexpr (outer comparison for ANY/ALL sublinks) */
-    if (sublink->testexpr != NULL)
-    {
-        result = where_process_expr(sublink->testexpr, statement_data);
-        if (result != TECC_WHERE_PROCESSOR_SUCCESS)
-            return result;
-
-        /* Check if testexpr is an encrypted column */
-        if (nodeTag(sublink->testexpr) == FE_T_ColumnRef)
-        {
-            struct ColumnRef *col_ref = (struct ColumnRef *)sublink->testexpr;
-            if (col_ref->fields != NIL)
-            {
-                int num_fields = list_length(col_ref->fields);
-                Node *field = (Node *)list_nth(col_ref->fields, num_fields - 1);
-                encrypted_col_name = strVal((Value *)field);
-                if (encrypted_col_name != NULL)
-                    testexpr_is_encrypted = where_is_encrypted_column(encrypted_col_name, statement_data);
-            }
-        }
-    }
-
-    /* Process subquery WHERE/HAVING clauses (handles both SelectStmt and SetOp) */
-    if (!where_process_subquery_clauses(sublink->subselect, statement_data))
-        return TECC_WHERE_PROCESSOR_ERROR;
-
-    /* ReqID:TECC4.0 - For ANY/ALL sublinks with encrypted column in testexpr,
-     * encrypt constants in the subquery's targetList */
-    if (testexpr_is_encrypted && sublink->operName != NIL &&
-        sublink->subLinkType != EXISTS_SUBLINK)
-    {
-        char *operator_name = NULL;
-        Node *op_node = (Node *)llast(sublink->operName);
-
-        if (op_node != NULL && nodeTag(op_node) == FE_T_String)
-            operator_name = strVal((Value *)op_node);
-
-        if (operator_name != NULL)
-        {
-            tecc_processor_debug(TECC_LOG_DEBUG1,
-                               "Encrypting SubLink target constants: op=%s, col=%s",
-                               operator_name, encrypted_col_name);
-
-            result = where_process_subquery_target_consts(
-                sublink->subselect, sublink->testexpr,
-                operator_name, statement_data);
-            if (result != TECC_WHERE_PROCESSOR_SUCCESS)
-                return result;
-        }
-    }
-
-    return TECC_WHERE_PROCESSOR_SUCCESS;
-}
-
 /*
  * ReqID:TECC4.0 - Extract constant info from a Const node or an
  * A_Expr(UMINUS, Const) combination.  Negative integer constants like
@@ -2347,10 +3149,14 @@ where_is_encrypted_column_full(const char *table_name,
 
     foreach(lc, statement_data->encrypted_columns)
     {
-        TeccProcessorColumnRef *encrypted_col = (TeccProcessorColumnRef *) lfirst(lc);
+        TeccColumnRefData *encrypted_col = (TeccColumnRefData *) lfirst(lc);
         if (encrypted_col == NULL || encrypted_col->column_name[0] == '\0')
             continue;
-        if (strcmp(encrypted_col->column_name, column_name) != 0)
+        /* Bug 9323 - 子查询/CTE 重命名后的输出列只以别名对外可见，
+         * column_name 与 column_alias 任一匹配即算命中。 */
+        if (strcmp(encrypted_col->column_name, column_name) != 0 &&
+            (encrypted_col->column_alias[0] == '\0' ||
+             strcmp(encrypted_col->column_alias, column_name) != 0))
             continue;
 
         if (table_name != NULL)
@@ -2589,6 +3395,27 @@ tecc_where_clause_processor_set_operator_type(
     else if (strcmp(operator_name, "IS NOT DISTINCT FROM") == 0)
     {
         op_type = TECC_OP_IS_NOT_DISTINCT_FROM;
+        scenario_type = TECC_SCENARIO_WHERE_CONDITION;
+    }
+    /* ReqID:TECC4.0 - HE 标量运算操作符映射（前端 HE 常量加密分支选择） */
+    else if (strcmp(operator_name, "+") == 0)
+    {
+        op_type = TECC_OP_ADD;
+        scenario_type = TECC_SCENARIO_WHERE_CONDITION;
+    }
+    else if (strcmp(operator_name, "-") == 0)
+    {
+        op_type = TECC_OP_SUB;
+        scenario_type = TECC_SCENARIO_WHERE_CONDITION;
+    }
+    else if (strcmp(operator_name, "*") == 0)
+    {
+        op_type = TECC_OP_MUL;
+        scenario_type = TECC_SCENARIO_WHERE_CONDITION;
+    }
+    else if (strcmp(operator_name, "^") == 0)
+    {
+        op_type = TECC_OP_POW;
         scenario_type = TECC_SCENARIO_WHERE_CONDITION;
     }
     else
@@ -2839,7 +3666,6 @@ where_extract_const_value(Const *const_expr, TeccStatementData *statement_data)
 
 /* Begin - ReqID:TECC4.0 - WHERE子句重写实现 */
 
-/*
 /* ReqID:TECC4.0 - Post-visit callback for WHERE clause rewriting */
 static bool
 where_rewrite_post_visit(Node *node, void *context)
@@ -3003,15 +3829,18 @@ where_rewrite_comparison(Node *lexpr, Node *rexpr,
                 if (statement_data->encrypted_columns != NIL)
                 {
                     ListCell *lc;
-                    TeccProcessorColumnRef *found_ed = NULL;
+                    TeccColumnRefData *found_ed = NULL;
                     int match_cnt = 0;
 
                     foreach(lc, statement_data->encrypted_columns)
                     {
-                        TeccProcessorColumnRef *ed = (TeccProcessorColumnRef *) lfirst(lc);
+                        TeccColumnRefData *ed = (TeccColumnRefData *) lfirst(lc);
                         if (ed == NULL || ed->column_name[0] == '\0')
                             continue;
-                        if (strcmp(ed->column_name, column_name) != 0)
+                        /* Bug 9323 - 同上：重命名后的输出列按 column_alias 匹配 */
+                        if (strcmp(ed->column_name, column_name) != 0 &&
+                            (ed->column_alias[0] == '\0' ||
+                             strcmp(ed->column_alias, column_name) != 0))
                             continue;
 
                         if (table_name != NULL)
@@ -3035,6 +3864,9 @@ where_rewrite_comparison(Node *lexpr, Node *rexpr,
                     {
                         table_name = found_ed->table_name;
                         schema_name = found_ed->schema_name[0] != '\0' ? found_ed->schema_name : schema_name;
+                        /* Bug 9323 - 命中可能来自 column_alias，取算法/密钥必须按
+                         * 底层列名查缓存 */
+                        column_name = found_ed->column_name;
                         tecc_processor_debug(TECC_LOG_DEBUG1,
                                            "Resolved table name from statement encrypted_columns: %s.%s",
                                            schema_name ? schema_name : "public", table_name);
@@ -3052,6 +3884,8 @@ where_rewrite_comparison(Node *lexpr, Node *rexpr,
                             /* Backward compatible: use first match */
                             table_name = found_ed->table_name;
                             schema_name = found_ed->schema_name[0] != '\0' ? found_ed->schema_name : schema_name;
+                            /* Bug 9323 - 同上：回填底层列名再查缓存 */
+                            column_name = found_ed->column_name;
                         }
                     }
                 }
@@ -3152,6 +3986,7 @@ where_rewrite_comparison(Node *lexpr, Node *rexpr,
                         if (nodeTag(rexpr) == FE_T_Const)
                         {
                             Const *const_expr = (Const *) rexpr;
+                            char *const_value;
 
                             /* ReqID:TECC4.0 - Skip if already encrypted.
                              * BETWEEN SYMMETRIC shares Const nodes across the
@@ -3167,7 +4002,7 @@ where_rewrite_comparison(Node *lexpr, Node *rexpr,
                                 return TECC_WHERE_PROCESSOR_SUCCESS;
                             }
 
-                            char *const_value = where_extract_const_value(const_expr, statement_data);
+                            const_value = where_extract_const_value(const_expr, statement_data);
 
                             if (const_value != NULL)
                             {
@@ -3200,8 +4035,10 @@ where_rewrite_comparison(Node *lexpr, Node *rexpr,
                                             const char *db = PQdb(statement_data->conn);
                                             if (s != NULL && db != NULL)
                                             {
-                                                const char *schema = tecc_cache_get_guc_param(
-                                                    s, "current_schema");
+                                                const char *schema = schema_name;
+                                                if (schema == NULL || schema[0] == '\0')
+                                                    schema = tecc_cache_get_guc_param(
+                                                        s, "current_schema");
                                                 if (schema != NULL)
                                                 {
                                                     TeccColumnCacheItem *col_cache =
@@ -3253,8 +4090,35 @@ where_rewrite_comparison(Node *lexpr, Node *rexpr,
                                         return TECC_WHERE_PROCESSOR_ERROR;
                                     }
 
+                                    /* ReqID:TECC4.0 - HE 标量运算常量加密
+                                     * （改写阶段与 process 阶段同构）：
+                                     * + / - → EC-ElGamal（EG_ADD 段），
+                                     * * → FF ElGamal（EG_MUL 段）。 */
+                                    if (statement_data->operator_type == TECC_OP_ADD ||
+                                        statement_data->operator_type == TECC_OP_SUB)
+                                    {
+                                        encrypt_result_struct = tecc_unified_encrypt_he_constant(
+                                            statement_data->conn,
+                                            const_value,
+                                            table_name,
+                                            column_name,
+                                            schema_name,
+                                            true    /* use_he_add: EG_ADD 段 */
+                                        );
+                                    }
+                                    else if (statement_data->operator_type == TECC_OP_MUL)
+                                    {
+                                        encrypt_result_struct = tecc_unified_encrypt_he_constant(
+                                            statement_data->conn,
+                                            const_value,
+                                            table_name,
+                                            column_name,
+                                            schema_name,
+                                            false   /* FF ElGamal: EG_MUL 段 */
+                                        );
+                                    }
                                     /* Determine which encryption function to call based on operator type */
-                                    if (statement_data->operator_type == TECC_OP_LIKE ||
+                                    else if (statement_data->operator_type == TECC_OP_LIKE ||
                                         statement_data->operator_type == TECC_OP_NOT_LIKE ||
                                         statement_data->operator_type == TECC_OP_ILIKE ||
                                         statement_data->operator_type == TECC_OP_NOT_ILIKE)
@@ -3267,9 +4131,11 @@ where_rewrite_comparison(Node *lexpr, Node *rexpr,
                                             const_value,
                                             table_name,
                                             column_name,
+                                            schema_name,
                                             kek_name,
                                             dek_name,
                                             statement_data->operator_type,
+                                            statement_data->like_escape_char,
                                             NULL
                                         );
                                     }
@@ -3283,9 +4149,11 @@ where_rewrite_comparison(Node *lexpr, Node *rexpr,
                                             const_value,
                                             table_name,
                                             column_name,
+                                            schema_name,
                                             kek_name,
                                             dek_name,
                                             statement_data->operator_type,
+                                            0,
                                             NULL
                                         );
                                     }
@@ -3588,24 +4456,38 @@ where_get_column_kek_name(TeccStatementData *statement_data,
         return NULL;
     }
 
-    /* Check if DEK name is available */
-    if (column_cache->dek_name == NULL || column_cache->dek_name[0] == '\0')
+    /* Check if DEK name is available.
+     * ReqID:TECC4.0 - 纯 HE 列（无对称 DEK，dek_name 为空）回退到
+     * he_add_dek_name / he_mul_dek_name（与 tecc_get_column_dek_name 一致），
+     * 保证 HE 标量运算常量加密路径能解析出 KEK。用局部变量，不改动缓存项。 */
     {
-        tecc_processor_debug(TECC_LOG_ERROR,
-                           "where_get_column_kek_name: DEK name is empty for column %s.%s (cache: table_oid=%u, enc_type=%d)",
-                           table_name, column_name,
-                           column_cache->table_oid, column_cache->encryption_type);
-        return NULL;
-    }
+        const char *effective_dek_name = column_cache->dek_name;
 
-    /* Get DEK cache item */
-    dek_cache = tecc_cache_get_dek_by_name_search_path(state, column_cache->dek_name);
-    if (dek_cache == NULL)
-    {
-        tecc_processor_debug(TECC_LOG_ERROR,
-                           "where_get_column_kek_name: DEK '%s' not found in cache (dek_name from column cache: %s)",
-                           column_cache->dek_name, column_cache->dek_name);
-        return NULL;
+        if ((effective_dek_name == NULL || effective_dek_name[0] == '\0') &&
+            column_cache->he_add_dek_name != NULL && column_cache->he_add_dek_name[0] != '\0')
+            effective_dek_name = column_cache->he_add_dek_name;
+        else if ((effective_dek_name == NULL || effective_dek_name[0] == '\0') &&
+                 column_cache->he_mul_dek_name != NULL && column_cache->he_mul_dek_name[0] != '\0')
+            effective_dek_name = column_cache->he_mul_dek_name;
+
+        if (effective_dek_name == NULL || effective_dek_name[0] == '\0')
+        {
+            tecc_processor_debug(TECC_LOG_ERROR,
+                               "where_get_column_kek_name: DEK name is empty for column %s.%s (cache: table_oid=%u, enc_type=%d)",
+                               table_name, column_name,
+                               column_cache->table_oid, column_cache->encryption_type);
+            return NULL;
+        }
+
+        /* Get DEK cache item */
+        dek_cache = tecc_cache_get_dek_by_name_search_path(state, effective_dek_name);
+        if (dek_cache == NULL)
+        {
+            tecc_processor_debug(TECC_LOG_ERROR,
+                               "where_get_column_kek_name: DEK '%s' not found in cache (dek_name from column cache: %s)",
+                               effective_dek_name, column_cache->dek_name ? column_cache->dek_name : effective_dek_name);
+            return NULL;
+        }
     }
 
     tecc_processor_debug(TECC_LOG_DEBUG1,

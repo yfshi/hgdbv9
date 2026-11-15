@@ -54,6 +54,8 @@ typedef enum TeccAlgorithmType
     TECC_ALGO_DET = 2,     /* DET-SM4 algorithm */
     TECC_ALGO_OPE = 3,     /* SM4-OPE algorithm */
     TECC_ALGO_SEARCH = 4,  /* SEARCH algorithm */
+    TECC_ALGO_EC_ELGAMAL = 5, /* EC-ElGamal (additive homomorphic) */
+    TECC_ALGO_ELGAMAL = 6,    /* Finite field ElGamal (multiplicative homomorphic) */
     TECC_ALGO_MAX
 } TeccAlgorithmType;
 
@@ -64,6 +66,8 @@ typedef struct TeccAlgorithmSupport
     bool supports_det;     /* DET algorithm support */
     bool supports_ope;     /* OPE algorithm support */
     bool supports_search;  /* SEARCH algorithm support */
+    bool supports_he_add;  /* EC-ElGamal additive homomorphic support */
+    bool supports_he_mul;  /* Finite field ElGamal multiplicative support */
 } TeccAlgorithmSupport;
 
 /* ==================== Algorithm Error Codes ==================== */
@@ -135,6 +139,15 @@ typedef enum TeccOperatorType
     TECC_OP_IS_DISTINCT_FROM,    /* IS DISTINCT FROM */
     TECC_OP_IS_NOT_DISTINCT_FROM,/* IS NOT DISTINCT FROM */
 
+    /* ==================== Homomorphic Scalar Operators ====================
+     * ReqID:TECC4.0 - 同态标量运算（enc ± 常量 / enc * 常量 / enc ^ n）。
+     * 前端对常量做同态加密后改写为密文常量，服务端解析到通用密文×密文
+     * 操作符（he_add_generic/he_sub_generic/he_mul_generic）。 */
+    TECC_OP_ADD,                 /* + 同态标量加法（EG_ADD 常量密文） */
+    TECC_OP_SUB,                 /* - 同态标量减法（EG_ADD 常量密文） */
+    TECC_OP_MUL,                 /* * 同态标量乘法（EG_MUL 常量密文） */
+    TECC_OP_POW,                 /* ^ 同态幂运算（指数保持明文） */
+
     /* ==================== Statement Scenario Types (not operators, but need distinction) ==================== */
     TECC_SCENARIO_INSERT_VALUE = 1000,      /* Value in INSERT statement */
     TECC_SCENARIO_UPDATE_VALUE,             /* New value in UPDATE statement */
@@ -184,46 +197,13 @@ typedef enum TeccAlgorithmCapability
 #define TECC_SM4_KEY_SIZE        16     /* SM4 key length */
 #define TECC_HMAC_SM3_SIZE       32     /* HMAC-SM3 output length */
 
-/* SM4-RND constants */
-#define SM4_RND_HEADER_SIZE     (32 + 16)  /* auth_tag + iv */
+/* SM4-RND constants
+ * 头部 = auth_tag(32) + iv(16) + ciphertext_len(sizeof(size_t)) = 56（64 位平台）。
+ * 注意：该常量参与 SM4_RND_MIN_SIZE/MAX_SIZE 的取值范围校验，
+ * 必须与 tecc_sm4_rnd.c 中的 header_offset 保持一致。 */
+#define SM4_RND_HEADER_SIZE     (TECC_HMAC_SM3_SIZE + TECC_SM4_BLOCK_SIZE + sizeof(size_t))
 #define SM4_RND_MIN_SIZE        (SM4_RND_HEADER_SIZE + 1)
 #define SM4_RND_MAX_SIZE        (SM4_RND_HEADER_SIZE + TECC_MAX_DATA_SIZE)
-
-/* DET-SM4 constants */
-#define DET_SM4_HEADER_SIZE     0
-#define DET_SM4_MIN_SIZE        16  /* SM4 block size */
-#define DET_SM4_MAX_SIZE        TECC_MAX_DATA_SIZE
-
-/* SEARCH constants */
-#define SEARCH_HEADER_SIZE      (sizeof(uint32))  /* data length */
-#define SEARCH_MIN_SIZE         (SEARCH_HEADER_SIZE + 1)
-#define SEARCH_MAX_SIZE         (SEARCH_HEADER_SIZE + TECC_MAX_DATA_SIZE)
-
-/* ==================== Performance and Memory Statistics ==================== */
-
-/* Performance statistics structure */
-typedef struct TeccAlgoPerfStats
-{
-    uint64_t encrypt_count;             /* Encryption count */
-    uint64_t decrypt_count;             /* Decryption count */
-    uint64_t total_encrypt_time_us;     /* Total encryption time (microseconds) */
-    uint64_t total_decrypt_time_us;     /* Total decryption time (microseconds) */
-    uint64_t min_encrypt_time_us;       /* Minimum encryption time */
-    uint64_t max_encrypt_time_us;       /* Maximum encryption time */
-    uint64_t min_decrypt_time_us;       /* Minimum decryption time */
-    uint64_t max_decrypt_time_us;       /* Maximum decryption time */
-} TeccAlgoPerfStats;
-
-/* Memory statistics structure */
-typedef struct TeccAlgoMemoryStats
-{
-    size_t total_allocated;             /* Total allocated memory */
-    size_t peak_usage;                  /* Peak usage */
-    size_t reuse_count;                 /* Reuse count */
-    size_t alloc_count;                 /* Allocation count */
-    size_t saved_by_reuse;              /* Memory saved by reuse */
-    size_t buffer_hit_rate;             /* Buffer hit rate (percentage) */
-} TeccAlgoMemoryStats;
 
 
 /* ==================== Formatter Error Codes ==================== */

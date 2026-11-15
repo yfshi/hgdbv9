@@ -38,30 +38,6 @@ typedef unsigned char bool;
 
 
 
-/* Performance statistics structure */
-typedef struct TeccAlgoPerfStats
-{
-    uint64 encrypt_count;             /* Encryption count */
-    uint64 decrypt_count;             /* Decryption count */
-    uint64 total_encrypt_time_us;     /* Total encryption time (microseconds) */
-    uint64 total_decrypt_time_us;     /* Total decryption time (microseconds) */
-    uint64 min_encrypt_time_us;       /* Minimum encryption time */
-    uint64 max_encrypt_time_us;       /* Maximum encryption time */
-    uint64 min_decrypt_time_us;       /* Minimum decryption time */
-    uint64 max_decrypt_time_us;       /* Maximum decryption time */
-} TeccAlgoPerfStats;
-
-/* Memory statistics structure */
-typedef struct TeccAlgoMemoryStats
-{
-    size_t total_allocated;             /* Total allocated memory */
-    size_t peak_usage;                  /* Peak usage */
-    size_t reuse_count;                 /* Reuse count */
-    size_t alloc_count;                 /* Allocation count */
-    size_t saved_by_reuse;              /* Memory saved by reuse */
-    size_t buffer_hit_rate;             /* Buffer hit rate (percentage) */
-} TeccAlgoMemoryStats;
-
 /* Constants */
 #define TECC_MAX_KEY_SIZE        32     /* Maximum key length */
 #define TECC_MAX_DATA_SIZE       (256 * 1024)  /* Maximum data length (256KB) */
@@ -79,21 +55,6 @@ typedef struct TeccAlgoMemoryStats
 /* Algorithm capability and information */
 extern uint32 tecc_algo_get_capability(TeccAlgorithmType algo_type);
 extern const char *tecc_algo_get_error_string(int error_code);
-
-
-/* Buffer size calculation */
-extern int tecc_algo_calculate_buffer_sizes(TeccAlgorithmType algo_type,
-                                           size_t input_size,
-                                           size_t *input_size_needed,
-                                           size_t *output_size_needed,
-                                           size_t *work_size_needed);
-
-/* Performance and memory statistics */
-extern void tecc_algo_get_perf_stats(TeccAlgorithmType algo_type,
-                                    TeccAlgoPerfStats *stats);
-extern void tecc_algo_reset_perf_stats(TeccAlgorithmType algo_type);
-extern void tecc_algo_get_memory_stats(TeccAlgoMemoryStats *stats);
-extern void tecc_algo_reset_memory_stats(void);
 
 
 /* Error code conversion */

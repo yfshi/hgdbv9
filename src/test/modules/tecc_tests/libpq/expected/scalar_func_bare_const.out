@@ -1,0 +1,32 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+========== 1. 整数族 + 裸整型常量 ==========
+BC-int2|2000|100|BC-int4|100000|4000|BC-int8|6000000|5000000
+BC-int2|32000|2000|BC-int4|2000000000|100000|BC-int8|9000000000000|6000000
+========== 2. 小数/浮点族 + 裸小数字面量 ==========
+BC-numeric|1000.50|500.00|BC-float4|50.5|6.25|BC-float8|100|1.5
+BC-numeric|500.00|99.99|BC-float4|99.5|50.5|BC-float8|12345.6789|100
+========== 3. 字符族 + 裸字符串常量 ==========
+BC-text|banana|apple|BC-varchar|banana|apple|BC-bpchar|banana|apple
+BC-text|zebra|banana|BC-varchar|zebra|banana|BC-bpchar|zebra|banana
+========== 4. 同族跨密态类型 + 常量 ==========
+BC-int2-x-int8-x-10000|5000000|BC-f4-x-f8-x-100.0|100|BC-text-x-varchar-x-melon|melon|BC-text-x-bpchar-x-melon|melon
+BC-int2-x-int8-x-10000|9000000000000|BC-f4-x-f8-x-100.0|12345.6789|BC-text-x-varchar-x-melon|zebra|BC-text-x-bpchar-x-melon|zebra
+========== 5. 字符串字面量 '123' 仍按字符串比较 ==========
+BC-str-123|apple|123|BC-str-banana|banana|apple
+BC-str-123|zebra|123|BC-str-banana|zebra|banana
+========== 6. 多常量三参数 ==========
+BC-multi-const|5000.25|500.00|BC-multi-float|20000.5|1.5
+BC-multi-const|5000.25|99.99|BC-multi-float|20000.5|100
+========== 7. 清理 ==========
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../scalar_func_bare_const.sql:27: NOTICE:  table "enc_pgfunc_bc" does not exist, skipping
+psql:/.../scalar_func_bare_const.sql:28: NOTICE:  data encryption key "enc_pgfunc_bc_dek" does not exist, skipping
+psql:/.../scalar_func_bare_const.sql:29: NOTICE:  key encryption key "enc_pgfunc_bc_kek" does not exist, skipping

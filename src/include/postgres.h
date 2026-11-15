@@ -401,6 +401,11 @@ typedef struct
 	(VARATT_IS_EXTERNAL(PTR) && VARTAG_EXTERNAL(PTR) == VARTAG_COLLECTYPE)
 /* End- ReqID:SRS-PLSQL-Collection */
 
+/* Begin - ReqID:SRS-PLSQL-Collection */
+#define VARATT_IS_EXTERNAL_COLLECT(PTR) \
+	(VARATT_IS_EXTERNAL(PTR) && VARTAG_EXTERNAL(PTR) == VARTAG_COLLECTYPE)
+/* End- ReqID:SRS-PLSQL-Collection */
+
 
 /* ----------------------------------------------------------------
  *				Section 2:	Datum type + support macros

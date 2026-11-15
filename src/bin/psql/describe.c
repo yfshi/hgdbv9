@@ -5000,6 +5000,131 @@ listLanguages(const char *pattern, bool verbose, bool showSystem)
 	return true;
 }
 
+/*
+ * \dkek
+ * List TECC key-encryption keys.
+ */
+bool
+listKeks(const char *pattern, bool verbose)
+{
+	PQExpBufferData buf;
+	PGresult   *res;
+	printQueryOpt myopt = pset.popt;
+
+	initPQExpBuffer(&buf);
+
+	printfPQExpBuffer(&buf,
+					  "SELECT n.nspname AS \"%s\",\n"
+					  "  k.kek_name AS \"%s\",\n"
+					  "  pg_catalog.pg_get_userbyid(k.key_owner) AS \"%s\",\n"
+					  "  pg_catalog.encode(ks.value, 'escape') AS \"%s\",\n"
+					  "  pg_catalog.encode(kp.value, 'escape') AS \"%s\"",
+					  gettext_noop("Schema"),
+					  gettext_noop("Name"),
+					  gettext_noop("Owner"),
+					  gettext_noop("KMS type"),
+					  gettext_noop("Key path"));
+
+	if (verbose)
+		appendPQExpBuffer(&buf,
+						  ",\n  k.oid AS \"%s\",\n"
+						  "  k.create_date AS \"%s\",\n"
+						  "  (SELECT pg_catalog.string_agg(pg_catalog.format('%%I.%%I', dn.nspname, d.dek_name), E'\\n' ORDER BY dn.nspname, d.dek_name)\n"
+						  "     FROM pg_catalog.hg_dek d\n"
+						  "     JOIN pg_catalog.pg_namespace dn ON dn.oid = d.key_namespace\n"
+						  "    WHERE d.kek_id = k.oid) AS \"%s\"",
+						  gettext_noop("OID"),
+						  gettext_noop("Created"),
+						  gettext_noop("DEKs"));
+
+	appendPQExpBufferStr(&buf,
+						 "\nFROM pg_catalog.hg_kek k\n"
+						 "  JOIN pg_catalog.pg_namespace n ON n.oid = k.key_namespace\n"
+						 "  LEFT JOIN pg_catalog.hg_kek_args ks ON ks.kek_id = k.oid\n"
+						 "    AND ks.function_name = 'kek_config' AND ks.key = 'KEY_STORE'\n"
+						 "  LEFT JOIN pg_catalog.hg_kek_args kp ON kp.kek_id = k.oid\n"
+						 "    AND kp.function_name = 'kek_config' AND kp.key = 'KEY_PATH'\n");
+
+	if (!validateSQLNamePattern(&buf, pattern, false, false,
+							  "n.nspname", "k.kek_name", NULL,
+							  NULL, NULL, 3))
+		return false;
+
+	appendPQExpBufferStr(&buf, "ORDER BY 1, 2;");
+
+	res = PSQLexec(buf.data);
+	termPQExpBuffer(&buf);
+	if (!res)
+		return false;
+
+	myopt.nullPrint = NULL;
+	myopt.title = _("List of TECC KEKs");
+	myopt.translate_header = true;
+
+	printQuery(res, &myopt, pset.queryFout, false, pset.logfile);
+	PQclear(res);
+	return true;
+}
+
+/*
+ * \ddek
+ * List TECC data-encryption keys.
+ */
+bool
+listDeks(const char *pattern, bool verbose)
+{
+	PQExpBufferData buf;
+	PGresult   *res;
+	printQueryOpt myopt = pset.popt;
+
+	initPQExpBuffer(&buf);
+
+	printfPQExpBuffer(&buf,
+					  "SELECT n.nspname AS \"%s\",\n"
+					  "  d.dek_name AS \"%s\",\n"
+					  "  pg_catalog.pg_get_userbyid(d.key_owner) AS \"%s\",\n"
+					  "  pg_catalog.format('%s.%s', kn.nspname, k.kek_name) AS \"%s\",\n"
+					  "  d.column_key_distributed_id AS \"%s\"",
+					  gettext_noop("Schema"),
+					  gettext_noop("Name"),
+					  gettext_noop("Owner"),
+					  "%I", "%I",
+					  gettext_noop("KEK"),
+					  gettext_noop("Distributed ID"));
+
+	if (verbose)
+		appendPQExpBuffer(&buf,
+						  ",\n  d.oid AS \"%s\",\n"
+						  "  d.create_date AS \"%s\"",
+						  gettext_noop("OID"),
+						  gettext_noop("Created"));
+
+	appendPQExpBufferStr(&buf,
+						 "\nFROM pg_catalog.hg_dek d\n"
+						 "  JOIN pg_catalog.pg_namespace n ON n.oid = d.key_namespace\n"
+						 "  JOIN pg_catalog.hg_kek k ON k.oid = d.kek_id\n"
+						 "  JOIN pg_catalog.pg_namespace kn ON kn.oid = k.key_namespace\n");
+
+	if (!validateSQLNamePattern(&buf, pattern, false, false,
+							  "n.nspname", "d.dek_name", NULL,
+							  NULL, NULL, 3))
+		return false;
+
+	appendPQExpBufferStr(&buf, "ORDER BY 1, 2;");
+
+	res = PSQLexec(buf.data);
+	termPQExpBuffer(&buf);
+	if (!res)
+		return false;
+
+	myopt.nullPrint = NULL;
+	myopt.title = _("List of TECC DEKs");
+	myopt.translate_header = true;
+
+	printQuery(res, &myopt, pset.queryFout, false, pset.logfile);
+	PQclear(res);
+	return true;
+}
 
 /*
  * \dD

@@ -207,6 +207,7 @@ static char *system_functions_file;
 static char *system_views_file;
 /*Begin: ReqId: TECC-v4.0*/
 static char *hg_metadata_views_file;
+static char *hg_rotate_funcs_file;
 /*End: ReqId: TECC-v4.0*/
 static bool success = false;
 static bool made_new_pgdata = false;
@@ -244,10 +245,10 @@ static bool enable_blankspace_compare = true;	/* SRS-MISC-COMPATDM-SQL */
 static const char *ora_options = "-c session_preload_libraries=liboracle_parser ";
 static const char *mys_options = "-c session_preload_libraries=libmysql_parser ";	/* ReqID:SRS-MISC-MYSQL-FRAME */
 
-static char  *dbmode = "oracle";
+static char  *dbmode = "pg";
 static char  *ora_conf_file;
 static char  *mys_conf_file;	/* ReqID:SRS-MISC-MYSQL-FRAME */
-static int	database_mode = DB_ORACLE;
+static int	database_mode = DB_PG;
 /* END - SQL PARSER */
 /*
  * Warning messages for authentication methods
@@ -3424,6 +3425,7 @@ setup_data_file_paths(void)
 	set_input(&system_views_file, "system_views.sql");
 	/*Begin: ReqId: TECC-v4.0*/
 	set_input(&hg_metadata_views_file, "hg_metadata_views.sql");
+	set_input(&hg_rotate_funcs_file, "hg_rotate_funcs.sql");
 	/*End: ReqId: TECC-v4.0*/
 	/* BEGIN - SQL PARSER */
 	if (database_mode == DB_ORACLE)
@@ -3468,6 +3470,7 @@ setup_data_file_paths(void)
 	check_input(system_views_file);
 	/*Begin: ReqId: TECC-v4.0*/
 	check_input(hg_metadata_views_file);
+	check_input(hg_rotate_funcs_file);
 	/*End: ReqId: TECC-v4.0*/
 	/* BEGIN - SQL PARSER */
 	if (database_mode == DB_ORACLE)
@@ -3964,6 +3967,12 @@ initialize_data_directory(void)
 	load_gb18030_2022(cmdfd);	/* Bug#M0000342 , load gb18030_2022 at all times */
 	/* END - SRS-MISC-GB18030*/
 	load_plpgsql(cmdfd);
+
+	/*Begin: ReqId: TECC-v4.0*/
+	/* 须在 load_plpgsql 之后执行：文件用 plpgsql 编写 */
+	setup_run_file(cmdfd, hg_rotate_funcs_file);
+	/*End: ReqId: TECC-v4.0*/
+
 	/* Begin - ReqID:SRS-MISC-LICENSE */
 #ifdef USE_LICENSE
 	load_hg_misc(cmdfd);

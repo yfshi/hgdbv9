@@ -1,0 +1,43 @@
+# tecc_kms 构建产物与运行时文件（不入库）
+
+# CMake 构建目录：仅保留 CMakeLists.txt，其余构建产物一律忽略
+build/*
+!build/CMakeLists.txt
+
+# 编译产物（bin/ 目录，由 build 生成）
+bin/libteccsdf.so*
+bin/teccsdfinit
+bin/teccsdftest
+
+# JCE 门面（jce/，回归测试专用；源码在 jce/src，产物不入库）
+jce/build/
+bin/libteccjce.jar
+
+# 虚拟设备密钥文件（由 teccsdfinit 生成，运行时产物）
+*.key
+sm2sign-*.pem
+sm2signpub-*.pem
+sm2enc-*.pem
+sm2encpub-*.pem
+
+# 提交固定预置 KEK（供回归用例直接引用，无需现场生成）
+!keys/
+!keys/kek-1.key
+!keys/kek-2.key
+# 无口令 SM2 密钥对：硬加密 × 同态加密用例（swxa_enc.sql）用，等价真机
+# 密码机内不带访问口令的设备密钥，回归时复制到 psql 工作目录
+!keys/kek-3.key
+!keys/sm2sign-3.pem
+!keys/sm2signpub-3.pem
+!keys/sm2enc-3.pem
+!keys/sm2encpub-3.pem
+# 同上（索引 4）：硬加密非对称 KEK 轮换用例（libpq/sql/swxa_alter_kek_he.sql）
+# 的**新**设备密钥——轮换前后各需一把独立的设备 SM2 密钥，索引 3 轮换到 4
+!keys/kek-4.key
+!keys/sm2sign-4.pem
+!keys/sm2signpub-4.pem
+!keys/sm2enc-4.pem
+!keys/sm2encpub-4.pem
+
+# 恢复被根 .gitignore 的 *.exp 规则误伤的源码文件（SoftSDF 导出符号表，Mac 平台用）
+!src/softsdf.exp

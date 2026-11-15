@@ -28,6 +28,7 @@
 #include "catalog/partition.h"
 #include "catalog/pg_inherits.h"
 #include "catalog/pg_type.h"
+#include "commands/encrypted_column.h"
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
@@ -45,6 +46,7 @@
 #include "utils/selfuncs.h"
 #include "utils/syscache.h"
 #include "utils/guc.h"
+#include "utils/tecc/tecc_index.h"
 
 
 static RelOptInfo *recurse_set_operations(Node *setOp, PlannerInfo *root,
@@ -68,12 +70,15 @@ static List *plan_union_children(PlannerInfo *root,
 								 List *refnames_tlist,
 								 List **tlist_list);
 static Path *make_union_unique(SetOperationStmt *op, Path *path, List *tlist,
-							   PlannerInfo *root);
+							   List *tlist_list, PlannerInfo *root);
 static void postprocess_setop_rel(PlannerInfo *root, RelOptInfo *rel);
 static bool choose_hashed_setop(PlannerInfo *root, List *groupClauses,
 								Path *input_path,
 								double dNumGroups, double dNumOutputRows,
-								const char *construct);
+								const char *construct, bool force_hash);
+/* Begin - ReqID:TECC4.0 */
+static bool tecc_setop_columns_need_hash(PlannerInfo *root, List *tlist_list);
+/* End - ReqID:TECC4.0 */
 static List *generate_setop_tlist(List *colTypes, List *colCollations,
 								  int flag,
 								  Index varno,
@@ -629,7 +634,7 @@ generate_union_paths(SetOperationStmt *op, PlannerInfo *root,
 	 * node(s) to remove duplicates.
 	 */
 	if (!op->all)
-		path = make_union_unique(op, path, tlist, root);
+		path = make_union_unique(op, path, tlist, tlist_list, root);
 
 	add_path(result_rel, path);
 
@@ -684,7 +689,7 @@ generate_union_paths(SetOperationStmt *op, PlannerInfo *root,
 			create_gather_path(root, result_rel, ppath,
 							   result_rel->reltarget, NULL, NULL);
 		if (!op->all)
-			ppath = make_union_unique(op, ppath, tlist, root);
+			ppath = make_union_unique(op, ppath, tlist, tlist_list, root);
 		add_path(result_rel, ppath);
 	}
 
@@ -818,7 +823,11 @@ generate_nonunion_paths(SetOperationStmt *op, PlannerInfo *root,
 	 */
 	use_hash = choose_hashed_setop(root, groupList, path,
 								   dNumGroups, dNumOutputRows,
-								   (op->op == SETOP_INTERSECT) ? "INTERSECT" : "EXCEPT");
+								   (op->op == SETOP_INTERSECT) ? "INTERSECT" : "EXCEPT",
+								   /* Begin - ReqID:TECC4.0 */
+								   tecc_setop_columns_need_hash(root, tlist_list)
+								   /* End - ReqID:TECC4.0 */
+								   );
 
 	if (groupList && !use_hash)
 		path = (Path *) create_sort_path(root,
@@ -934,7 +943,7 @@ plan_union_children(PlannerInfo *root,
  */
 static Path *
 make_union_unique(SetOperationStmt *op, Path *path, List *tlist,
-				  PlannerInfo *root)
+				  List *tlist_list, PlannerInfo *root)
 {
 	RelOptInfo *result_rel = fetch_upper_rel(root, UPPERREL_SETOP, NULL);
 	List	   *groupList;
@@ -955,7 +964,11 @@ make_union_unique(SetOperationStmt *op, Path *path, List *tlist,
 	/* Decide whether to hash or sort */
 	if (choose_hashed_setop(root, groupList, path,
 							dNumGroups, dNumGroups,
-							"UNION"))
+							"UNION",
+							/* Begin - ReqID:TECC4.0 */
+							tecc_setop_columns_need_hash(root, tlist_list)
+							/* End - ReqID:TECC4.0 */
+							))
 	{
 		/* Hashed aggregate plan --- no sort needed */
 		path = (Path *) create_agg_path(root,
@@ -1009,6 +1022,98 @@ postprocess_setop_rel(PlannerInfo *root, RelOptInfo *rel)
 	set_cheapest(rel);
 }
 
+/* Begin - ReqID:TECC4.0 */
+/*
+ * tecc_setop_columns_need_hash
+ *
+ *	  Does duplicate elimination for this set operation have to use hashing?
+ *
+ * The sort-based implementation compares the group columns with the type's
+ * btree ordering operator, which for encrypted types is cipherdata_cmp_internal()
+ * -- and that can only compare values that carry an OPE ciphertext segment.
+ * A DET-only or RND-only encrypted column has none, so the sorted path would
+ * fail at execution time even though duplicate elimination doesn't actually
+ * need ordering: Unique/SetOp decide equality via the equality operator
+ * (cipherdata_eq()), which only needs DET.  Such columns must therefore be
+ * deduplicated with the hash-based path.
+ *
+ * tlist_list is the list of subplan targetlists produced by generate_setop_tlist();
+ * each Var in them references the arm's subquery by its rangetable index, with
+ * varattno equal to that subquery's output column number.  We only resolve the
+ * common case where an output column is a bare base-table column (possibly
+ * wrapped in RelabelType); for expressions and nested set operations the
+ * capability cannot be determined statically, so we return false and let the
+ * regular path decision stand.
+ */
+static bool
+tecc_setop_columns_need_hash(PlannerInfo *root, List *tlist_list)
+{
+	ListCell   *lc;
+
+	if (root->parse == NULL || root->simple_rte_array == NULL)
+		return false;
+
+	foreach(lc, tlist_list)
+	{
+		List	   *subtlist = (List *) lfirst(lc);
+		ListCell   *lc2;
+
+		foreach(lc2, subtlist)
+		{
+			TargetEntry *tle = (TargetEntry *) lfirst(lc2);
+			Node	   *expr;
+			Var		   *var;
+			RangeTblEntry *rte;
+			TargetEntry *srctle;
+
+			if (tle->resjunk || tle->expr == NULL || !IsA(tle->expr, Var))
+				continue;
+
+			var = (Var *) tle->expr;
+			if (!is_encrypted_data_type(exprType((Node *) var)))
+				continue;
+			if (var->varno <= 0 || var->varattno <= 0 ||
+				var->varno > list_length(root->parse->rtable))
+				continue;
+
+			/* Locate the RTE for the arm this output column comes from */
+			rte = root->simple_rte_array[var->varno];
+			if (rte == NULL || rte->rtekind != RTE_SUBQUERY ||
+				rte->subquery == NULL)
+				continue;
+
+			/* varattno is the arm's output column number */
+			srctle = get_tle_by_resno(rte->subquery->targetList,
+									  var->varattno);
+			if (srctle == NULL || srctle->resjunk || srctle->expr == NULL)
+				continue;
+
+			expr = (Node *) srctle->expr;
+			while (expr != NULL && IsA(expr, RelabelType))
+				expr = (Node *) ((RelabelType *) expr)->arg;
+			if (expr == NULL || !IsA(expr, Var))
+				continue;
+
+			/* Only a bare base-table column has a usable encryption metadata */
+			var = (Var *) expr;
+			if (var->varno <= 0 || var->varattno <= 0 ||
+				var->varno > list_length(rte->subquery->rtable))
+				continue;
+
+			rte = rt_fetch(var->varno, rte->subquery->rtable);
+			if (rte->rtekind != RTE_RELATION)
+				continue;
+
+			if (!tecc_column_supports_ordering(rte->relid,
+											   (int16) var->varattno))
+				return true;
+		}
+	}
+
+	return false;
+}
+/* End - ReqID:TECC4.0 */
+
 /*
  * choose_hashed_setop - should we use hashing for a set operation?
  */
@@ -1016,7 +1121,7 @@ static bool
 choose_hashed_setop(PlannerInfo *root, List *groupClauses,
 					Path *input_path,
 					double dNumGroups, double dNumOutputRows,
-					const char *construct)
+					const char *construct, bool force_hash)
 {
 	int			numGroupCols = list_length(groupClauses);
 	Size		hash_mem_limit = get_hash_memory_limit();
@@ -1030,6 +1135,21 @@ choose_hashed_setop(PlannerInfo *root, List *groupClauses,
 	/* Check whether the operators support sorting or hashing */
 	can_sort = grouping_is_sortable(groupClauses);
 	can_hash = grouping_is_hashable(groupClauses);
+
+	/* Begin - ReqID:TECC4.0 */
+	/*
+	 * DET-only/RND-only encrypted columns have no OPE ciphertext segment, so
+	 * the sort-based duplicate elimination would fail at runtime
+	 * (cipherdata_cmp_internal() needs OPE).  Duplicate elimination only
+	 * needs equality, which Unique/SetOp implement via the equality operator
+	 * (cipherdata_eq(), satisfied by DET), so force hashing for such columns.
+	 * If the clauses aren't hashable after all, fall through to the regular
+	 * decision below and let it report the problem.
+	 */
+	if (can_hash && force_hash)
+		return true;
+	/* End - ReqID:TECC4.0 */
+
 	if (can_hash && can_sort)
 	{
 		/* we have a meaningful choice to make, continue ... */

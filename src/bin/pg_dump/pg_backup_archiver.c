@@ -5412,6 +5412,8 @@ _getObjectDescription(PQExpBuffer buf, TocEntry *te)
 		strcmp(type, "TEXT SEARCH DICTIONARY") == 0 ||
 		strcmp(type, "TEXT SEARCH CONFIGURATION") == 0 ||
 		strcmp(type, "STATISTICS") == 0 ||
+		strcmp(type, "KEY ENCRYPTION KEY") == 0 ||
+		strcmp(type, "DATA ENCRYPTION KEY") == 0 ||
 	/* non-schema-specified objects */
 		strcmp(type, "DATABASE") == 0 ||
 		strcmp(type, "PROCEDURAL LANGUAGE") == 0 ||
@@ -5792,7 +5794,9 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 				 strcmp(te->desc, "OBJECT TYPE BODY") == 0 || /* ReqID:SRS-SQL-CustomObject */
 				 strcmp(te->desc, "ROW SECURITY") == 0 ||
 				 strcmp(te->desc, "POLICY") == 0 ||
-				 strcmp(te->desc, "USER MAPPING") == 0)
+				 strcmp(te->desc, "USER MAPPING") == 0 ||
+				 strcmp(te->desc, "KEY ENCRYPTION KEY") == 0 ||
+				 strcmp(te->desc, "DATA ENCRYPTION KEY") == 0)
 		{
 			/* these object types don't have separate owners */
 		}

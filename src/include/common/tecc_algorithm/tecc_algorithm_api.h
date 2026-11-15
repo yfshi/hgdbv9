@@ -53,21 +53,6 @@ extern uint32 tecc_algo_get_capability(TeccAlgorithmType algo_type);
 extern const char *tecc_algo_get_error_string(int error_code);
 
 
-/* Buffer size calculation */
-extern int tecc_algo_calculate_buffer_sizes(TeccAlgorithmType algo_type,
-                                           size_t input_size,
-                                           size_t *input_size_needed,
-                                           size_t *output_size_needed,
-                                           size_t *work_size_needed);
-
-/* Performance and memory statistics */
-extern void tecc_algo_get_perf_stats(TeccAlgorithmType algo_type,
-                                    TeccAlgoPerfStats *stats);
-extern void tecc_algo_reset_perf_stats(TeccAlgorithmType algo_type);
-extern void tecc_algo_get_memory_stats(TeccAlgoMemoryStats *stats);
-extern void tecc_algo_reset_memory_stats(void);
-
-
 /* Error code conversion */
 extern int tecc_algo_error_to_scheduler_error(int algo_error);
 extern int tecc_algo_error_to_formatter_error(int algo_error);
@@ -87,7 +72,8 @@ extern int tecc_algo_encrypt_zero_copy(TeccAlgorithmType algo_type,
                                       unsigned char *output_buffer,
                                       size_t buffer_size,
                                       size_t *output_len,
-                                      bool is_wildcard_pattern);
+                                      bool is_wildcard_pattern,
+                                      char escape_char);
 
 extern int tecc_algo_decrypt_zero_copy(TeccAlgorithmType algo_type,
                                       const unsigned char *key,

@@ -1,0 +1,160 @@
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+[A1] coalesce(10::int2_enc, 10, NULL)
+[A2] coalesce(10::int2_enc, NULL)
+[A3] coalesce(10::int2_enc, abc, NULL)
+[A4] coalesce(abc, 19::float4_enc, NULL)
+[A5] coalesce(10::int2_enc, 20::int4_enc, NULL)
+[A6] coalesce(NULL, 10::int2_enc)
+[A7] coalesce(10::int2_enc, 10.5, NULL)
+[A8] coalesce(a::text_enc, b, NULL)
+[A9] coalesce(NULL, NULL, 10::int2_enc)
+[B1] coalesce(10::int2_enc ew(dek), 10, NULL)
+[B2] coalesce(10::int2_enc ew(dek), abc, NULL)
+[B3] coalesce(abc, 19::float4_enc ew(dek), NULL)
+[B4] coalesce(10::int2_enc ew(dek), 20::int4_enc ew(dek), NULL) -- 成功锚点
+ coalesce 
+----------
+ 10
+(1 row)
+
+[C1] coalesce(c_text, abc, NULL) -- 成功锚点
+ coalesce 
+----------
+ abc
+ abc
+(2 rows)
+
+[C2] coalesce(c_int4, 10, NULL) -- 成功锚点
+ coalesce 
+----------
+ 10
+ 10
+(2 rows)
+
+[C3] coalesce(c_text, 10, NULL)
+[C4] coalesce(c_int4, abc, NULL)
+[C5] coalesce(c_int4, 10::int2_enc, NULL)
+[C6] coalesce(c_text, 10::int2_enc, NULL)
+[C7] coalesce(c_int4, c_text, NULL)
+[C8] coalesce(c_int4, n_int4, NULL)
+[D1] greatest(10::int2_enc, 20, NULL)
+[D2] least(10::int2_enc, NULL)
+[D3] greatest(10::int2_enc, abc, NULL)
+[D4] greatest(abc, 19::float4_enc, NULL)
+[D5] greatest(10::int2_enc, 20::int4_enc, NULL)
+[D6] least(10.5, 19::float4_enc, NULL)
+[E1] greatest(10::int2_enc ew(dek), 20, NULL)
+[E2] greatest(10::int2_enc ew(dek), abc, NULL)
+[E3] least(10::int2_enc ew(dek), NULL) -- 成功锚点
+ least 
+-------
+ 10
+(1 row)
+
+[F1] greatest(c_text, abc, NULL) -- 成功锚点
+ greatest 
+----------
+ abc
+ abc
+(2 rows)
+
+[F2] least(c_int4, 10, NULL) -- 成功锚点
+ least 
+-------
+ 10
+ 10
+(2 rows)
+
+[F3] greatest(c_text, 10, NULL)
+[F4] greatest(c_int4, abc, NULL)
+[F5] greatest(c_int4, 10::int2_enc, NULL)
+[F6] greatest(c_int4, c_text, NULL)
+[F7] greatest(c_int4, n_int4, NULL)
+[G1] case when true then 10::int2_enc else 10 end
+[G2] case when true then 10::int2_enc else NULL end
+[G3] case when true then 10::int2_enc else abc end
+[G4] case when true then abc else 19::float4_enc end
+[G5] case when true then 10::int2_enc else 20::int4_enc end
+[H1] case when c_int4 = 10 then 10 else 20 end -- 成功锚点
+ case 
+------
+   10
+   20
+(2 rows)
+
+[H2] case when c_text = x then abc else def end -- 成功锚点
+ case 
+------
+ def
+ def
+(2 rows)
+
+[H3] case when true then c_int4 else 10 end -- 成功锚点
+ case 
+------
+ 10
+ 
+(2 rows)
+
+[H4] case when true then c_int4 else abc end -- F 模板（分支类型不兼容）
+[H5] case when true then c_int4 else 10::int2_enc end
+[I1] case c_int4 when 10 then 10 else 20 end
+[I2] case 10::int2_enc when 10 then 10 else 20 end
+[I3] case c_int4 when n_int4 then 10 else 20 end
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../scalar_func_arg_combos.sql:14: NOTICE:  table "enc_pgfunc_test_det" does not exist, skipping
+psql:/.../scalar_func_arg_combos.sql:15: NOTICE:  table "enc_pgfunc_test_ope" does not exist, skipping
+psql:/.../scalar_func_arg_combos.sql:16: NOTICE:  table "enc_arg_combos_ope" does not exist, skipping
+psql:/.../scalar_func_arg_combos.sql:17: NOTICE:  data encryption key "enc_pgfunc_dek" does not exist, skipping
+psql:/.../scalar_func_arg_combos.sql:18: NOTICE:  key encryption key "enc_pgfunc_kek" does not exist, skipping
+psql:/.../scalar_func_arg_combos.sql:35: TECC query preprocessing failed: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:37: TECC query preprocessing failed: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:39: TECC query preprocessing failed: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:41: TECC query preprocessing failed: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:43: TECC query preprocessing failed: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:45: TECC query preprocessing failed: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:47: TECC query preprocessing failed: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:49: TECC query preprocessing failed: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:51: TECC query preprocessing failed: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:55: TECC query preprocessing failed: coalesce does not support this argument combination: encrypted-type constants and plain constants cannot be mixed
+psql:/.../scalar_func_arg_combos.sql:57: TECC query preprocessing failed: coalesce does not support this argument combination: encrypted-type constants and plain constants cannot be mixed
+psql:/.../scalar_func_arg_combos.sql:59: TECC query preprocessing failed: coalesce does not support this argument combination: encrypted-type constants and plain constants cannot be mixed
+psql:/.../scalar_func_arg_combos.sql:69: TECC query preprocessing failed: coalesce does not support this argument combination: the constant type does not match the encrypted column type
+psql:/.../scalar_func_arg_combos.sql:71: TECC query preprocessing failed: coalesce does not support this argument combination: the constant type does not match the encrypted column type
+psql:/.../scalar_func_arg_combos.sql:73: TECC query preprocessing failed: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:75: TECC query preprocessing failed: coalesce does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:77: TECC query preprocessing failed: coalesce does not support this argument combination: this combination of encrypted types is not supported
+psql:/.../scalar_func_arg_combos.sql:79: TECC query preprocessing failed: coalesce does not support this argument combination: encrypted columns and plain columns cannot be mixed
+psql:/.../scalar_func_arg_combos.sql:83: TECC query preprocessing failed: greatest does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:85: TECC query preprocessing failed: least does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:87: TECC query preprocessing failed: greatest does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:89: TECC query preprocessing failed: greatest does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:91: TECC query preprocessing failed: greatest does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:93: TECC query preprocessing failed: least does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:97: TECC query preprocessing failed: greatest does not support this argument combination: encrypted-type constants and plain constants cannot be mixed
+psql:/.../scalar_func_arg_combos.sql:99: TECC query preprocessing failed: greatest does not support this argument combination: encrypted-type constants and plain constants cannot be mixed
+psql:/.../scalar_func_arg_combos.sql:109: TECC query preprocessing failed: greatest does not support this argument combination: the constant type does not match the encrypted column type
+psql:/.../scalar_func_arg_combos.sql:111: TECC query preprocessing failed: greatest does not support this argument combination: the constant type does not match the encrypted column type
+psql:/.../scalar_func_arg_combos.sql:113: TECC query preprocessing failed: greatest does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:115: TECC query preprocessing failed: greatest does not support this argument combination: this combination of encrypted types is not supported
+psql:/.../scalar_func_arg_combos.sql:117: TECC query preprocessing failed: greatest does not support this argument combination: encrypted columns and plain columns cannot be mixed
+psql:/.../scalar_func_arg_combos.sql:121: TECC query preprocessing failed: case does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:123: TECC query preprocessing failed: case does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:125: TECC query preprocessing failed: case does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:127: TECC query preprocessing failed: case does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:129: TECC query preprocessing failed: case does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:139: TECC query preprocessing failed: case does not support this argument combination: the branch constant type cannot be encrypted like encrypted column c_int4; unify branches to encrypted columns or plain constants matching the column's original type
+psql:/.../scalar_func_arg_combos.sql:141: TECC query preprocessing failed: case does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:145: TECC query preprocessing failed: case does not support this argument combination: the switch form (CASE expression WHEN constant) is not supported; use the CASE WHEN condition form instead
+psql:/.../scalar_func_arg_combos.sql:147: TECC query preprocessing failed: case does not support this argument combination: plain constants cannot be cast to encrypted types directly; use encrypted with (dek=...) or use a constant of the same type as the encrypted column
+psql:/.../scalar_func_arg_combos.sql:149: TECC query preprocessing failed: case does not support this argument combination: the switch form (CASE expression WHEN constant) is not supported; use the CASE WHEN condition form instead

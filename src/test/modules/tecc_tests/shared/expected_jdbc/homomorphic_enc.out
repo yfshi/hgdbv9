@@ -1,0 +1,635 @@
+NOTICE: key encryption key "kek_he" does not exist, skipping
+DROP KEK
+CREATE KEK
+0_kek_public_key|true
+CREATE DEK
+CREATE DEK
+NOTICE: data encryption key "dek_sym_he" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "kek_sym_he" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+=== 1 CREATE TABLE ===
+NOTICE: table "he_test" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+=== 2 INSERT ===
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+=== 3 round-trip int4 ===
+1|10|2|3
+2|100|5|7
+3|0|0|0
+4|-5|-3|-2
+=== 3 round-trip int2 ===
+1|100|3
+2|200|4
+3|0|0
+4|-10|-2
+=== 3 round-trip int8 ===
+1|1000|2
+2|2000|3
+3|0|0
+4|-100|-2
+=== 4 ADD same col ===
+1|true
+2|true
+3|true
+4|true
+=== 4 ADD cross col ===
+1|true
+2|true
+3|true
+4|true
+=== 5 SUB diff ===
+1|true
+2|true
+3|true
+4|true
+=== 5 SUB self (zero) ===
+1|true
+2|true
+3|true
+4|true
+=== 6 MUL same col ===
+1|true
+2|true
+3|true
+4|true
+=== 6 MUL cross col ===
+1|true
+2|true
+3|true
+4|true
+=== 7 x ADD ===
+1|true
+2|true
+3|true
+4|true
+=== 7 x MUL ===
+1|true
+2|true
+3|true
+4|true
+=== 7 x SUB ===
+1|true
+2|true
+3|true
+4|true
+=== 8 int2 ADD ===
+1|true
+2|true
+3|true
+4|true
+=== 8 int2 MUL ===
+1|true
+2|true
+3|true
+4|true
+=== 9 int8 ADD ===
+1|true
+2|true
+3|true
+4|true
+=== 9 int8 MUL ===
+1|true
+2|true
+3|true
+4|true
+=== 10 chain ADD ===
+1|true
+2|true
+3|true
+4|true
+=== 10 chain MUL ===
+1|true
+2|true
+3|true
+4|true
+=== 11 x chain ===
+1|true|true
+2|true|true
+3|true|true
+4|true|true
+=== 13 SCALAR ADD a+5 ===
+1|15
+2|105
+3|5
+4|0
+=== 13 SCALAR SUB a-3 ===
+1|7
+2|97
+3|-3
+4|-8
+=== 13 SCALAR MUL a*3 ===
+1|30
+2|300
+3|0
+4|-15
+=== 13 SCALAR MUL-L 3*a ===
+1|30
+2|300
+3|0
+4|-15
+=== 13 SCALAR MUL-NEG a*(-1) ===
+1|-10|-20|-30
+2|-100|-200|-300
+3|0|0|0
+4|5|10|15
+=== 13 SCALAR MUL-NEG-L (-1)*a ===
+1|-10|-20
+2|-100|-200
+3|0|0
+4|5|10
+=== 13 SCALAR MUL-NEG-EXPR a*(0-2) ===
+1|-20|-30
+2|-200|-300
+3|0|0
+4|10|15
+=== 13 SCALAR MUL-NEG int8/int2 ===
+1|-2000|-200
+2|-4000|-400
+3|0|0
+4|200|20
+=== 13 SCALAR MUL-NEG consistency ===
+1|0|0|-10000
+2|0|0|-100000
+3|0|0|0
+4|0|0|5000
+=== 13 SCALAR ADD-L 5+a ===
+1|15
+2|105
+3|5
+4|0
+=== 13 SCALAR SUB-L 3-a ===
+1|-7
+2|-97
+3|3
+4|8
+=== 13 SCALAR SUB-L 30-a ===
+1|20
+2|-70
+3|30
+4|35
+=== 13 SCALAR SUB-L -3-a ===
+1|-13
+2|-103
+3|-3
+4|2
+=== 13 SCALAR SUB-L int8 3-i8a ===
+1|-997
+2|-1997
+3|3
+4|103
+=== 13 UNARY NEG -i4_a ===
+1|-10
+2|-100
+3|0
+4|5
+=== 13 UNARY NEG -i8_a ===
+1|-1000
+2|-2000
+3|0
+4|100
+=== 13 UNARY NEG -i2_a ===
+1|-100
+2|-200
+3|0
+4|10
+=== 13 UNARY NEG -i4_a+3 ===
+1|-7
+2|-97
+3|3
+4|8
+=== 13 SUB-L-EXPR (3*2)-i4_a ===
+1|-4
+2|-94
+3|6
+4|11
+=== 13 SUB-L-COMP 10-(a+1) ===
+1|-1
+2|-91
+3|9
+4|14
+=== 13 SUB-L-COMP 10-a*2 ===
+1|-10
+2|-190
+3|10
+4|20
+=== 13 SUB-L-COMP 100-(a+10)*2 ===
+1|60
+2|-120
+3|80
+4|90
+=== 13 SCALAR NEG a+(-5) ===
+1|5
+2|95
+3|-5
+4|-10
+=== 13 SCALAR SUB-NEG a-(-5) ===
+1|15
+2|105
+3|5
+4|0
+=== 13 SCALAR COMPOUND a+3*2 ===
+1|16
+2|106
+3|6
+4|1
+=== 13 SCALAR int8 b+50 ===
+1|1050
+2|2050
+3|50
+4|-50
+=== 13 SCALAR MUL-M m*3 ===
+1|6
+2|15
+3|0
+4|-9
+=== 13 SCALAR MUL-ML 3*m ===
+1|6
+2|15
+3|0
+4|-9
+=== 13 SCALAR MUL-MNEG m*(-2) ===
+1|-4
+2|-10
+3|0
+4|6
+=== 13 SCALAR MUL-MNEG-EXPR m*(0-2) ===
+1|-4|-6
+2|-10|-15
+3|0|0
+4|6|9
+=== 13 SCALAR MUL-MZERO m*0 ===
+1|0
+2|0
+3|0
+4|0
+=== 13 SCALAR int2 a+5 ===
+1|105
+2|205
+3|5
+4|-5
+=== 13 SCALAR int8 MUL b*3 ===
+1|6
+2|9
+3|0
+4|-6
+NOTICE: table "t_assign" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+=== 14 assign OK he-add col ===
+UPDATE 1
+20
+=== 14 assign ERR symmetric col ===
+ERROR: cannot assign HE-only ciphertext to column 'd' which uses symmetric algorithms (DET/OPE/SEARCH)
+=== 14 assign ERR symmetric+he col ===
+ERROR: cannot assign HE-only ciphertext to column 'x' which uses symmetric algorithms (DET/OPE/SEARCH)
+=== 15 SUM int4 ===
+105
+=== 15 SUM int8 ===
+2900
+=== 15 SUM both ===
+8
+=== 15 SUM int2 ===
+290
+=== 15 SUM neg scalar ===
+-105|-210
+=== 16 PT ADD cross ===
+1|13
+2|107
+3|0
+4|-7
+=== 16 PT SUB cross ===
+1|7
+2|93
+3|0
+4|-3
+=== 16 PT MUL cross ===
+1|6
+2|35
+3|0
+4|6
+=== 16 PT chain add ===
+1|23
+2|207
+3|0
+4|-12
+=== 16 PT scalar MUL on add col (EC k-fold) ===
+1|30
+2|300
+3|0
+4|-15
+=== 17 ERR add col MUL ===
+ERROR: ERROR: cannot perform homomorphic multiplication: operand lacks EG_MUL ciphertext
+  Hint: Ensure the column has support_algo='he-mul' set.
+=== 17 ERR mul col ADD ===
+ERROR: ERROR: cannot perform homomorphic addition: operand lacks EG_ADD ciphertext
+  Hint: Ensure the column has support_algo='he-add' set.
+=== 17 ERR mix both col ===
+ERROR: ERROR: cannot perform homomorphic addition: operand lacks EG_ADD ciphertext
+  Hint: Ensure the column has support_algo='he-add' set.
+=== 18 WHERE scalar add ===
+1|10
+2|100
+3|0
+4|-5
+=== 18 ERR WHERE scalar compare (HE ciphertext not comparable) ===
+ERROR: ERROR: operator does not exist: int4_enc > integer
+  Hint: No operator matches the given name and argument types. You might need to add explicit type casts.
+  Position: 39
+=== 19 UPDATE scalar ===
+UPDATE 1
+1|110
+=== 19 UPDATE sub scalar ===
+UPDATE 1
+2|50
+=== 19 UPDATE mixed A_Expr + const ===
+NOTICE: table "t_set_mix" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+UPDATE 1
+1|100|5
+=== 19 UPDATE mul scalar (he-mul) ===
+UPDATE 1
+1|15
+=== 19 UPDATE mul neg scalar (he-add) ===
+ERROR: TECC strict: encrypted column 'public.t_set_mix.a' lacks he-mul segment capability for homomorphic assignment to 'a' in SET clause
+1|100|15
+DROP TABLE
+=== 20 ERR missing sym DEK ===
+ERROR: Column 'a' declares sm4 algorithm but no DEK DEK is specified
+=== 20 ERR HE_ADD_DEK points sm4 ===
+ERROR: Column 'a' HE_ADD_DEK='dek_sym_he' is a sm4 DEK but he-add is required
+=== 20 ERR sym DEK for HE-only ===
+ERROR: Column 'a' HE_ADD_DEK='dek_sym_he' is a sm4 DEK but he-add is required
+=== 20 ERR HE DEK with sym KEK ===
+ERROR: TECC CREATE DEK: HE DEK requires a KEK with KEY_ALGO='sm2' (or legacy KEY_TYPE='asym'); KEK 'kek_sym_he' has key_algo='sm4'. Create it via CREATE KEK ... KEY_ALGO='sm2' with tecc_ktool-generated .priv/.pub.
+=== 21 ADD zero ===
+1|110
+2|50
+3|0
+4|-5
+=== 21 SUB zero ===
+1|110
+2|50
+3|0
+4|-5
+=== 21 MUL zero ===
+1|0
+2|0
+3|0
+4|0
+=== 22 CT add int2+int4 ===
+1|210
+2|250
+3|0
+4|-15
+=== 22 CT add int2+int8 ===
+1|1100
+2|2200
+3|0
+4|-110
+=== 22 CT add int4+int8 ===
+1|1110
+2|2050
+3|0
+4|-105
+=== 22 CT sub int4-int2 ===
+1|10
+2|-150
+3|0
+4|5
+=== 22 CT mul int2*int4 ===
+1|6
+2|20
+3|0
+4|6
+=== 22 CT mul int2*int8 ===
+1|6
+2|12
+3|0
+4|4
+=== 22 CT mul int4*int8 ===
+1|4
+2|15
+3|0
+4|6
+=== 22 CT add int4+int2 reverse ===
+1|210
+2|250
+3|0
+4|-15
+=== 22 CT add int8+int2 reverse ===
+1|1100
+2|2200
+3|0
+4|-110
+=== 22 CT add int8+int4 reverse ===
+1|1110
+2|2050
+3|0
+4|-105
+=== 22 CT sub int2-int4 ===
+1|-10
+2|150
+3|0
+4|-5
+=== 22 CT sub int8-int2 ===
+1|900
+2|1800
+3|0
+4|-90
+=== 22 CT sub int8-int4 ===
+1|890
+2|1950
+3|0
+4|-95
+=== 22 CT mul int4*int2 reverse ===
+1|6
+2|20
+3|0
+4|6
+=== 22 CT mul int8*int2 reverse ===
+1|6
+2|12
+3|0
+4|4
+=== 22 CT mul int8*int4 reverse ===
+1|4
+2|15
+3|0
+4|6
+=== 22 CT boundary table ===
+NOTICE: table "he_ct" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+=== 22 CT boundary int2 max ===
+33767|34767
+=== 22 CT boundary int2 min ===
+-31768|-30768
+=== 22 CT boundary int4 max ===
+[读取异常: TECC: HE result out of range or unsupported type for public.he_ct.i2 (value=2147483652, typeOid=23)]|[读取异常: TECC: HE result out of range or unsupported type for public.he_ct.i2 (value=9223372036854775812, typeOid=20)]
+=== 22 CT boundary int4 min ===
+-2147483643
+=== 22 CT boundary int8 min ===
+-9223372036854775803
+=== 22 CT boundary int8 max + int4 max ===
+[读取异常: TECC: HE result out of range or unsupported type for public.he_ct.i4 (value=9223372039002259454, typeOid=20)]
+DROP TABLE
+=== 23 HE key material ===
+23_ec_pub|true
+23_ec_priv_env|true
+23_ec_keytype|true
+23_ec_no_eg|true
+23_eg_pub|true
+23_eg_priv_env|true
+23_eg_keytype|true
+23_eg_no_ec|true
+NOTICE: table "t_he_ff" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 2
+23_ff_roundtrip|1|7
+23_ff_roundtrip|2|-9
+DROP TABLE
+=== 24 pow i4_m ^ 2 ===
+1|4
+2|25
+3|0
+4|9
+=== 24 pow i4_m ^ 3 ===
+1|8
+2|125
+3|0
+4|-27
+=== 24 pow power(i4_m, 3) ===
+1|8
+2|125
+3|0
+4|-27
+=== 24 pow i2_m ^ 2 ===
+1|9
+2|16
+3|0
+4|4
+=== 24 pow i8_m ^ 2 ===
+1|4
+2|9
+3|0
+4|4
+=== 24 pow ERR he-add column (lacks EG_MUL) ===
+ERROR: TECC strict: homomorphic power requires HE-MUL on encrypted column [null.he_test.i4_a], but column uses he-add
+=== 24 pow ERR exponent <= 0 ===
+ERROR: TECC strict: homomorphic power exponent must be a positive integer not exceeding 10000, but got 0
+=== 24 pow ERR exponent > max (10000) ===
+ERROR: TECC strict: homomorphic power exponent must be a positive integer not exceeding 10000, but got 10001
+=== 24b pow type: i2_m ^ 2 → int8_enc ===
+int8_enc
+=== 24b pow type: i4_m ^ 2 → int8_enc ===
+int8_enc
+=== 24b pow type: i8_m ^ 2 → int8_enc ===
+int8_enc
+=== 24b pow type: power(i2_m, 3) → int8_enc ===
+int8_enc
+=== 24b pow type: power(i4_m, 3) → int8_enc ===
+int8_enc
+=== 24b pow type: power(i8_m, 3) → int8_enc ===
+int8_enc
+=== 25 multi-dek create ===
+NOTICE: table "t_multi" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+=== 25 multi-dek roundtrip ===
+1|10|20|30|100|multi-dek-search
+=== 25 multi-dek HE ops ===
+1|20|400|60|900
+=== 25 multi-dek symmetric predicates ===
+1|10
+1|100
+1|multi-dek-search
+=== 25 multi-dek sum ===
+10
+=== 12 recheck ===
+4
+=== 24c pow identity: i4_m ^ 1 ===
+1|2
+2|5
+3|0
+4|-3
+=== 24c pow identity: i2_m ^ 1 ===
+1|3
+2|4
+3|0
+4|-2
+=== 24c pow identity: i8_m ^ 1 ===
+1|2
+2|3
+3|0
+4|-2
+=== 24c pow NULL input ===
+1|
+2|
+3|
+4|
+=== 24c pow NULL exponent ===
+1|
+2|
+3|
+4|
+=== 24c pow negative base odd exp ===
+1|8
+2|125
+3|0
+4|-27
+=== 24d pow ERR: mul result + he-add constant ===
+ERROR: ERROR: cannot perform homomorphic scalar addition: operand lacks EG_ADD ciphertext
+  Hint: Ensure the column has support_algo='he-add' set.
+=== 98 WINDOW FUNCTION AGGREGATE ===
+ERROR: aggregate function "SUM" inside window function is not supported on encrypted column "i4_a"
+=== 100 HE INTEGER OVERFLOW RANGE CHECK ===
+CREATE TABLE
+INSERT 0 1
+100a_headd_int4_overflow|[读取异常: TECC: HE result out of range or unsupported type for public.t_ovf_add_int4.a (value=2147483648, typeOid=23)]
+CREATE TABLE
+INSERT 0 1
+100b_headd_int8_overflow|[读取异常: TECC: HE result out of range or unsupported type for public.t_ovf_add_int8.a (value=9223372036854775808, typeOid=20)]
+CREATE TABLE
+INSERT 0 1
+100c_hemul_int4_overflow|[读取异常: TECC: HE result out of range or unsupported type for public.t_ovf_mul_int4.a (value=2500000000, typeOid=23)]
+100d_normal_no_overflow|111
+DROP TABLE
+=== 26 HE SUM view ===
+NOTICE: view "v_he_sum" does not exist, skipping
+DROP VIEW
+CREATE VIEW
+155
+DROP VIEW
+=== 99 CLEANUP ===
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+NOTICE: table "t_bad1" does not exist, skipping
+DROP TABLE
+NOTICE: table "t_bad2" does not exist, skipping
+DROP TABLE
+NOTICE: table "t_bad3" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "dek_bad_he" does not exist, skipping
+DROP DEK
+DROP DEK
+DROP KEK
+DROP DEK
+DROP KEK

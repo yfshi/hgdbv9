@@ -36,7 +36,12 @@ extern bool check_index_support_for_encrypted_column(Oid table_oid,
 													 int16 column_attnum,
 													 Oid index_method);
 
+extern bool tecc_get_column_encryption_info(Oid table_oid, int16 attnum,
+											bool *is_encrypted,
+											uint32 *encryption_type,
+											Oid *dek_oid);
 extern bool tecc_column_supports_ordering(Oid table_oid, int16 attnum);
+extern bool tecc_column_supports_equality(Oid table_oid, int16 attnum);
 
 /* End - ReqID:TECC4.0 */
 

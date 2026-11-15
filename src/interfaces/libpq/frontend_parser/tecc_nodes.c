@@ -138,6 +138,19 @@ DropStmt *makeDropStmt(int stmt_location, int stmt_len) {
     return stmt;
 }
 
+AlterKekStmt *makeAlterKekStmt(int stmt_location, int stmt_len) {
+    AlterKekStmt *stmt = (AlterKekStmt *)tecc_palloc(sizeof(AlterKekStmt));
+    if (!stmt) return NULL;
+
+    stmt->type = FE_T_AlterKekStmt;
+    stmt->names = NIL;
+    stmt->options = NIL;
+    stmt->stmt_location = stmt_location;
+    stmt->stmt_len = stmt_len;
+
+    return stmt;
+}
+
 CreateStmt *makeCreateStmt(int stmt_location, int stmt_len) {
     CreateStmt *stmt = (CreateStmt *)tecc_palloc(sizeof(CreateStmt));
     if (!stmt) return NULL;
@@ -152,6 +165,7 @@ CreateStmt *makeCreateStmt(int stmt_location, int stmt_len) {
     stmt->ofTypename = NULL;
     stmt->stmt_location = stmt_location;
     stmt->stmt_len = stmt_len;
+    stmt->is_temp = false;
 
     return stmt;
 }
@@ -295,6 +309,23 @@ DefElem *makeDefElem(char *defname, Node *arg, int location) {
     return node;
 }
 
+/* ReqID:TECC4.0 - 创建 SET 语句透传节点（SetStmt）。
+ * TECC 处理器对 SET 语句透传（不重写、不加密），节点携带取值信息
+ * （kind/args）供处理器对 SET search_path 做同串即时性预测。 */
+SetStmt *makeSetStmt(char *name, bool is_local, int location, int kind, List *args) {
+    SetStmt *node = (SetStmt *)tecc_palloc(sizeof(SetStmt));
+    if (!node) return NULL;
+
+    node->type = FE_T_SetStmt;
+    node->location = location;
+    node->name = name ? tecc_pstrdup(name) : NULL;
+    node->is_local = is_local;
+    node->kind = kind;
+    node->args = args;
+
+    return node;
+}
+
 /* ==================== 排序规则子句创建函数 ==================== */
 
 Node *makeCollateClause(Node *arg, List *collname, int location) {
@@ -367,6 +398,7 @@ FuncCall *makeFuncCall(List *funcname, List *args, int location) {
 	node->agg_within_group = false;
     node->over = NULL;
     node->location = location;
+    node->end_location = -1; /* ReqID:TECC4.0 */
 
     return node;
 }
@@ -534,6 +566,7 @@ Const *makeConst(int consttype, bool constisnull, int location, int data_size) {
     node->constlen = -1;
     node->constbyval = false;
     node->constisnull = constisnull;
+    node->text_numeric_literal = false;   /* ReqID:TECC4.0 */
     node->location = location;
     node->data_size = data_size;
     memset(&node->constvalue, 0, sizeof(node->constvalue));
@@ -862,6 +895,9 @@ void freeNode(Node *node) {
         case FE_T_CreateKekStmt:
             freeCreateKekStmt((CreateKekStmt *)node);
             break;
+        case FE_T_AlterKekStmt:
+            freeAlterKekStmt((AlterKekStmt *)node);
+            break;
         case FE_T_CreateDekStmt:
             freeCreateDekStmt((CreateDekStmt *)node);
             break;
@@ -885,6 +921,9 @@ void freeNode(Node *node) {
             break;
         case FE_T_CreateTableAsStmt:
             freeCreateTableAsStmt((CreateTableAsStmt *)node);
+            break;
+        case FE_T_ViewStmt:
+            freeViewStmt((ViewStmt *)node);
             break;
         case FE_T_CopyStmt:
             freeCopyStmt((CopyStmt *)node);
@@ -1199,6 +1238,15 @@ void freeCreateDekStmt(CreateDekStmt *stmt) {
     tecc_pfree(stmt);
 }
 
+void freeAlterKekStmt(AlterKekStmt *stmt) {
+    if (!stmt) return;
+
+    if (stmt->names) list_free_deep(stmt->names);
+    if (stmt->options) list_free_node_list(stmt->options);
+
+    tecc_pfree(stmt);
+}
+
 void freeDropStmt(DropStmt *stmt) {
     if (!stmt) return;
 
@@ -1328,6 +1376,13 @@ Node *tecc_copy_node(const Node *node) {
             CreateTableAsStmt *dst = (CreateTableAsStmt *)tecc_palloc(sizeof(CreateTableAsStmt));
             if (!dst) return NULL;
             memcpy(dst, src, sizeof(CreateTableAsStmt));
+            return (Node *)dst;
+        }
+        case FE_T_ViewStmt: {
+            ViewStmt *src = (ViewStmt *)node;
+            ViewStmt *dst = (ViewStmt *)tecc_palloc(sizeof(ViewStmt));
+            if (!dst) return NULL;
+            memcpy(dst, src, sizeof(ViewStmt));
             return (Node *)dst;
         }
         case FE_T_CopyStmt: {
@@ -1561,6 +1616,36 @@ void freeCreateTableAsStmt(CreateTableAsStmt *stmt)
     tecc_pfree(stmt);
 }
 
+ViewStmt *makeViewStmt(RangeVar *relation, Node *query, bool replace, bool temp, List *aliases, int location)
+{
+    ViewStmt *stmt;
+
+    stmt = (ViewStmt *)tecc_palloc(sizeof(ViewStmt));
+    if (!stmt) return NULL;
+
+    stmt->type = FE_T_ViewStmt;
+    stmt->location = location;
+    stmt->length = sizeof(ViewStmt);
+    stmt->relation = relation;
+    stmt->query = query;
+    stmt->replace = replace;
+    stmt->temp = temp;
+    stmt->aliases = aliases;
+
+    return stmt;
+}
+
+void freeViewStmt(ViewStmt *stmt)
+{
+    if (!stmt) return;
+
+    if (stmt->relation) freeNode((Node *)stmt->relation);
+    if (stmt->query) freeNode(stmt->query);
+    if (stmt->aliases) freeNode((Node *)stmt->aliases);
+
+    tecc_pfree(stmt);
+}
+
 /* ==================== DECLARE CURSOR node functions ==================== */
 
 DeclareCursorStmt *makeDeclareCursorStmt(char *portalname, Node *query, int location)
@@ -1770,6 +1855,27 @@ Node *makeStringConst(const char *str, int location, int data_size)
     }
 
     return (Node *)node;
+}
+
+/*
+ * ReqID:TECC4.0 - FLOAT 字面量常量（数值文本形态）
+ *
+ * 与 makeStringConst 同样保留原始文本（避免 strtod 的双精度精度损失，
+ * 见 tecc_grammar.y 的 FLOAT 规则 / Bug8178），但额外打上数值形态标记，
+ * 使参数组合校验（stmt_arg_const_family）能把 `GREATEST(数值密态列, 500.00)`
+ * 这类常量按数值族归类，而不是误判为字符串常量。
+ *
+ * 仅用于语法 FLOAT 产生式；语法的 STRING 产生式仍走 makeStringConst，
+ * 因此 '123' 这类字符串字面量不受影响，依旧按 STRING 族处理。
+ */
+Node *makeNumericTextConst(const char *str, int location, int data_size)
+{
+    Node *node = makeStringConst(str, location, data_size);
+
+    if (node != NULL)
+        ((Const *) node)->text_numeric_literal = true;
+
+    return node;
 }
 
 /* 值提取函数 */

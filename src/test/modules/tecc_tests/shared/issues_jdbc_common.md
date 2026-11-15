@@ -138,3 +138,136 @@ ERROR: cannot cast type varchar_enc to text
 可能是 JDBC 驱动的类型映射缺失 `varchar_enc → text` 的隐式转换路径。
 
 **复现**：`TECC_JDBC_HOME=... make check-tecc-jdbc-common TECC_TEST=ope.sql`
+
+---
+
+# 跨驱动行为差异（C 类）——2026-09-18，批次 1 迁移用例暴露
+
+> 来源：12 个 libpq 独有用例迁入 `shared/sql/` 后，同一用例在 psql 与 JDBC 上的行为对拍。
+> 逐条证据与差异分布见 `shared/jdbc_vs_libpq_diff.md` §九；此处按**问题**组织，供 JDBC 侧跟进。
+> 编号 C-13…C-18 与台账一致。
+
+## 复现方式（任一条通用）
+
+```bash
+cd src/test/modules/tecc_tests
+TECC_JDBC_HOME=~/pg14_tecc_dev/pgjdbc-release-42.5.x TECC_TEST=<case>.sql make check-tecc-jdbc   # JDBC 侧
+TECC_TEST=<case>.sql make check-tecc-libpq-common                                                 # libpq 侧
+# 两侧期望文件即为对拍基准：
+#   JDBC : shared/expected_jdbc/<case>.out
+#   libpq: shared/expected_common/<case>.out
+```
+
+---
+
+### C-15 【严重】EXPLAIN 计划输出被驱动当作密文解密（`det_setop_plan`）
+
+**现象**：8 处 `EXPLAIN (COSTS OFF)`（UNION/INTERSECT/EXCEPT 集合操作）在 JDBC 侧计划行**全部缺失**，
+被等量的驱动异常替代；补丁的 `payload len` 恰好等于各段计划文本长度 → 计划文本被送入了解密路径。
+
+**证据**：
+```
+libpq（正常）: HashAggregate / Group Key: ds_t.a, ds_t.d / HashSetOp Intersect / Filter: (a = '\x…'::int4_enc)
+JDBC        : [读取异常: TECC: ciphertext too short or truncated for algorithm RND (payload len=13, min=72)]
+```
+
+**位置**：`shared/sql/det_setop_plan.sql:95/128/129/132/155/175/182/186/199`
+**影响**：EXPLAIN 类断言在 JDBC 下完全失效（探针类用例尤其依赖它）；也可能影响用户用 EXPLAIN 排查。
+**建议**：优先排查结果集取值路径对 EXPLAIN（`*plan*` 文本列）的解密门控。
+
+### C-13 聚合拦截口径不一致（`aggregate_func`）
+
+**现象**：同一批聚合语句，libpq **前端拦截**，JDBC **放行**并返回解密结果（或两侧都退化但退化方式不同）。
+
+| # | 位置 | libpq | JDBC |
+|---|---|---|---|
+| 1 | `sql:571/574/577/580/590/593/596`（7 条 `array_agg(密态列)`） | 拦截、无结果行（`aggregate function "array_agg" is not supported on encrypted column "c_int2"`） | 成功：`array_agg(c_int2)-OPE\|{"100","-50","0",NULL,"200"}` |
+| 2 | `sql:640` `array_agg(...) OVER (...)` | 拦截（`inside window function is not supported`） | 返回 5 行 |
+| 3 | `sql:764` `COUNT(DISTINCT CASE WHEN c_int4 > 0 THEN c_text ELSE NULL END)` | `ERROR: operator does not exist: int4_enc > integer` | `COUNT(DISTINCT CASE)-OPE\|2` |
+| 4 | `sql:817` 子查询 array_agg | 4 行占位 `{"ERROR"}` | 4 行 `{"\x<hex>"}`（未解密） |
+
+**建议**：先判定哪一侧是期望语义（拦截 or 支持），再统一；`COUNT(DISTINCT CASE)` 的语句成败差异（第 3 条）优先级更高。
+
+### C-14 ALTER KEK 轮换链 3 处分叉（`alter_kek`）
+
+| # | 位置 | libpq | JDBC |
+|---|---|---|---|
+| 1 | `sql:139` 信封长度断言 | `t`（成功） | `ERROR: TECC SQL parse failed (tecc.rewrite.fail_closed=true)` |
+| 2 | `sql:228` 无 USAGE 角色 `ALTER KEK` | `ERROR: permission denied for key encryption key kek_rotate`（Bug 9255 修复后口径） | `ERROR: TECC ALTER KEK: KEK (oid=16480) not found in database` |
+| 3 | `sql:236` GRANT USAGE 后 `SELECT id,name,age FROM rot_test` | 明文 5 行（`1\|Alice\|30`…） | `1\|\x被隐藏的HEX输出\|0`…（**未解密，age 退化为 0**） |
+
+**建议**：第 2 条属**权限不足被伪装成对象不存在**（安全/诊断口径问题）；第 3 条属轮换后解密失效，优先排查。
+
+### C-16 不支持空目标列表（`empty_target_list`）
+
+**现象**：`SELECT FROM t`（空目标列表）及其子查询形式在 JDBC 侧不解析 → 密态常量未改写、明文下发。
+**证据**：`sql:42/45/48/56` 四处
+```
+libpq: 1a_empty_tlist_count|2 / 1b_empty_tlist_nomatch_count|1 / 1c_empty_tlist_ope_count|3 / 2a_subquery_empty_tlist_count|2
+JDBC : ERROR: invalid hex string: "Alice" ／ ERROR: operator does not exist: int4_enc > integer
+```
+对照组 `2b/3a/3b` 两侧一致 → 问题局限在空目标列表形态。
+
+### C-17 多对象 DDL 与 SELECT INTO TEMP 不支持（`encrypted_view`）
+
+| # | 位置 | libpq | JDBC |
+|---|---|---|---|
+| 1 | `sql:14` `DROP VIEW IF EXISTS v_enc, v_enc2, v_plain CASCADE` | `DROP VIEW` | `ERROR: TECC SQL parse failed (tecc.rewrite.fail_closed=true)` |
+| 2 | `sql:15` `DROP MATERIALIZED VIEW IF EXISTS …` | `DROP MATERIALIZED VIEW` | 同上 parse failed |
+| 3 | `sql:173` `SELECT oid INTO TEMP ev_multi_colid …` | `SELECT 1` | parse failed |
+| 4 | `sql:178` `… IN (SELECT oid FROM ev_multi_colid)` | `0` | `relation "ev_multi_colid" does not exist`（第 3 条连带） |
+| 5 | `sql:136` `SELECT id, name FROM mv_enc` | `1\|Alice` | 0 行 |
+| 6 | `sql:235` `DROP MATERIALIZED VIEW mv_enc, mv_enc2, mv_empty CASCADE` | `DROP MATERIALIZED VIEW` | parse failed |
+
+**建议**：多对象 DDL 的解析支持（1/2/6）+ `SELECT … INTO TEMP`（3）为同一类前端缺口；第 5 条（MV 过滤未生效）需单独看。
+
+### C-18 会话临时表未遮蔽同名加密表（`temp_table_reject`）
+
+**现象**：会话 TEMP 表 `t3` 应遮蔽同名加密表 `public.t3`，JDBC 侧未遮蔽 → 未限定名被解析到加密表，密文写入 int 列。
+```
+sql:45  libpq: INSERT 0 1                                   JDBC: ERROR: invalid input syntax for type integer: "\x被隐藏的HEX输出"
+sql:46  libpq: 1|10                                         JDBC: 0 行
+```
+**对照**：`sql:31` `CREATE TEMP TABLE t1(加密列)` 两侧同样拒绝（仅文案不同）→ 说明 JDBC 侧已有"临时表"概念，但**查表清单未参与未限定名解析**。
+**建议**：核对 JDBC 的 `SchemaResolver` 临时表清单是否在 INSERT/SELECT 未限定名解析前生效。
+
+---
+
+### C-19 / C-20 runner 拆句器把注释里的单引号当字符串起点（`guc_backslash`、`guc_string_parsing`）
+
+**现象**：迁移过来的两个用例在 JDBC 侧**整体分叉**——建表/建 DEK 段报错、后续全部断言无输出；
+libpq 侧完全正常。
+**根因**（测试工具侧）：`TeccSqlTestRunner.splitStatements:2287` 先按引号/美元引用状态扫描，
+**之后**才 `stripComments`；注释里的 ASCII `'` 会开启字符串状态，把后续多条真语句吞成一个多语句 blob。
+**证据**：`guc_backslash` 复算 24 条真语句只剩 19 条（第 1 条把 6 条 DDL 并成一条）→
+`TECC CREATE DEK 'dek_bs': referenced KEK 'kek_bs' does not exist in key manager` + 15 条
+`relation "t_backslash" does not exist`；`guc_string_parsing` → pgjdbc
+`Unterminated string literal started at position 124/324/32` + `Index 0 out of bounds for length 0`。
+**修法**：① 测试资产侧把这两例注释里的 ASCII 单引号全角化（与已做的反斜杠/分号处理一致）；
+② 或在 runner 里**先去注释再拆句**（推荐，可一次性消掉本类与注释反斜杠/分号两个变体）。
+**复现**：`TECC_JDBC_HOME=… TECC_TEST=guc_backslash.sql make check-tecc-jdbc`
+
+### C-21 `GREATEST` 混合参数（`::varchar` 常量 × 加密列）失败（`scalar_func_crosstype`）
+
+```
+sql:190-191  GREATEST(c_text, 'cherry-ish'::varchar), LEAST(...), GREATEST(n_text, ...), LEAST(n_text, ...)
+libpq: 成功 2 行（XG-cast-varchar-ontext|cherry-ish|apple|cherry-ish|apple / …|zebra|…）
+JDBC : ERROR: ERROR: GREATEST types text_enc and character varying cannot be matched   (Position: 51)
+```
+**性质**：语句成败 + 结果集不同；JDBC 侧未处理 `::varchar` cast 后的类型匹配。
+**复现**：`TECC_JDBC_HOME=… TECC_TEST=scalar_func_crosstype.sql make check-tecc-jdbc`
+
+---
+
+## 观察项：HE 乘法族"游走式偶发失败"（2026-09-18）
+
+同一份代码、不同运行之间，HE 乘法/标量乘断言随机失败，且**每次换用例**：
+`homomorphic_enc`(sql:187)、`he_rotate_keep_ciphertext`、`kek_upper_options`(sql:48)、
+`scalar_func`（`power(m_int2,3)`）、`pg_dump`（稳定，已随上游 `357187bc4ca` 转绿）。
+
+报错形态：`homomorphic multiplication failed` / `homomorphic power failed` /
+`ElGamal scalar multiplication failed`；断言结果行缺失。
+
+**可疑点**：这些用例的 HE 密钥由 `\! tecc_ktool generate --key-algo sm2` **运行期随机生成**，
+怀疑存在"部分 SM2 密钥对无法完成 HE 标量乘/乘法"或"密钥材料写入/加载偶发不一致"。
+建议优先排查 SM2 生成 → HE 运算这条链。详细证据表见 `shared/jdbc_vs_libpq_diff.md` §十一。

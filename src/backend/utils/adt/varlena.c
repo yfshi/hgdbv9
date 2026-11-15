@@ -6,7 +6,6 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
- *
  * IDENTIFICATION
  *	  src/backend/utils/adt/varlena.c
  *
@@ -489,7 +488,6 @@ byteaout(PG_FUNCTION_ARGS)
 		{
 			if (*vp == '\\')
 			{
-				*rp++ = '\\';
 				*rp++ = '\\';
 			}
 			else if ((unsigned char) *vp < 0x20 || (unsigned char) *vp > 0x7e)
@@ -4241,6 +4239,8 @@ SplitIdentifierString(char *rawstring, char separator,
 			memcpy(curname, new_name, len); /* bug#8552 */
 			curname[len] = '\0';
 
+			new_name = identifier_case_transform(curname, strlen(curname));
+			strlcpy(curname, new_name, strlen(new_name));
 			pfree(new_name);
 		}
 		/* END - case sensitive indentify */
@@ -4714,6 +4714,8 @@ SplitGUCList(char *rawstring, char separator,
 			new_name = identifier_case_transform(curname, len);
 			memcpy(curname, new_name, len);	/* bug#8552 */
 			curname[len] = '\0';
+			new_name = identifier_case_transform(curname, strlen(curname));
+			strlcpy(curname, new_name, strlen(new_name));
 			pfree(new_name);
 		}
 		/* END - case sensitive indentify */

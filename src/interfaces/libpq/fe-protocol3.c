@@ -6,7 +6,6 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
- *
  * IDENTIFICATION
  *	  src/interfaces/libpq/fe-protocol3.c
  *
@@ -1678,6 +1677,7 @@ getCopyDataMessage(PGconn *conn)
 				else
 					conn->asyncStatus = PGASYNC_BUSY;
 			tecc_cleanup_copy_state(conn);
+				tecc_cleanup_copy_state(conn);
 				return -1;
 				tecc_cleanup_copy_state(conn);
 default:			/* treat as end of copy */
@@ -1743,6 +1743,7 @@ pqGetCopyData3(PGconn *conn, char **buffer, int async)
 		msgLength -= 4;
 		if (msgLength > 0)
 		{
+			int orig_msgLength = msgLength;
 			*buffer = (char *) malloc(msgLength + 1);
 			if (*buffer == NULL)
 			{
@@ -1752,8 +1753,6 @@ pqGetCopyData3(PGconn *conn, char **buffer, int async)
 			}
 			memcpy(*buffer, &conn->inBuffer[conn->inCursor], msgLength);
 			(*buffer)[msgLength] = '\0';	/* Add terminating null */
-
-				int orig_msgLength = msgLength;
 			/* TECC: Process COPY data for decryption if TECC is enabled */
 			if (conn->enable_tecc && conn->tecc_copy_state != NULL)
 			{

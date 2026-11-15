@@ -1,0 +1,70 @@
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+                              stage                               
+------------------------------------------------------------------
+ === SWXA-HE-PAR: 1. 整 64 个同态值（阈值边界，走字段级并行） ===
+(1 row)
+
+INSERT 0 64
+ cnt | sum_a | sum_c 
+-----+-------+-------
+  64 | 2080  | 2080
+(1 row)
+
+                          stage                           
+----------------------------------------------------------
+ === SWXA-HE-PAR: 2. 并行写入的明文回读（首/中/末行） ===
+(1 row)
+
+ id | a  | c  
+----+----+----
+  1 | 1  | 1
+ 32 | 32 | 32
+ 64 | 64 | 64
+(3 rows)
+
+                    stage                     
+----------------------------------------------
+ === SWXA-HE-PAR: 3. 并行写入后的同态运算 ===
+(1 row)
+
+UPDATE 8
+ id | a | c  
+----+---+----
+  1 | 1 | 2
+  4 | 4 | 8
+  8 | 8 | 16
+(3 rows)
+
+                             stage                             
+---------------------------------------------------------------
+ === SWXA-HE-PAR: 4. 阈值之下 8 个同态值（串行路径，对照） ===
+(1 row)
+
+INSERT 0 8
+ cnt | sum_a 
+-----+-------
+  72 | 2628
+(1 row)
+
+                         stage                          
+--------------------------------------------------------
+ === SWXA-HE-PAR: 5. 同态条件表达式（并行写入数据） ===
+(1 row)
+
+ id | a_plus_c 
+----+----------
+  2 | 6
+ 16 | 32
+(2 rows)
+
+psql:/.../swxa_he_parallel.sql:23: NOTICE:  table "swxa_he_par_t" does not exist, skipping
+psql:/.../swxa_he_parallel.sql:24: NOTICE:  data encryption key "swxa_he_par_add" does not exist, skipping
+psql:/.../swxa_he_parallel.sql:25: NOTICE:  data encryption key "swxa_he_par_sym" does not exist, skipping
+psql:/.../swxa_he_parallel.sql:26: NOTICE:  key encryption key "swxa_he_par_kek" does not exist, skipping

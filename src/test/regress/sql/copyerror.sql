@@ -1,0 +1,858 @@
+--
+-- copy test for output the error record
+--
+
+CREATE TABLE x_bad (
+	taskid varchar(64),
+	schema varchar(64),
+	tablename  varchar(64),
+	filename varchar(128),
+	type char,
+	lineno bigint,
+	buff text
+) ;
+CREATE TABLE x (
+	a int primary key,
+	b int,
+	c numeric check(c > 10),
+	d int not null,
+	e text not null,
+	f int unique
+) ;
+
+-- checking new options
+COPY x from stdin with sharding 2 sharding 2;
+\.
+COPY x from stdin with sharding 2;
+\.
+COPY x from stdin with sharding 2 current_shard 2;
+\.
+COPY x from stdin with badtable 'xxx_bad' badfile 'xxx.bad';
+\.
+COPY x from stdin with binary badtable 'xxx_bad';
+\.
+COPY x from stdin with binary sharding 2 current_shard 1;
+\.
+COPY x from stdin with badtable 'xxx_bad';
+\.
+COPY x from stdin with sharding 2 current_shard 1;
+\.
+
+-- TABLE
+-- with error tolerate, but bad table xx_bad did not exist: should fail
+COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' badtable 'xx_bad';
+\.
+COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' taskid '12' filename 'csv1.csv' badtable 'xx_bad';
+1,1,11.11,1,name_1,1
+1,2,22.22,2,name_2,2
+\.
+
+-- Check Reading error 
+-- ask ',', input '|', with tolerate: success
+COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' taskid '123' filename 'csv1.csv' badtable 'x_bad';
+1,1,11.11,1,name_1,1
+2|2|22.22|2|name_2|2
+3,3,33.33|3|name_3|3
+\.
+SELECT * from x;
+SELECT * from x_bad where taskid='123' and filename='csv1.csv';
+
+-- Check input function call error
+
+-- ask int b, input varchar, with tolerate: success
+COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' taskid '123' filename 'csv2.csv' badtable 'x_bad';
+2,df,22.22,2,name_2,2
+\.
+SELECT * from x;
+SELECT * from x_bad where taskid='123' and filename='csv2.csv';
+
+-- Constraints
+
+-- Check Constraints numeric c>10, with tolerate: success
+COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' taskid '123' filename 'csv3.csv' badtable 'x_bad';
+10,10,1.11,10,name_10,10
+20,20,10,20,name_20,20
+\.
+SELECT * from x;
+SELECT * from x_bad where taskid= '123' and filename='csv3.csv';
+
+-- Not-Null Constraints
+--  text e, int d, with tolerate: success
+
+COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' taskid '123' filename 'csv3.csv' badtable 'x_bad';
+2,2,22.22,2,,2
+3,3,33.3,,name_3,3
+,4,44.4,4,name_4,4
+\.
+SELECT * from x;
+SELECT * from x_bad where taskid='123' and filename='csv3.csv';
+
+-- Unique Constraints
+-- int f, with tolerate: success
+DELETE from x;
+DELETE from x_bad;
+insert into x values(5,5,55.5,5,'name_5',5);
+
+COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' taskid '1234' filename 'csv1.csv' badtable 'x_bad';
+6,6,66.6,6,name_6,5
+7,7,77.7,7,name_7,7
+8,8,88.8,8,name_8,7
+\.
+SELECT * from x;
+SELECT * from x_bad;
+
+-- test Trigger enable
+
+CREATE FUNCTION fn_x_before () RETURNS TRIGGER AS '
+  BEGIN
+                NEW.d := ''before trigger fired''::text;
+                return NEW;
+        END;
+' LANGUAGE plpgsql;
+
+CREATE FUNCTION fn_x_after () RETURNS TRIGGER AS '
+  BEGIN
+                UPDATE x set d=''after trigger fired'' where b=10;
+                return NULL;
+        END;
+' LANGUAGE plpgsql;
+
+-- if have enabled before row trigger: fail
+CREATE TRIGGER trg_x_before BEFORE INSERT ON x
+FOR EACH ROW EXECUTE PROCEDURE fn_x_before();
+
+COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' taskid 'trig12345' filename 'csv1.csv' badtable 'x_bad';
+100,100,100,100,name_100,100
+\.
+
+-- if have enabled after row trigger: fail
+DROP TRIGGER IF EXISTS trg_x_before on x;
+
+CREATE TRIGGER trg_x_after AFTER INSERT ON x
+FOR EACH ROW EXECUTE PROCEDURE fn_x_after();
+
+COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' taskid 'trig12345' filename 'csv1.csv' badtable 'x_bad';
+100,100,100,100,name_100,100
+\.
+
+-- if have trigger, but disabled: success
+ALTER TABLE x DISABLE TRIGGER ALL;
+COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' taskid 'trig12345' filename 'csv2.csv' badtable 'x_bad';
+100,100,100,100,name_100,100
+101,101,,101,name_101,101
+102,102,10,102,name_102,102
+\.
+SELECT * from x;
+SELECT * from x_bad where taskid='trig12345' and filename='csv2.csv';
+
+DROP TRIGGER  trg_x_after on x;
+DROP FUNCTION fn_x_before();
+DROP FUNCTION fn_x_after();
+
+-- Partition table, RANGE | LIST | HASH
+-- PARTITION BY HASH
+CREATE TABLE xph (
+	a int,
+	b int,
+	c text not null,
+	d varchar(10)
+) PARTITION BY HASH (a) ;
+CREATE TABLE xph_0 partition of xph FOR VALUES WITH (MODULUS 4, REMAINDER 0);
+CREATE TABLE xph_1 partition of xph FOR VALUES WITH (MODULUS 4, REMAINDER 1);
+CREATE TABLE xph_2 partition of xph FOR VALUES WITH (MODULUS 4, REMAINDER 2);
+CREATE TABLE xph_3 partition of xph FOR VALUES WITH (MODULUS 4, REMAINDER 3);
+
+CREATE TABLE xph_bad (
+	taskid varchar(64),
+	schema varchar(64),
+	tablename  varchar(64),
+	filename varchar(64),
+	type char,
+	lineno bigint,
+	buff text
+) ;
+
+COPY xph (a, b, c, d) from stdin with csv delimiter ',' taskid 'part1234' filename 'csv1.csv' badtable 'xph_bad';
+1,1,name_1,1111111111
+2,2,name_2,2222222222
+3,3,name_3,3333333333
+4,4,name_4,4444444444
+5,5,name_5,555555555555
+6,6,,6666666666
+7,7,name_7,7777777777
+7,8,name_8,88888888888888888
+\.
+SELECT * from xph;
+SELECT * from xph_bad;
+SELECT * from xph_0;
+SELECT * from xph_1;
+SELECT * from xph_2;
+SELECT * from xph_3;
+
+-- partitioned table(son) have enabled trigger
+-- if insert on this table, error
+-- if not insert this table, success
+CREATE FUNCTION fn_xph2_before () RETURNS TRIGGER AS '
+  BEGIN
+                NEW.a = OLD.a + 1;
+                return NEW;
+        END;
+' LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_xph2_before BEFORE INSERT ON xph_2
+FOR EACH ROW EXECUTE PROCEDURE fn_xph2_before();
+
+-- the insert partition table have enabled trigger: fail
+COPY xph (a, b, c, d) from stdin with csv delimiter ',' taskid 'part1234' filename 'csv1.csv' badtable 'xph_bad';
+1,1,name_1,aaaaaaaaaa
+2,2,name_2,bbbbbbbbbb
+\.
+
+-- the insert partition table has no trigger: success
+COPY xph (a, b, c, d) from stdin with csv delimiter ',' taskid 'part1234' filename 'csv1.csv' badtable 'xph_bad';
+1,1,name_1,aaaaaaaaaa
+4,4,name_4,=b=b=b=b=b
+\.
+SELECT * from xph;
+SELECT * from xph_bad where taskid='part1234' and filename='csv1.csv';
+
+-- partitioned table(son) have disable trigger
+-- success
+ALTER TABLE xph_2 DISABLE TRIGGER ALL;
+COPY xph (a, b, c, d) from stdin with csv delimiter ',' taskid 'part1234' filename 'csv2.csv' badtable 'xph_bad';
+1,1,name_1,1a1a1a1a1a
+3,3,name_3,3r3r3r3r3r
+4,4,name_4,4t4t4t4t4t
+5,5,,a5a5a5a5a5a5
+\.
+SELECT * from xph;
+SELECT * from xph_bad where taskid='part1234' and filename='csv2.csv';
+
+-- Sharding
+-- AS the input is stdin, so BE will not splite the content
+-- but the error num will cal by sharding
+CREATE TABLE xshd (
+	a int primary key,
+	b varchar(10)
+) ;
+CREATE TABLE xshd_bad (
+	taskid varchar(64),
+	schema varchar(64),
+	tablename  varchar(64),
+	filename varchar(64),
+	type char,
+	lineno bigint,
+	buff text
+) ;
+
+COPY xshd (a, b) from stdin with csv delimiter ',' sharding 3 current_shard 0 taskid 'shard12' filename 'csv1.csv';
+1,1111
+2,2222
+3,3333
+4,4444
+5,5555
+6,6666
+7,7777
+\.
+SELECT * from xshd;
+select * from xshd_bad;
+
+-- Sharding + tolerate
+COPY xshd (a, b) from stdin with csv delimiter ',' sharding 3 current_shard 0 taskid 'shard12' filename 'csv1.csv' badtable 'xshd_bad';
+5,ffff
+7,gggg
+\.
+SELECT * from xshd_bad;
+
+COPY xshd (a, b) from stdin with csv delimiter ',' sharding 3 current_shard 1 taskid 'shard12' filename 'csv2.csv' badtable 'xshd_bad';
+1,aaaa
+4,dddd
+\.
+SELECT * from xshd_bad where taskid='shard12' and filename='csv2.csv';
+
+-- test with INSTEAD OF INSERT trigger on a view
+CREATE TABLE instead_of_insert_tbl(id serial, name text);
+CREATE VIEW instead_of_insert_tbl_view AS SELECT ''::text AS str;
+CREATE TABLE view_bad (
+	taskid varchar(16),
+	schema varchar(64),
+	tablename  varchar(64),
+	filename varchar(64),
+	lineno bigint,
+	buff text
+) ;
+
+CREATE FUNCTION fun_instead_of_insert_tbl() RETURNS trigger AS $$
+BEGIN
+  INSERT INTO instead_of_insert_tbl (name) VALUES (NEW.str);
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trig_instead_of_insert_tbl_view
+  INSTEAD OF INSERT ON instead_of_insert_tbl_view
+  FOR EACH ROW EXECUTE PROCEDURE fun_instead_of_insert_tbl();
+
+COPY instead_of_insert_tbl_view FROM stdin with csv delimiter ',' taskid 'view12' filename 'csv5.csv' badtable 'view_bad';
+test1
+\.
+
+-- Output file
+TRUNCATE x;
+TRUNCATE x_bad;
+
+-- Bug:M0000395 change /results/ to /data/
+COPY x to '/home/highgo/test/ivorysql-401/src/test/regress/data/pg_bulkload_multi.bad' with csv delimiter ',';
+
+COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' taskid 'file12' filename 'csv1.csv' badfile '/home/highgo/test/ivorysql-401/src/test/regress/data/pg_bulkload_multi.bad';
+5,5,55.5,5,name_5,5
+6,6,66.6,6,name_6,5
+7,7,77.7,7,name_7,7
+8,8,88.8,8,,8
+9,9,9.99,9,name_9,9
+\.
+
+SELECT * from x;
+
+TRUNCATE x;
+COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' sharding 5 current_shard 3 taskid 'all12' filename 'csv1.csv' badfile '/home/highgo/test/ivorysql-401/src/test/regress/data/pg_bulkload_multi.bad';
+5,5,55.5,5,name_5,5
+6,6,66.6,6,name_6,5
+7,7,77.7,7,name_7,7
+8,8,88.8,8,,8
+9,9,9.99,9,name_9,9
+\.
+
+SELECT * from x;
+
+Create table error(bad_record text);
+Copy error from '/home/highgo/test/ivorysql-401/src/test/regress/data/pg_bulkload_multi.bad' with csv delimiter '|';
+SELECT * from error;
+
+-- if row length > 2000, just store and output 2000b
+TRUNCATE xshd_bad;
+CREATE TABLE length_2000(id int primary key, address text);
+COPY length_2000 from '/home/highgo/test/ivorysql-401/src/test/regress/data/length_2000.data' with csv delimiter ',' taskid 'length2000' filename 'length2000.csv' badtable 'xshd_bad';
+
+SELECT CHAR_LENGTH(address) from length_2000 where id=2;
+SELECT CHAR_LENGTH(buff) from xshd_bad where taskid='length2000' and lineno=3;
+SELECT CHAR_LENGTH(buff) from xshd_bad where taskid='length2000' and lineno=4;
+
+-- FK check, non-partition table
+-- delimiter ,
+TRUNCATE x_bad;
+CREATE TABLE pk_t (
+	pa integer primary key,
+	pb integer unique,
+	pc integer unique,
+	pd varchar(10) unique
+) ;
+CREATE TABLE fk_t (
+	fa integer,
+	fb integer REFERENCES pk_t(pb)
+) ;
+
+insert into pk_t values(1,1,1,'aaaa');
+insert into pk_t values(2,2,2,'bbbb');
+insert into pk_t values(3,3,3,'cccc');
+insert into pk_t values(10,10,10,'101010');
+insert into pk_t values(11,11,11,'111111');
+
+COPY fk_t from stdin with csv delimiter ',' taskid 'fk1' filename 'fk1.csv' badtable 'x_bad';
+1,1
+2,2
+10,100
+3,3
+5,5
+\.
+SELECT * from fk_t order by fa;;
+SELECT * from x_bad where taskid='fk1' order by lineno;
+
+-- delimiter |
+TRUNCATE fk_t;
+
+COPY fk_t from stdin with csv delimiter '|' taskid 'fkd' filename 'fkd.csv' badtable 'x_bad';
+1|1
+2|2
+10|100
+3|3
+5|5
+\.
+
+SELECT * from fk_t order by fa;
+SELECT * from x_bad where taskid='fkd' order by lineno;
+
+-- fk is unique(a,b)
+CREATE TABLE pk_t_u (
+	pa integer primary key,
+	pb integer,
+	pc integer,
+	pd varchar(10) unique,
+	UNIQUE(pb, pc)
+) ;
+
+CREATE TABLE fk_t_u (
+	fa integer,
+	fb integer,
+	fc integer,
+	FOREIGN KEY (fb, fc) REFERENCES pk_t_u (pb,pc)
+) ;
+insert into pk_t_u values(1,1,10,'aaaa');
+insert into pk_t_u values(2,2,20,'bbbb');
+insert into pk_t_u values(3,3,30,'cccc');
+
+COPY fk_t_u from stdin with csv delimiter ',' taskid 'fk2unique' filename 'fk2unique.csv' badtable 'x_bad' logbad 'true';
+1,2,20
+2,2,20
+3,30,300
+4,3,30
+\.
+SELECT * from fk_t_u order by fa;
+SELECT * from x_bad where taskid='fk2unique' order by lineno;
+
+-- two fk in one pk table
+CREATE TABLE fk_t_2fk (
+	fa integer,
+	fb integer REFERENCES pk_t(pb),
+	fc integer REFERENCES pk_t(pc)
+) ;
+COPY fk_t_2fk from stdin with csv delimiter ',' taskid 'fk2fk' filename 'fk2fk.csv' badtable 'x_bad' logbad 'true';
+1,2,2
+2,2,3
+3,3,10
+4,10,100
+5,100,10
+6,200,200
+\.
+
+SELECT * from fk_t_2fk order by fa;
+SELECT * from x_bad where taskid='fk2fk' order by lineno;
+
+-- two fk in two pk table
+CREATE TABLE pk_t2 (
+	pa integer primary key,
+	pb integer unique,
+	pc integer unique,
+	pd varchar(10) unique
+) ;
+CREATE TABLE fk_t_2fk_2pk (
+	fa integer,
+	fb integer REFERENCES pk_t(pb),
+	fc varchar(10) REFERENCES pk_t2(pd)
+) ;
+
+insert into pk_t2 values(1000,1000,1000,'1000');
+insert into pk_t2 values(1001,1001,1001,'1001');
+
+COPY fk_t_2fk_2pk from stdin with csv delimiter ',' taskid 'fk2fk2pk' filename 'fk2fk2pk.csv' badtable 'x_bad' logbad 'true';
+123,3,1000
+124,10,1000
+125,11,2000
+126,12,1000
+127,127,127
+128,11,1001
+\.
+
+SELECT * FROM fk_t_2fk_2pk order by fa;
+SELECT * FROM x_bad where taskid='fk2fk2pk' order by lineno;
+
+-- FK check, parent partition table fk
+-- fk partiotion
+CREATE TABLE fk_parti (
+	fpa integer,
+	fpb integer REFERENCES pk_t(pb),
+	fpc varchar(10)
+) PARTITION BY RANGE (fpa);
+CREATE TABLE fk_parti_10 PARTITION OF fk_parti FOR VALUES FROM (1) TO (10);
+CREATE TABLE fk_parti_100 PARTITION OF fk_parti FOR VALUES FROM (11) TO (100);
+CREATE TABLE fk_parti_1000 PARTITION OF fk_parti FOR VALUES FROM (101) TO (1000);
+
+COPY fk_parti from stdin with csv delimiter ',' taskid 'fkparti' filename 'fkparti.csv' badtable 'x_bad' logbad 'true';
+5,3,parti3
+50,10,parti50
+51,51,parti51
+500,11,parti500
+501,501,parti501
+\.
+
+SELECT * FROM fk_parti order by fpa;
+SELECT * FROM x_bad where taskid='fkparti' order by lineno;
+
+-- copy into partition table directly
+COPY fk_parti_100 from stdin with csv delimiter ',' taskid 'fkparti100' filename 'fkparti100.csv' badtable 'x_bad' logbad 'true';
+60,10,parti60
+70,70,parti70
+600,10,parti600
+80,11,parti80
+\.
+
+SELECT * FROM fk_parti_100 order by fpa;
+SELECT * FROM x_bad where taskid='fkparti100' order by lineno;
+
+-- FK check, son partition table fk
+-- including no partition of relation found for son relation
+-- as 10,10,10101010 could not insert into fk_parti_son_10 
+CREATE TABLE fk_parti_son (
+        fpa integer,
+        fpb integer,
+        fpc varchar(10)
+) PARTITION BY RANGE (fpa);
+CREATE TABLE fk_parti_son_10 PARTITION OF fk_parti_son FOR VALUES FROM (1) TO (10);
+CREATE TABLE fk_parti_son_100 PARTITION OF fk_parti_son(fpc REFERENCES pk_t(pd)) FOR VALUES FROM (11) TO (100);
+CREATE TABLE fk_parti_son_1000 PARTITION OF fk_parti_son FOR VALUES FROM (101) TO (1000);
+
+COPY fk_parti_son from stdin with csv delimiter ',' taskid 'fkpartison' filename 'fkpartison.csv' badtable 'x_bad' logbad 'true';
+8,8,asdfg
+10,10,10101010
+20,20,cccc
+30,30,30303030
+40,40,111111
+200,200,222222
+\.
+
+SELECT * FROM fk_parti_son order by fpa;
+SELECT * FROM x_bad where taskid='fkpartison' order by lineno;
+
+-- lineno 
+TRUNCATE fk_parti;
+COPY fk_parti from stdin with csv delimiter ',' taskid 'fkpartilineno' filename 'fklineno.csv' badtable 'x_bad' sharding 5 current_shard 3 logbad 'true';
+5,3,parti3
+50,10,parti50
+51,51,parti51
+500,11,parti500
+501,501,parti501
+\.
+
+SELECT * FROM fk_parti order by fpa;
+SELECT * FROM x_bad where taskid='fkpartilineno' order by lineno;
+
+-- raw buffer lines > 2000
+CREATE TABLE fk_length_2000(
+	id integer primary key,
+	id_fk integer REFERENCES pk_t(pc),
+	address text,
+	idd integer
+) ;
+COPY fk_length_2000 from '/home/highgo/test/ivorysql-401/src/test/regress/data/fk_length_2000.data' with csv delimiter ',' taskid 'fklength2000' filename 'fklength2000.csv' badtable 'x_bad' logbad 'true';
+
+SELECT CHAR_LENGTH(address) from fk_length_2000 where id=1;
+SELECT CHAR_LENGTH(address) from fk_length_2000 where id=3;
+SELECT CHAR_LENGTH(buff) from x_bad where taskid='fklength2000' and lineno=2;
+
+TRUNCATE fk_length_2000;
+-- insert after row trigger is not fk checking
+CREATE FUNCTION after_insert_row() RETURNS TRIGGER AS '
+  BEGIN
+                UPDATE x set text='' after trigger fired'' where id_fk=10;
+                return NULL;
+        END;
+' LANGUAGE plpgsql;
+
+CREATE TRIGGER after_insert_row_tri AFTER INSERT ON fk_length_2000
+FOR EACH ROW EXECUTE FUNCTION after_insert_row();
+
+COPY fk_length_2000 from stdin with csv delimiter ',' taskid 'fknotfk' filename 'fknotfk.csv' badtable 'x_bad';
+10000,10,asdfghjkllllllll,10000
+20000,10,dddddddddd,20000
+\.
+
+-- NULL value handle
+DROP TRIGGER after_insert_row_tri on fk_length_2000;
+DROP FUNCTION after_insert_row;
+
+COPY fk_length_2000 from stdin with csv delimiter ',' taskid 'fknull' filename 'fknull.csv' badtable 'x_bad' logbad 'true';
+1000,10,,1000
+2000,2000,,2000
+3000,10,sdfg,3000
+4000,4,,
+\.
+
+SELECT * FROM fk_length_2000 where id>=1000;
+SELECT * FROM x_bad where taskid='fknull' order by lineno;
+
+-- Beign - BUG:M0000348
+TRUNCATE x;
+TRUNCATE x_bad;
+
+COPY x FROM '/home/highgo/test/ivorysql-401/src/test/regress/data/copy_split.data' with csv delimiter ',' taskid 'copy_split' filename 'copy_split.data' badtable 'x_bad' sharding 5 current_shard 0 logbad 'true';
+SELECT * FROM x;
+SELECT * FROM x_bad;
+
+-- one line more than 65536
+CREATE TABLE copy_split_80002(id int,name text);
+COPY copy_split_80002 FROM '/home/highgo/test/ivorysql-401/src/test/regress/data/copy_split_80002.data' with csv delimiter ',' taskid 'copy_split_80002' sharding 2 current_shard 0;
+SELECT CHAR_LENGTH(name) from copy_split_80002;
+
+-- End - BUG:M0000348
+
+-- Begin - BUG:M0000370
+CREATE TABLE table_quote (id int primary key,name text);
+CREATE TABLE table_quote_bad (
+	taskid varchar(64),
+	schema varchar(64),
+	tablename  varchar(64),
+	filename varchar(64),
+	type char,
+	lineno bigint,
+	buff text
+) ;
+
+COPY table_quote FROM stdin with csv taskid 'quote_1' badtable 'table_quote_bad' filename 'stdin' sharding 1 current_shard 0 quote '|' delimiter ',';
+|1|,|1|
+|11|,|11|,|11|
+\.
+SELECT * FROM table_quote_bad where taskid = 'quote_1';
+
+COPY table_quote FROM stdin with csv taskid 'quote_2' badtable 'table_quote_bad' filename 'stdin' sharding 1 current_shard 0 quote '''';
+'2','2'
+22,22
+22,'222'
+'22222','22222','22222'
+'2','"2222"'
+\.
+SELECT * FROM table_quote_bad where taskid = 'quote_2';
+
+COPY table_quote FROM stdin with csv taskid 'quote_3' badtable 'table_quote_bad' filename 'stdin' sharding 1 current_shard 0 quote '@';
+3,@3@
+@33,33@
+\.
+SELECT * FROM table_quote_bad where taskid = 'quote_3';
+
+-- default quote is ""
+COPY table_quote FROM stdin with csv taskid 'quote_4' badtable 'table_quote_bad' filename 'stdin' sharding 1 current_shard 0;
+"4","4"
+"44","44","44"
+444,444
+444,"4444''"
+\.
+SELECT * FROM table_quote_bad where taskid = 'quote_4';
+
+SELECT * FROM table_quote;
+
+-- fk error checking (using after row trigger)
+CREATE TABLE table_1(id int primary key);
+INSERT INTO table_1 values(1),(2),(3);
+CREATE TABLE table_2(id int REFERENCES table_1(id),
+	name text);
+COPY table_2 FROM stdin with csv taskid 'table_2_1' badtable 'table_quote_bad' filename 'stdin' sharding 1 current_shard 0;
+1,'what'
+10,''tiantian''
+10,&hao
+10,"highgo"
+10,!hao
+1,'"tian"'
+\.
+SELECT * FROM table_2;
+SELECT * FROM table_quote_bad where taskid = 'table_2_1';
+
+COPY table_2 FROM stdin with csv taskid 'table_2_2' badtable 'table_quote_bad' filename 'stdin' sharding 1 current_shard 0 quote '''';
+2,''tian''
+2,'"tian"'
+10,'"tian"'
+\.
+SELECT * FROM table_2;
+
+-- If record is: 10,'"tian"'
+-- after insert it into tuple, the tuple is (10,"tian"), single quote has skipped
+-- when making fk checking,if fail, read the tuple (10,"tian")
+-- as have no idea to adding single quote or not? so output the origin tuple,not the record
+SELECT * FROM table_quote_bad where taskid = 'table_2_2';
+
+-- End - BUG:M0000370
+
+-- Begin - BUG:M0000379
+CREATE TABLE M379(id int, name varchar(20));
+-- logbad is off, no NOTICE messasge
+COPY M379 FROM stdin with(format csv, taskid 'm379_1', badtable 'table_quote_bad', filename 'stdin');
+1,hangao
+2,gaohao
+\.
+
+-- logbad is on, having NOTICE message
+COPY M379 FROM stdin with(format csv, taskid 'm379_1', badtable 'table_quote_bad', filename 'stdin', logbad 'true');
+1,hangao
+2,gaohao
+\.
+
+-- logbad is on, table name have special chars, NOTICE message have double quote
+CREATE TABLE "m^%'$3""7_\>9"(id int, name varchar(20));
+COPY "m^%'$3""7_\>9" FROM stdin with(format csv, taskid 'm379_1', badtable 'table_quote_bad', filename 'stdin', logbad 'true');
+1,hangao
+2,gaohao
+\.
+
+DROP TABLE M379;
+DROP TABLE "m^%'$3""7_\>9";
+-- End - BUG:M0000379
+
+-- Begin - BUG#M0000406
+CREATE TABLE m406(id int, name varchar(20));
+COPY m406 FROM stdin with(format csv, taskid 'm406_stdin', badtable 'x_bad');
+1,name,address
+2,hangao
+\.
+SELECT * FROM m406;
+SELECT * FROM x_bad WHERE taskid='m406_stdin';
+
+TRUNCATE x;
+TRUNCATE x_bad;
+
+COPY x FROM '/home/highgo/test/ivorysql-401/src/test/regress/data/copy_split.data' with(format csv, delimiter ',', taskid 'm406_file', badtable 'x_bad');
+SELECT * FROM x ORDER BY a;
+SELECT count(*) FROM x_bad WHERE taskid='m406_file' AND filename='/home/highgo/test/ivorysql-401/src/test/regress/data/copy_split.data';
+
+COPY x FROM '/home/highgo/test/ivorysql-401/src/test/regress/aaaaaaaaaabbbbbbbbbb/ccccccccccdddddddddd/eeeeeeeeeeffffffffff/gggggggggghhhhhhhhhh/qqqqqqqqqqwwwwwwwwww/ttttttttttyyyyyyyyyy/test.csv' with(format csv, delimiter ',', taskid 'm406_file', badtable 'x_bad');
+
+DROP TABLE m406;
+
+-- End - BUG#M0000406
+
+-- Begin - BUG#Z1149
+-- check reference error, if there have bad record, the line number is right
+TRUNCATE x_bad;
+create table p_z1149(pa integer primary key,pb integer,pc integer,pd text);
+insert into p_z1149 values(1,100,100,'a');
+insert into p_z1149 values(2,200,200,'b');
+insert into p_z1149 values(3,300,300,'c');
+insert into p_z1149 values(4,400,400,'d');
+insert into p_z1149 values(5,500,500,'e');
+insert into p_z1149 values(6,600,600,'f');
+
+create table r_z1149(fa integer primary key,fb integer references p_z1149(pa),fc integer);
+
+COPY r_z1149 from '/home/highgo/test/ivorysql-401/src/test/regress/data/r_z1149.data' with csv delimiter '|' taskid 'z1149' badtable 'x_bad' filename 'r_z1149' sharding 3 current_shard 0;
+SELECT * FROM r_z1149;
+SELECT * FROM x_bad;
+
+COPY r_z1149 from '/home/highgo/test/ivorysql-401/src/test/regress/data/r_z1149.data' with csv delimiter '|' taskid 'z1149' badtable 'x_bad' filename 'r_z1149' sharding 3 current_shard 2;
+SELECT * FROM r_z1149;
+SELECT * FROM x_bad;
+
+DROP TABLE r_z1149;
+DROP TABLE p_z1149;
+-- End - BUG#Z1149
+
+-- Begin - BUG#M0000526
+-- file format error, return an error
+-- after OA-REQ-1488 and 1541, \r,\n,\r\n format error can skip
+-- End - BUG#M0000526
+
+-- Begin - OA-REQ-1488
+-- if newline marker is \r\n, but find \n, skip
+-- for copy error, store '\n' and '\r\n' and '\r' is difference on Windows platform
+-- \n in middle
+-- Begin - BUG#z6807
+-- On Linux ENV, server_encoding = UTF8, client_encoding = UTF8, file format = UTF8
+-- On Windows ENV, Server_encoding = UTF8 or GBK, as file format = UTF8, so set client_encoding to UTF8
+SET client_encoding = UTF8;
+show client_encoding;
+-- End - BUG#z6807
+delete from x_bad;
+create table oa1488(a VARCHAR(255), b VARCHAR(255),c VARCHAR(255), d VARCHAR(255));
+copy oa1488 from '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1488_1.data' with(format csv, delimiter '^');
+copy oa1488 from '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1488_1.data' with(format csv, delimiter '^', skipbad);
+copy oa1488 from '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1488_1.data' with(format csv, delimiter '^', taskid '1488_1', badtable 'x_bad');
+-- succes 10, bad 2
+select count(*) from oa1488;
+select taskid,schema,tablename,lineno,buff from x_bad where taskid = '1488_1';
+
+-- \n in middle and tail
+delete from oa1488;
+delete from x_bad;
+copy oa1488 from '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1488_2.data' with(format csv, delimiter '^');
+copy oa1488 from '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1488_2.data' with(format csv, delimiter '^', skipbad);
+copy oa1488 from '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1488_2.data' with(format csv, delimiter '^', taskid '1488_2', badtable 'x_bad');
+--success 8, bad 3
+select count(*) from oa1488;
+select taskid,schema,tablename,lineno,buff from x_bad where taskid = '1488_2';
+
+-- \n split one line to two lines
+delete from oa1488;
+delete from x_bad;
+copy oa1488 from '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1488_3.data' with(format csv, delimiter '^');
+copy oa1488 from '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1488_3.data' with(format csv, delimiter '^', skipbad);
+copy oa1488 from '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1488_3.data' with(format csv, delimiter '^', taskid '1488_3', badtable 'x_bad');
+--success 6, bad 5
+select count(*) from oa1488;
+select taskid,schema,tablename,lineno,buff from x_bad where taskid = '1488_3';
+
+-- if newline marker is \n, but find \r\n, skip
+-- \r\n in middle and tail
+delete from oa1488;
+delete from x_bad;
+copy oa1488 from '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1488_4.data' with(format csv, delimiter '^');
+copy oa1488 from '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1488_4.data' with(format csv, delimiter '^', skipbad);
+copy oa1488 from '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1488_4.data' with(format csv, delimiter '^', taskid '1488_4', badtable 'x_bad');
+--success 8, bad 3
+select count(*) from oa1488;
+select taskid,schema,tablename,lineno,buff from x_bad where taskid = '1488_4';
+
+drop table oa1488;
+-- End - OA-REQ-1488
+
+-- Begin - OA-REQ-1541
+CREATE  TABLE oa1541("CITY_ID" NUMERIC ,"CITY_NAME" VARCHAR(255) ,"COUNTY_NAME" VARCHAR(255) ,"ZH_LABEL" VARCHAR(255) ,"PARENT_ID" NUMERIC ,"FIVE_ADDRESS_NAME" VARCHAR(255));
+
+-- oa_1541_1, fileformat=unix, newline marker is \r\n, but include \r or \n
+-- success 4 + 4, bad 9
+DELETE FROM x_bad;
+COPY oa1541 FROM '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1541_1.data' with(format csv, delimiter '^');
+COPY oa1541 FROM '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1541_1.data' with(format csv, delimiter '^', skipbad);
+COPY oa1541 FROM '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1541_1.data' with(format csv, delimiter '^', taskid '1541_1', badtable 'x_bad');
+SELECT count(*) FROM oa1541;
+SELECT count(*) FROM x_bad WHERE taskid = '1541_1';
+
+-- oa_1541_2, fileformat=dos, newline marker is \r\n, but include \r or \n
+-- success 5 + 5, bad 8
+DELETE FROM oa1541;
+DELETE FROM x_bad;
+COPY oa1541 FROM '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1541_2.data' with(format csv, delimiter '^');
+COPY oa1541 FROM '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1541_2.data' with(format csv, delimiter '^', skipbad);
+COPY oa1541 FROM '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1541_2.data' with(format csv, delimiter '^', taskid '1541_2', badtable 'x_bad');
+SELECT count(*) FROM oa1541;
+SELECT count(*) FROM x_bad WHERE taskid = '1541_2';
+
+-- oa_1541_3, fileformat=unix, newline marker is \n, but include \r or \r\n
+-- success 4 + 4, bad 9
+DELETE FROM oa1541;
+DELETE FROM x_bad;
+COPY oa1541 FROM '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1541_3.data' with(format csv, delimiter '^');
+COPY oa1541 FROM '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1541_3.data' with(format csv, delimiter '^', skipbad);
+COPY oa1541 FROM '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1541_3.data' with(format csv, delimiter '^', taskid '1541_3', badtable 'x_bad');
+SELECT count(*) FROM oa1541;
+SELECT count(*) FROM x_bad WHERE taskid = '1541_3';
+
+-- oa_1541_4, fileformat=unix, newline marker is \r, but include \n or \r\n
+-- success 5 + 5, bad 4
+DELETE FROM oa1541;
+DELETE FROM x_bad;
+COPY oa1541 FROM '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1541_4.data' with(format csv, delimiter '^');
+COPY oa1541 FROM '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1541_4.data' with(format csv, delimiter '^', skipbad);
+COPY oa1541 FROM '/home/highgo/test/ivorysql-401/src/test/regress/data/oa_1541_4.data' with(format csv, delimiter '^', taskid '1541_4', badtable 'x_bad');
+SELECT count(*) FROM oa1541;
+SELECT count(*) FROM x_bad WHERE taskid = '1541_4';
+
+DROP TABLE oa1541;
+
+-- End - OA-REQ-1541
+RESET client_encoding;
+
+-- clean up
+DROP TABLE x;
+DROP TABLE x_bad;
+DROP TABLE xph;
+DROP TABLE xph_bad;
+DROP TABLE xshd;
+DROP TABLE xshd_bad;
+DROP TRIGGER trig_instead_of_insert_tbl_view on instead_of_insert_tbl_view;
+DROP FUNCTION fun_instead_of_insert_tbl;
+DROP VIEW instead_of_insert_tbl_view;
+DROP TABLE instead_of_insert_tbl;
+DROP TABLE view_bad;
+DROP TABLE error;
+DROP TABLE length_2000;
+DROP TABLE fk_t,fk_t_u,fk_t_2fk,fk_t_2fk_2pk,fk_parti,fk_length_2000,fk_parti_son;
+DROP TABLE pk_t,pk_t_u,pk_t2;
+DROP TABLE copy_split_80002;
+DROP TABLE table_quote,table_quote_bad;
+DROP TABLE table_2,table_1;

@@ -1,0 +1,252 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+=== 1 建表 ===
+CREATE TABLE
+=== 1b 列声明类型（含长度/精度）===
+1|id|integer
+2|v5|varchar_enc(5)
+3|v100|varchar_enc(100)
+4|b3|bpchar_enc(3)
+5|n52|numeric_enc(5,2)
+6|t|text_enc
+=== 2 information_schema 显示长度/精度 ===
+id|integer|||32|2|0
+v5|varchar_enc|5|20|||
+v100|varchar_enc|100|400|||
+b3|bpchar_enc|3|12|||
+n52|numeric_enc|||5|10|2
+t|text_enc|||||
+=== 2b atttypmod 原值（104/54 等 = 声明长度 + 4）===
+id|integer|-1
+v5|varchar_enc|9
+v100|varchar_enc|104
+b3|bpchar_enc|7
+n52|numeric_enc|327686
+t|text_enc|-1
+=== 3.1 varchar_enc(5) 恰好 5 字符 ===
+INSERT 0 1
+=== 3.2 varchar_enc(5) 6 字符 -> 拒绝 ===
+=== 3.3 varchar_enc(5) 20 字符 -> 拒绝 ===
+=== 3.4 bpchar_enc(3) 恰好 3 字符 ===
+INSERT 0 1
+=== 3.5 bpchar_enc(3) 4 字符 -> 拒绝 ===
+=== 4.1 varchar_enc(5) 'ab      '（8 字符，超出全是空格）-> 存成 5 字符 ===
+INSERT 0 1
+=== 4.1b 存的是服务端那份值（5 字符为真 / 8 字符为假）===
+6|t|f
+=== 4.2 bpchar_enc(3) 'ab   '（5 字符，超出全是空格）-> 存成 3 字符 ===
+INSERT 0 1
+=== 4.3 bpchar_enc(3) 'ab  d'（超限位是非空格）-> 拒绝 ===
+=== 5.1 varchar_enc(5) '中文'（2 字符 / 6 字节）-> 放行 ===
+INSERT 0 1
+=== 5.2 varchar_enc(5) '中文字符串'（5 字符 / 15 字节）-> 放行 ===
+INSERT 0 1
+=== 5.3 varchar_enc(5) '中文字符串长'（6 字符）-> 拒绝 ===
+=== 5.4 bpchar_enc(3) '中文'（2 字符 / 6 字节）-> 放行 ===
+INSERT 0 1
+=== 6 text_enc 无 typmod，长值放行 ===
+INSERT 0 1
+=== 7 WHERE 超长常量 -> 0 行，不报错 ===
+0
+=== 7b 超大 WHERE 常量同样不报错 ===
+0
+=== 8.1 UPDATE 超长 -> 拒绝 ===
+=== 8.2 UPDATE 合法 -> 成功 ===
+UPDATE 1
+=== 9.1 numeric_enc(5,2) 123.45 -> 放行 ===
+INSERT 0 1
+=== 9.2 numeric_enc(5,2) 1234.56（超出精度）-> 拒绝 ===
+=== 10 回读 ===
+1|ok|||
+4||abc||
+6|ab   |||
+7||ab ||
+9|中文|||
+10|中文字符串|||
+12||中文||
+13||||abcdefghijklmnopqrst
+14|||123.45|
+=== 11 EXECUTE 参数：超长拒绝 / 合法放行 ===
+PREPARE
+INSERT 0 1
+DEALLOCATE
+=== 12.1 造存量数据：宽声明列(20/20) 拷进窄声明列(5/3) ===
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 2
+INSERT 0 1
+INSERT 0 1
+=== 12.2 造存量数据：绕过前端（关闭客户端加密）让服务端直接拷密文 ===
+UPDATE 2
+=== 12.3 回读：尾部空格形态定型成 5 字符 / 3 字符（'|' 之后即尾部空格），含非空格的超长值不截断 ===
+1|ab   |ab 
+2|abcdefghij|wxyz
+=== 12.4 重写一遍即收敛：用回读值重新写入，回显与比较都回到原生语义 ===
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+1|t|f
+DROP TABLE
+DROP TABLE
+DROP TABLE
+=== 13.1 ::varchar_enc(5) 10 字符 -> 截断成 5 字符（显式 cast 不报错）===
+INSERT 0 1
+20|abcde|t|f
+=== 13.2 ::varchar_enc(20) 10 字符 写进 varchar_enc(5) -> 拒绝（赋值转换）===
+=== 13.3 ::varchar_enc 未声明长度 10 字符 写进 varchar_enc(5) -> 拒绝 ===
+=== 13.4 ::bpchar_enc(3) 4 字符 -> 截断成 3 字符 ===
+INSERT 0 1
+23|abc|t|f
+=== 13.5 多行 VALUES：第二行超出目标列 -> 整条语句拒绝 ===
+=== 13.6 多行 VALUES：都按 cast 声明长度截断 -> 放行 ===
+INSERT 0 2
+26|abcde|t|f
+27|fghij|f|t
+=== 13.7 INSERT ... SELECT 的带长度 cast -> 同样截断 ===
+INSERT 0 1
+28|uvwxy|t
+=== 13.8 纯 SELECT 的带长度 cast -> 按声明长度截断输出 ===
+abcde
+=== 13.9 WHERE 带长度 cast -> 按截断后的值命中（不是按完整值）===
+INSERT 0 1
+1
+0
+=== 13.10 多字节按字符截断（::varchar_enc(3) 5 个汉字）===
+INSERT 0 1
+29|中文字|t
+=== 13.11 CTAS 的带长度 cast：列按声明长度建、值被截断、密文与列路径一致 ===
+DROP TABLE
+SELECT 1
+varchar_enc(3)
+abc|t|f
+=== 13.12 CTAS 尊重显式 SUPPORT_ALGO：DET 等值 + SEARCH 模糊匹配 ===
+DROP TABLE
+SELECT 1
+hello|t
+hello
+=== 13.12b 对照：同一份声明的普通列（应完全相同）===
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+hello|t
+hello
+=== 13.13 加密列 DEFAULT 超长 -> 按声明长度拒绝 ===
+DROP TABLE
+=== 13.13b 对照：普通 varchar(3) 的同一 DEFAULT 在 CREATE TABLE 不报错，INSERT 才报 ===
+DROP TABLE
+CREATE TABLE
+=== 13.13c 恰好长度的加密 DEFAULT -> 建表可用，且 DEFAULT 行等值命中 ===
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+abc|t
+=== 13.14 UPDATE SET 的带 ENCRYPTED WITH cast：cast 长度截断 + 目标列长度拒绝 ===
+UPDATE 1
+30|abcde|t|f
+=== 13.14b cast 声明 20、值 10 字符写入 varchar_enc(5) -> 按目标列长度拒绝 ===
+=== 13.14c 同一句混合 cast 与普通常量 -> 两者都加密 ===
+UPDATE 1
+30|vwxyz|t|qwerty|t
+=== 13.15 WHERE 同句混合：cast 比较值与裸常量比较值都要加密 ===
+1
+1
+=== 13.16 纯 SELECT 的 cast 与 WHERE 同句 -> 仍被加密、与列密文一致 ===
+t
+=== 14.1 源列声明 20 > 目标列声明 5 -> 拒绝（值实际超长）===
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 2
+1|abcde|f|t
+=== 14.2 源列声明不超过目标列 -> 放行（写入侧已校验过该列的值）===
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+UPDATE 1
+1|vwxyz|t
+=== 14.3 已知代价：源列声明更宽、值其实放得下，也一并被拒（与原生不同）===
+=== 14.4 原生对照：同一形态下原生按值判断，放得下的放行、超长的拒绝 ===
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 2
+1|abcde
+UPDATE 1
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../enc_char_typmod.sql:97: NOTICE:  table "ct_t" does not exist, skipping
+psql:/.../enc_char_typmod.sql:98: NOTICE:  data encryption key "ct_d" does not exist, skipping
+psql:/.../enc_char_typmod.sql:99: NOTICE:  key encryption key "ct_k" does not exist, skipping
+TECC ERROR: TECC SCHEDULER ERROR: value too long for type character varying(5)
+psql:/.../enc_char_typmod.sql:155: TECC query preprocessing failed: Encryption failed: value too long for type character varying(5)
+TECC ERROR: TECC SCHEDULER ERROR: value too long for type character varying(5)
+psql:/.../enc_char_typmod.sql:158: TECC query preprocessing failed: Encryption failed: value too long for type character varying(5)
+TECC ERROR: TECC SCHEDULER ERROR: value too long for type character(3)
+psql:/.../enc_char_typmod.sql:164: TECC query preprocessing failed: Encryption failed: value too long for type character(3)
+TECC ERROR: TECC SCHEDULER ERROR: value too long for type character(3)
+psql:/.../enc_char_typmod.sql:179: TECC query preprocessing failed: Encryption failed: value too long for type character(3)
+TECC ERROR: TECC SCHEDULER ERROR: value too long for type character varying(5)
+psql:/.../enc_char_typmod.sql:191: TECC query preprocessing failed: Encryption failed: value too long for type character varying(5)
+TECC ERROR: TECC SCHEDULER ERROR: value too long for type character varying(5)
+TECC ERROR: SET clause processing failed: -3
+psql:/.../enc_char_typmod.sql:215: TECC query preprocessing failed: Encryption failed: value too long for type character varying(5)
+TECC ERROR: TECC SCHEDULER ERROR: RND normalize failed: numeric field overflow (code=-1207)
+psql:/.../enc_char_typmod.sql:227: TECC query preprocessing failed: Encryption failed: numeric field overflow
+TECC ERROR: TECC SCHEDULER ERROR: value too long for type character varying(5)
+TECC ERROR: EXECUTE param $2: encrypt failed for ct_t.v5: unknown
+psql:/.../enc_char_typmod.sql:240: TECC query preprocessing failed: value too long for type character varying(5)
+psql:/.../enc_char_typmod.sql:251: NOTICE:  table "ct_legacy" does not exist, skipping
+psql:/.../enc_char_typmod.sql:252: NOTICE:  table "ct_wide" does not exist, skipping
+psql:/.../enc_char_typmod.sql:275: NOTICE:  table "ct_rewrite" does not exist, skipping
+TECC ERROR: TECC SCHEDULER ERROR: value too long for type character varying(5)
+TECC ERROR: Encryption failed for TypeCast value: unknown error
+TECC ERROR: INSERT...VALUES TypeCast processing failed: -1
+psql:/.../enc_char_typmod.sql:298: TECC query preprocessing failed: Encryption failed: value too long for type character varying(5)
+TECC ERROR: TECC SCHEDULER ERROR: value too long for type character varying(5)
+TECC ERROR: Encryption failed for TypeCast value: unknown error
+TECC ERROR: INSERT...VALUES TypeCast processing failed: -1
+psql:/.../enc_char_typmod.sql:302: TECC query preprocessing failed: Encryption failed: value too long for type character varying(5)
+TECC ERROR: TECC SCHEDULER ERROR: value too long for type character varying(5)
+TECC ERROR: Encryption failed for TypeCast value: unknown error
+TECC ERROR: INSERT...VALUES TypeCast processing failed: -1
+psql:/.../enc_char_typmod.sql:312: TECC query preprocessing failed: Encryption failed: value too long for type character varying(5)
+psql:/.../enc_char_typmod.sql:356: NOTICE:  table "ct_ctas" does not exist, skipping
+psql:/.../enc_char_typmod.sql:369: NOTICE:  table "ct_ctas_sup" does not exist, skipping
+psql:/.../enc_char_typmod.sql:376: NOTICE:  table "ct_plain_sup" does not exist, skipping
+psql:/.../enc_char_typmod.sql:387: NOTICE:  table "ct_dflt" does not exist, skipping
+TECC ERROR: TECC SCHEDULER ERROR: value too long for type character varying(3)
+psql:/.../enc_char_typmod.sql:390: TECC query preprocessing failed: Encryption failed: value too long for type character varying(3)
+psql:/.../enc_char_typmod.sql:393: NOTICE:  table "ct_plain_dflt" does not exist, skipping
+psql:/.../enc_char_typmod.sql:395: ERROR:  value too long for type character varying(3)
+psql:/.../enc_char_typmod.sql:398: NOTICE:  table "ct_dflt" does not exist, skipping
+TECC ERROR: TECC SCHEDULER ERROR: value too long for type character varying(5)
+TECC ERROR: SET clause processing failed: -3
+psql:/.../enc_char_typmod.sql:416: TECC query preprocessing failed: Encryption failed: value too long for type character varying(5)
+psql:/.../enc_char_typmod.sql:454: NOTICE:  table "ct_c14" does not exist, skipping
+psql:/.../enc_char_typmod.sql:455: NOTICE:  table "ct_c20" does not exist, skipping
+psql:/.../enc_char_typmod.sql:462: TECC query preprocessing failed: value too long for type character varying(5) (copying from column "w" declared character varying(20); a ciphertext copy cannot verify the value's actual length)
+psql:/.../enc_char_typmod.sql:466: NOTICE:  table "ct_c5" does not exist, skipping
+psql:/.../enc_char_typmod.sql:474: TECC query preprocessing failed: value too long for type character varying(5) (copying from column "w" declared character varying(20); a ciphertext copy cannot verify the value's actual length)
+psql:/.../enc_char_typmod.sql:477: NOTICE:  table "np_c5" does not exist, skipping
+psql:/.../enc_char_typmod.sql:478: NOTICE:  table "np_c20" does not exist, skipping
+psql:/.../enc_char_typmod.sql:483: ERROR:  value too long for type character varying(5)

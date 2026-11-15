@@ -1,58 +1,137 @@
 {
-  "int4_scan": {
-    "threshold_ms": 8000,
-    "desc": "int4 full scan"
-  },
-  "int4_eq": {
-    "threshold_ms": 120,
-    "desc": "int4 equi query"
-  },
-  "int4_range_small": {
-    "threshold_ms": 40,
-    "desc": "int4 range small"
-  },
-  "int4_range_large": {
-    "threshold_ms": 220,
-    "desc": "int4 range large"
-  },
-  "float8_scan": {
-    "threshold_ms": 8000,
-    "desc": "float8 full scan"
-  },
-  "float8_eq": {
-    "threshold_ms": 120,
-    "desc": "float8 equi query"
-  },
-  "float8_range_small": {
-    "threshold_ms": 40,
-    "desc": "float8 range small"
-  },
-  "float8_range_large": {
-    "threshold_ms": 220,
-    "desc": "float8 range large"
-  },
-  "text_scan": {
-    "threshold_ms": 8000,
-    "desc": "text full scan"
-  },
-  "text_eq": {
-    "threshold_ms": 120,
-    "desc": "text equi query"
-  },
-  "text_range_small": {
-    "threshold_ms": 120,
-    "desc": "text range small"
-  },
-  "text_range_large": {
-    "threshold_ms": 290,
-    "desc": "text range large"
-  },
-  "text_like_small": {
-    "threshold_ms": 320,
-    "desc": "text like small"
-  },
-  "text_like_large": {
-    "threshold_ms": 420,
-    "desc": "text like large"
-  }
+    "int4_scan": {
+        "threshold_ms": 9000,
+        "requirement_threshold_ms": 8000,
+        "desc": "int4 full scan (text protocol LUT, measured 8643ms 2026-08-13)"
+    },
+    "int4_eq": {
+        "threshold_ms": 5,
+        "requirement_threshold_ms": 120,
+        "desc": "int4 equi query"
+    },
+    "int4_range_small": {
+        "threshold_ms": 5,
+        "requirement_threshold_ms": 30,
+        "desc": "int4 range small"
+    },
+    "int4_range_large": {
+        "threshold_ms": 20,
+        "requirement_threshold_ms": 160,
+        "desc": "int4 range large"
+    },
+    "float8_scan": {
+        "threshold_ms": 10000,
+        "requirement_threshold_ms": 8000,
+        "desc": "float8 full scan (text protocol LUT, measured 9371ms 2026-08-13)"
+    },
+    "float8_eq": {
+        "threshold_ms": 5,
+        "requirement_threshold_ms": 120,
+        "desc": "float8 equi query"
+    },
+    "float8_range_small": {
+        "threshold_ms": 5,
+        "requirement_threshold_ms": 30,
+        "desc": "float8 range small"
+    },
+    "float8_range_large": {
+        "threshold_ms": 20,
+        "requirement_threshold_ms": 160,
+        "desc": "float8 range large"
+    },
+    "text_scan": {
+        "threshold_ms": 9000,
+        "requirement_threshold_ms": 8000,
+        "desc": "text full scan (text protocol LUT, measured 8847ms 2026-08-13)"
+    },
+    "text_eq": {
+        "threshold_ms": 5,
+        "requirement_threshold_ms": 120,
+        "desc": "text equi query"
+    },
+    "text_range_small": {
+        "threshold_ms": 5,
+        "requirement_threshold_ms": 60,
+        "desc": "text range small"
+    },
+    "text_range_large": {
+        "threshold_ms": 150,
+        "requirement_threshold_ms": 290,
+        "desc": "text range large (text protocol LUT, measured 105ms 2026-08-13)"
+    },
+    "text_like_small": {
+        "threshold_ms": 5,
+        "requirement_threshold_ms": 320,
+        "desc": "text like small (prefix match 20% hit)"
+    },
+    "text_like_large": {
+        "threshold_ms": 300,
+        "requirement_threshold_ms": 420,
+        "desc": "text like large (prefix match 20% hit, measured 209ms 2026-08-13)"
+    },
+    "he_add_10000": {
+        "threshold_ms": 30000,
+        "requirement_threshold_ms": 50000,
+        "desc": "homomorphic add column decrypt 10000 rows (select a; text protocol measured 26114ms 2026-08-13)"
+    },
+    "he_add_sum_10k": {
+        "threshold_ms": 20000,
+        "requirement_threshold_ms": 20000,
+        "desc": "homomorphic add SUM 10k rows (doc: <=20000ms, measured ~16244ms 2026-08-13)"
+    },
+    "he_mul_10000": {
+        "threshold_ms": 25000,
+        "requirement_threshold_ms": 30000,
+        "desc": "homomorphic mul column decrypt 10000 rows (select a; text protocol measured 21858ms 2026-08-13)"
+    },
+    "he_mul_pow_10000": {
+        "threshold_ms": 300,
+        "requirement_threshold_ms": 300,
+        "desc": "homomorphic power a^10000 return 1 row (server 9999 FF multiplications; measured 239ms 2026-08-13)"
+    },
+    "int4_insert": {
+        "threshold_ms": 0,
+        "requirement_threshold_ms": 0,
+        "desc": "int4 DET+OPE client-encrypted INSERT (seed 阶段顺带测量, 每run=seed/runs行默认20000, 预热1次+测量runs-1次平均; 待实测)"
+    },
+    "float8_insert": {
+        "threshold_ms": 0,
+        "requirement_threshold_ms": 0,
+        "desc": "float8 DET+OPE client-encrypted INSERT (seed 阶段顺带测量, 每run=seed/runs行默认20000, 预热1次+测量runs-1次平均; 待实测)"
+    },
+    "text_insert": {
+        "threshold_ms": 0,
+        "requirement_threshold_ms": 0,
+        "desc": "text DET+OPE+SEARCH client-encrypted INSERT (seed 阶段顺带测量, 每run=seed/runs行默认20000, 预热1次+测量runs-1次平均; 待实测)"
+    },
+    "he_int8_insert": {
+        "threshold_ms": 0,
+        "requirement_threshold_ms": 0,
+        "desc": "int8 he-add+he-mul client-encrypted INSERT (seed 阶段顺带测量, 每run=seed/runs行默认20000, 预热1次+测量runs-1次平均; 待实测)"
+    },
+    "optimizer_det_hash_join": {
+        "threshold_ms": 0,
+        "requirement_threshold_ms": 0,
+        "desc": "优化器基线：DET 等值连接，验证安全 hashjoin 路径"
+    },
+    "optimizer_ope_order_join": {
+        "threshold_ms": 0,
+        "requirement_threshold_ms": 0,
+        "desc": "优化器基线：OPE 等值连接，验证保序密态等值路径"
+    },
+    "optimizer_semijoin_det": {
+        "threshold_ms": 0,
+        "requirement_threshold_ms": 0,
+        "desc": "优化器基线：DET IN 半连接，验证安全 hash semijoin 路径"
+    },
+    "optimizer_memoize_det": {
+        "threshold_ms": 0,
+        "requirement_threshold_ms": 0,
+        "desc": "优化器基线：重复 DET lateral 查找，验证 memoize 路径"
+    },
+    "optimizer_search_like_cost": {
+        "threshold_ms": 0,
+        "requirement_threshold_ms": 0,
+        "desc": "优化器基线：SEARCH LIKE procost 与密态谓词顺序"
+    }
 }

@@ -24,14 +24,14 @@ INSERT INTO test_copy_enc VALUES (3, 'Charlie');
 -- 验证原始数据
 SELECT id, name FROM test_copy_enc;
 
--- 服务端 COPY TO: 导出到服务端文件（写密文）
-COPY test_copy_enc TO '/tmp/copy_enc_server.txt';
+-- 服务端 COPY TO: 导出到服务端文件（写密文）— %PGDATA% 占位符指向实例数据目录
+COPY test_copy_enc TO '%PGDATA%/copy_enc_server.txt';
 
 -- 清理数据
 TRUNCATE test_copy_enc;
 
 -- 服务端 COPY FROM: 从密文文件导入
-COPY test_copy_enc FROM '/tmp/copy_enc_server.txt';
+COPY test_copy_enc FROM '%PGDATA%/copy_enc_server.txt';
 SELECT id, name FROM test_copy_enc;
 
 -- ============================================================

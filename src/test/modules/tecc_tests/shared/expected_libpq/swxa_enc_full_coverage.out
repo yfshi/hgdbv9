@@ -1,0 +1,1363 @@
+DROP SCHEMA
+DROP DEK
+DROP KEK
+CREATE SCHEMA
+CREATE KEK
+CREATE DEK
+                 stage                 
+---------------------------------------
+ === Part 2.1: 创建全覆盖表（HSM） ===
+(1 row)
+
+CREATE TABLE
+                 stage                  
+----------------------------------------
+ === Part 2.2: 创建DET专项表（HSM） ===
+(1 row)
+
+CREATE TABLE
+                 stage                  
+----------------------------------------
+ === Part 2.3: 创建OPE专项表（HSM） ===
+(1 row)
+
+CREATE TABLE
+                   stage                   
+-------------------------------------------
+ === Part 2.4: 创建SEARCH专项表（HSM） ===
+(1 row)
+
+CREATE TABLE
+                    stage                     
+----------------------------------------------
+ === Part 2.5: 创建DEFAULT值测试表（HSM） ===
+(1 row)
+
+CREATE TABLE
+                    stage                    
+---------------------------------------------
+ === Part 3.1: 全覆盖表单行INSERT（HSM） ===
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+                    stage                    
+---------------------------------------------
+ === Part 3.2: 全覆盖表多行INSERT（HSM） ===
+(1 row)
+
+INSERT 0 5
+                        stage                        
+-----------------------------------------------------
+ === Part 3.3: 全覆盖表省略列名多行INSERT（HSM） ===
+(1 row)
+
+INSERT 0 2
+                  stage                   
+------------------------------------------
+ === Part 3.4: DET专项表INSERT（HSM） ===
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 3
+                  stage                   
+------------------------------------------
+ === Part 3.5: OPE专项表INSERT（HSM） ===
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 5
+                    stage                    
+---------------------------------------------
+ === Part 3.6: SEARCH专项表INSERT（HSM） ===
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+                    stage                    
+---------------------------------------------
+ === Part 3.7: NULL和边界值INSERT（HSM） ===
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+                   stage                    
+--------------------------------------------
+ === Part 3.8: DEFAULT值表INSERT（HSM） ===
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+                   stage                    
+--------------------------------------------
+ === Part 4.1: 全表解密 SELECT *（HSM） ===
+(1 row)
+
+ id | c_int2 | c_int4 | c_int8 | c_f4_det | c_f8_ope | c_num_ope | c_vc_det  | c_bp_srch |       c_txt_all       |   tag    
+----+--------+--------+--------+----------+----------+-----------+-----------+-----------+-----------------------+----------
+  1 | 1      | 100    | 10000  | 1.5      | 3.14159  | 9999.99   | Hello_HSM | ENGINEER  | HSM Software Engineer | hsm_row1
+(1 row)
+
+ id | c_int2 |   c_int4    | c_int8 | c_f4_det | c_f8_ope | c_num_ope |  c_vc_det   | c_bp_srch |         c_txt_all         |        tag        
+----+--------+-------------+--------+----------+----------+-----------+-------------+-----------+---------------------------+-------------------
+  1 | 1      | 100         | 10000  | 1.5      | 3.14159  | 9999.99   | Hello_HSM   | ENGINEER  | HSM Software Engineer     | hsm_row1
+  2 | 2      | 200         | 20000  | 2.5      | 2.71828  | 500.50    | World_HSM   | MANAGER   | HSM Product Manager       | hsm_row2
+  3 | 3      | 300         | 30000  | 3.5      | 1.41421  | 0.01      | Test_HSM    | ANALYST   | HSM Data Analyst          | hsm_row3
+  4 | 10     | 1000        | 100000 | 10.1     | 10.01    | 111.11    | Diana_HSM   | DESIGNER  | HSM UX Designer Diana     | hsm_row4
+  5 | 20     | 2000        | 200000 | 20.2     | 20.02    | 222.22    | Eve_HSM     | DEVOPS    | HSM DevOps Eve            | hsm_row5
+  6 | 30     | 3000        | 300000 | 30.3     | 30.03    | 333.33    | Frank_HSM   | TESTER    | HSM QA Tester Frank       | hsm_row6
+  7 | 40     | 4000        | 400000 | 40.4     | 40.04    | 444.44    | Grace_HSM   | ARCHITECT | HSM Architect Grace       | hsm_row7
+  8 | 50     | 5000        | 500000 | 50.5     | 50.05    | 555.55    | Henry_HSM   | DBA       | HSM Database Admin Henry  | hsm_row8
+  9 | 60     | 6000        | 600000 | 60.6     | 60.06    | 666.66    | Ivan_HSM    | SRE       | HSM SRE Ivan              | hsm_row9
+ 10 | 70     | 7000        | 700000 | 70.7     | 70.07    | 777.77    | Julia_HSM   | SUPPORT   | HSM Support Julia         | hsm_row10
+ 11 |        |             |        |          |          |           |             |           |                           | hsm_null_row
+ 12 |        | -2147483648 |        |          |          |           | hsm_min_int |           | HSM INT_MIN boundary test | hsm_boundary_min
+ 13 |        | 2147483647  |        |          |          |           | hsm_max_int |           | HSM INT_MAX boundary test | hsm_boundary_max
+ 14 |        | -1          |        |          |          |           | hsm_neg_one |           | HSM Negative one          | hsm_boundary_neg1
+ 15 |        | 0           |        |          |          |           | hsm_zero    |           | HSM Zero value            | hsm_boundary_zero
+ 16 |        | 1           |        |          |          |           | hsm_one     |           | HSM One value             | hsm_boundary_one
+(16 rows)
+
+                 stage                 
+---------------------------------------
+ === Part 4.2: 逐列解密验证（HSM） ===
+(1 row)
+
+  col   | c_int2 
+--------+--------
+ c_int2 | 1
+(1 row)
+
+  col   | c_int4 
+--------+--------
+ c_int4 | 100
+(1 row)
+
+  col   | c_int8 
+--------+--------
+ c_int8 | 10000
+(1 row)
+
+   col    | c_f4_det 
+----------+----------
+ c_f4_det | 1.5
+(1 row)
+
+   col    | c_f8_ope 
+----------+----------
+ c_f8_ope | 3.14159
+(1 row)
+
+    col    | c_num_ope 
+-----------+-----------
+ c_num_ope | 9999.99
+(1 row)
+
+   col    | c_vc_det  
+----------+-----------
+ c_vc_det | Hello_HSM
+(1 row)
+
+    col    | c_bp_srch 
+-----------+-----------
+ c_bp_srch | ENGINEER
+(1 row)
+
+    col    |       c_txt_all       
+-----------+-----------------------
+ c_txt_all | HSM Software Engineer
+(1 row)
+
+                stage                 
+--------------------------------------
+ === Part 4.3: DET等值查询（HSM） ===
+(1 row)
+
+      test_case       
+----------------------
+ DET: int2 = 11 (HSM)
+(1 row)
+
+    tag     
+------------
+ hsm_det_r1
+(1 row)
+
+       test_case       
+-----------------------
+ DET: int4 = 222 (HSM)
+(1 row)
+
+    tag     
+------------
+ hsm_det_r2
+(1 row)
+
+       test_case        
+------------------------
+ DET: int8 = 3333 (HSM)
+(1 row)
+
+    tag     
+------------
+ hsm_det_r3
+(1 row)
+
+        test_case         
+--------------------------
+ DET: float4 = 44.4 (HSM)
+(1 row)
+
+    tag     
+------------
+ hsm_det_r4
+(1 row)
+
+         test_case         
+---------------------------
+ DET: float8 = 55.55 (HSM)
+(1 row)
+
+    tag     
+------------
+ hsm_det_r5
+(1 row)
+
+          test_case          
+-----------------------------
+ DET: numeric = 22.222 (HSM)
+(1 row)
+
+    tag     
+------------
+ hsm_det_r2
+(1 row)
+
+            test_case             
+----------------------------------
+ DET: varchar = 'alpha_hsm' (HSM)
+(1 row)
+
+    tag     
+------------
+ hsm_det_r1
+ hsm_det_r4
+(2 rows)
+
+        test_case         
+--------------------------
+ DET: bpchar = 'C3' (HSM)
+(1 row)
+
+    tag     
+------------
+ hsm_det_r3
+(1 row)
+
+               test_case                
+----------------------------------------
+ DET: text = 'HSM DET text delta' (HSM)
+(1 row)
+
+    tag     
+------------
+ hsm_det_r5
+(1 row)
+
+                  stage                   
+------------------------------------------
+ === Part 4.4: DET IN 多值匹配（HSM） ===
+(1 row)
+
+              test_case               
+--------------------------------------
+ DET: det_i4 IN (111, 333, 555) (HSM)
+(1 row)
+
+    tag     | det_i4 
+------------+--------
+ hsm_det_r1 | 111
+ hsm_det_r3 | 333
+ hsm_det_r5 | 555
+(3 rows)
+
+                    test_case                    
+-------------------------------------------------
+ DET: det_vc IN ('alpha_hsm', 'gamma_hsm') (HSM)
+(1 row)
+
+    tag     |  det_vc   
+------------+-----------
+ hsm_det_r1 | alpha_hsm
+ hsm_det_r3 | gamma_hsm
+ hsm_det_r4 | alpha_hsm
+(3 rows)
+
+                 stage                  
+----------------------------------------
+ === Part 4.5: DET不等值查询（HSM） ===
+(1 row)
+
+        test_case         
+--------------------------
+ DET: det_i4 <> 222 (HSM)
+(1 row)
+
+    tag     | det_i4 
+------------+--------
+ hsm_det_r1 | 111
+ hsm_det_r3 | 333
+ hsm_det_r4 | 444
+ hsm_det_r5 | 555
+(4 rows)
+
+            test_case            
+---------------------------------
+ DET: det_vc != 'beta_hsm' (HSM)
+(1 row)
+
+    tag     |  det_vc   
+------------+-----------
+ hsm_det_r1 | alpha_hsm
+ hsm_det_r3 | gamma_hsm
+ hsm_det_r4 | alpha_hsm
+ hsm_det_r5 | delta_hsm
+(4 rows)
+
+                  stage                   
+------------------------------------------
+ === Part 4.6: DET AND组合条件（HSM） ===
+(1 row)
+
+                    test_case                     
+--------------------------------------------------
+ DET: det_i4 = 111 AND det_vc = 'alpha_hsm' (HSM)
+(1 row)
+
+    tag     
+------------
+ hsm_det_r1
+(1 row)
+
+                         test_case                          
+------------------------------------------------------------
+ DET: det_i2 = 44 AND det_txt = 'HSM DET text alpha2' (HSM)
+(1 row)
+
+    tag     
+------------
+ hsm_det_r4
+(1 row)
+
+                stage                
+-------------------------------------
+ === Part 4.7: DET OR条件（HSM） ===
+(1 row)
+
+                        test_case                        
+---------------------------------------------------------
+ DET: det_vc = 'alpha_hsm' OR det_vc = 'gamma_hsm' (HSM)
+(1 row)
+
+    tag     |  det_vc   
+------------+-----------
+ hsm_det_r1 | alpha_hsm
+ hsm_det_r3 | gamma_hsm
+ hsm_det_r4 | alpha_hsm
+(3 rows)
+
+               stage               
+-----------------------------------
+ === Part 4.8: DET JOIN（HSM） ===
+(1 row)
+
+              test_case              
+-------------------------------------
+ DET JOIN: a.det_vc = b.det_vc (HSM)
+(1 row)
+
+    tag     |    tag     
+------------+------------
+ hsm_det_r1 | hsm_det_r1
+ hsm_det_r1 | hsm_det_r4
+(2 rows)
+
+                stage                 
+--------------------------------------
+ === Part 4.9: OPE范围查询（HSM） ===
+(1 row)
+
+       test_case        
+------------------------
+ OPE: ope_i2 > 10 (HSM)
+(1 row)
+
+ ope_i2 
+--------
+ 20
+ 30
+ 40
+ 50
+(4 rows)
+
+       test_case       
+-----------------------
+ OPE: ope_i2 < 0 (HSM)
+(1 row)
+
+ ope_i2 
+--------
+ -50
+(1 row)
+
+        test_case        
+-------------------------
+ OPE: ope_i2 >= 20 (HSM)
+(1 row)
+
+ ope_i2 
+--------
+ 20
+ 30
+ 40
+ 50
+(4 rows)
+
+        test_case        
+-------------------------
+ OPE: ope_i2 <= 10 (HSM)
+(1 row)
+
+ ope_i2 
+--------
+ -50
+ 0
+ 10
+(3 rows)
+
+        test_case        
+-------------------------
+ OPE: ope_i4 > 200 (HSM)
+(1 row)
+
+ ope_i4 
+--------
+ 300
+ 400
+ 500
+(3 rows)
+
+        test_case        
+-------------------------
+ OPE: ope_i4 < 200 (HSM)
+(1 row)
+
+ ope_i4 
+--------
+ -500
+ 0
+ 100
+(3 rows)
+
+         test_case         
+---------------------------
+ OPE: ope_i8 >= 3000 (HSM)
+(1 row)
+
+ ope_i8 
+--------
+ 3000
+ 4000
+ 5000
+(3 rows)
+
+         test_case         
+---------------------------
+ OPE: ope_i8 <= 1000 (HSM)
+(1 row)
+
+ ope_i8 
+--------
+ -5000
+ 0
+ 1000
+(3 rows)
+
+        test_case         
+--------------------------
+ OPE: ope_f4 > 20.5 (HSM)
+(1 row)
+
+ ope_f4 
+--------
+ 30.5
+ 40.5
+ 50.5
+(3 rows)
+
+         test_case          
+----------------------------
+ OPE: ope_f8 >= 300.5 (HSM)
+(1 row)
+
+ ope_f8 
+--------
+ 300.5
+ 400.5
+ 500.5
+(3 rows)
+
+          test_case          
+-----------------------------
+ OPE: ope_num < 200.55 (HSM)
+(1 row)
+
+ ope_num 
+---------
+ -555.55
+ 0.0
+ 100.55
+(3 rows)
+
+         test_case         
+---------------------------
+ OPE: ope_vc > 'CCC' (HSM)
+(1 row)
+
+ ope_vc 
+--------
+ DDD
+ EEE
+ FFF
+ GGG
+(4 rows)
+
+         test_case          
+----------------------------
+ OPE: ope_vc >= 'EEE' (HSM)
+(1 row)
+
+ ope_vc 
+--------
+ EEE
+ FFF
+ GGG
+(3 rows)
+
+               test_case                
+----------------------------------------
+ OPE: ope_txt >= 'hsm_ope_medium' (HSM)
+(1 row)
+
+    ope_txt     
+----------------
+ hsm_ope_medium
+ hsm_ope_minus
+ hsm_ope_small
+ hsm_ope_xlarge
+ hsm_ope_zero
+(5 rows)
+
+                     stage                     
+-----------------------------------------------
+ === Part 4.10: OPE BETWEEN范围查询（HSM） ===
+(1 row)
+
+               test_case               
+---------------------------------------
+ OPE: ope_i4 BETWEEN 100 AND 400 (HSM)
+(1 row)
+
+ ope_i4 
+--------
+ 100
+ 200
+ 300
+ 400
+(4 rows)
+
+                 test_case                 
+-------------------------------------------
+ OPE: ope_f8 BETWEEN 100.5 AND 400.5 (HSM)
+(1 row)
+
+ ope_f8 
+--------
+ 100.5
+ 200.5
+ 300.5
+ 400.5
+(4 rows)
+
+                test_case                
+-----------------------------------------
+ OPE: ope_num BETWEEN 0 AND 300.55 (HSM)
+(1 row)
+
+ ope_num 
+---------
+ 0.0
+ 100.55
+ 200.55
+ 300.55
+(4 rows)
+
+                 test_case                 
+-------------------------------------------
+ OPE: ope_vc BETWEEN 'BBB' AND 'EEE' (HSM)
+(1 row)
+
+ ope_vc 
+--------
+ BBB
+ CCC
+ DDD
+ EEE
+(4 rows)
+
+                      stage                      
+-------------------------------------------------
+ === Part 4.11: OPE ORDER BY 保序验证（HSM） ===
+(1 row)
+
+           test_case            
+--------------------------------
+ OPE: ORDER BY ope_i4 ASC (HSM)
+(1 row)
+
+ ope_i4 
+--------
+ -500
+ 0
+ 100
+ 200
+ 300
+ 400
+ 500
+(7 rows)
+
+            test_case            
+---------------------------------
+ OPE: ORDER BY ope_i4 DESC (HSM)
+(1 row)
+
+ ope_i4 
+--------
+ 500
+ 400
+ 300
+ 200
+ 100
+ 0
+ -500
+(7 rows)
+
+           test_case            
+--------------------------------
+ OPE: ORDER BY ope_f8 ASC (HSM)
+(1 row)
+
+ ope_f8 
+--------
+ -500.5
+ 0
+ 100.5
+ 200.5
+ 300.5
+ 400.5
+ 500.5
+(7 rows)
+
+            test_case            
+---------------------------------
+ OPE: ORDER BY ope_f8 DESC (HSM)
+(1 row)
+
+ ope_f8 
+--------
+ 500.5
+ 400.5
+ 300.5
+ 200.5
+ 100.5
+ 0
+ -500.5
+(7 rows)
+
+            test_case            
+---------------------------------
+ OPE: ORDER BY ope_num ASC (HSM)
+(1 row)
+
+ ope_num 
+---------
+ -555.55
+ 0.0
+ 100.55
+ 200.55
+ 300.55
+ 400.55
+ 500.55
+(7 rows)
+
+           test_case            
+--------------------------------
+ OPE: ORDER BY ope_vc ASC (HSM)
+(1 row)
+
+ ope_vc 
+--------
+ AAA
+ BBB
+ CCC
+ DDD
+ EEE
+ FFF
+ GGG
+(7 rows)
+
+            test_case            
+---------------------------------
+ OPE: ORDER BY ope_vc DESC (HSM)
+(1 row)
+
+ ope_vc 
+--------
+ GGG
+ FFF
+ EEE
+ DDD
+ CCC
+ BBB
+ AAA
+(7 rows)
+
+            test_case            
+---------------------------------
+ OPE: ORDER BY ope_txt ASC (HSM)
+(1 row)
+
+    ope_txt     
+----------------
+ hsm_ope_large
+ hsm_ope_max
+ hsm_ope_medium
+ hsm_ope_minus
+ hsm_ope_small
+ hsm_ope_xlarge
+ hsm_ope_zero
+(7 rows)
+
+                       stage                       
+---------------------------------------------------
+ === Part 4.12: OPE范围 + ORDER BY 组合（HSM） ===
+(1 row)
+
+                  test_case                   
+----------------------------------------------
+ OPE: ope_i4 > 100 ORDER BY ope_i4 DESC (HSM)
+(1 row)
+
+ ope_i4 
+--------
+ 500
+ 400
+ 300
+ 200
+(4 rows)
+
+                        test_case                        
+---------------------------------------------------------
+ OPE: ope_f8 BETWEEN 0 AND 400 ORDER BY ope_f8 ASC (HSM)
+(1 row)
+
+ ope_f8 
+--------
+ 0
+ 100.5
+ 200.5
+ 300.5
+(4 rows)
+
+                     stage                      
+------------------------------------------------
+ === Part 4.13: SEARCH LIKE 包含匹配（HSM） ===
+(1 row)
+
+         test_case          
+----------------------------
+ SEARCH: LIKE '%HSM%' (HSM)
+(1 row)
+
+               srch_txt                
+---------------------------------------
+ Alice Wang is a HSM software engineer
+ Bob Chen is a HSM product manager
+ Charlie Zhang is a HSM data analyst
+ David Liu is a HSM DevOps engineer
+ Eve Zhao is a HSM QA tester
+(5 rows)
+
+            test_case            
+---------------------------------
+ SEARCH: LIKE '%engineer%' (HSM)
+(1 row)
+
+               srch_txt                
+---------------------------------------
+ Alice Wang is a HSM software engineer
+ David Liu is a HSM DevOps engineer
+(2 rows)
+
+           test_case            
+--------------------------------
+ SEARCH: LIKE '%manager%' (HSM)
+(1 row)
+
+             srch_txt              
+-----------------------------------
+ Bob Chen is a HSM product manager
+(1 row)
+
+          test_case          
+-----------------------------
+ SEARCH: LIKE 'Alice%' (HSM)
+(1 row)
+
+    srch_vc     
+----------------
+ Alice HSM Wang
+(1 row)
+
+         test_case         
+---------------------------
+ SEARCH: LIKE 'Bob%' (HSM)
+(1 row)
+
+             srch_txt              
+-----------------------------------
+ Bob Chen is a HSM product manager
+(1 row)
+
+           test_case           
+-------------------------------
+ SEARCH: LIKE '%hsm.com' (HSM)
+(1 row)
+
+     srch_bp     
+-----------------
+ alice@hsm.com
+ charlie@hsm.com
+ eve@hsm.com
+(3 rows)
+
+           test_case            
+--------------------------------
+ SEARCH: LIKE '%engineer' (HSM)
+(1 row)
+
+               srch_txt                
+---------------------------------------
+ Alice Wang is a HSM software engineer
+ David Liu is a HSM DevOps engineer
+(2 rows)
+
+              test_case               
+--------------------------------------
+ SEARCH: srch_vc LIKE '%Zhang%' (HSM)
+(1 row)
+
+      srch_vc      
+-------------------
+ Charlie HSM Zhang
+(1 row)
+
+               test_case                
+----------------------------------------
+ SEARCH: srch_bp LIKE '%hsm.org%' (HSM)
+(1 row)
+
+   srch_bp   
+-------------
+ bob@hsm.org
+(1 row)
+
+                   stage                   
+-------------------------------------------
+ === Part 4.14: SEARCH NOT LIKE（HSM） ===
+(1 row)
+
+                  test_case                   
+----------------------------------------------
+ SEARCH: srch_txt NOT LIKE '%engineer%' (HSM)
+(1 row)
+
+              srch_txt               
+-------------------------------------
+ Bob Chen is a HSM product manager
+ Charlie Zhang is a HSM data analyst
+ Eve Zhao is a HSM QA tester
+(3 rows)
+
+                test_case                
+-----------------------------------------
+ SEARCH: srch_vc NOT LIKE '%Zhao%' (HSM)
+(1 row)
+
+      srch_vc      
+-------------------
+ Alice HSM Wang
+ Bob HSM Chen
+ Charlie HSM Zhang
+ David HSM Liu
+(4 rows)
+
+                      stage                       
+--------------------------------------------------
+ === Part 4.15: SEARCH LIKE + AND 组合（HSM） ===
+(1 row)
+
+                            test_case                             
+------------------------------------------------------------------
+ SEARCH: srch_txt LIKE '%HSM%' AND srch_bp LIKE '%hsm.com%' (HSM)
+(1 row)
+
+      srch_vc      
+-------------------
+ Alice HSM Wang
+ Charlie HSM Zhang
+ Eve HSM Zhao
+(3 rows)
+
+                       stage                        
+----------------------------------------------------
+ === Part 4.16: 密态列 + 普通列 组合条件（HSM） ===
+(1 row)
+
+                        test_case                         
+----------------------------------------------------------
+ MIXED: tag = 'hsm_row1' AND c_vc_det = 'Hello_HSM' (HSM)
+(1 row)
+
+   tag    | c_vc_det  
+----------+-----------
+ hsm_row1 | Hello_HSM
+(1 row)
+
+                     test_case                      
+----------------------------------------------------
+ MIXED: c_f8_ope > 10 AND tag LIKE 'hsm_row%' (HSM)
+(1 row)
+
+    tag    | c_f8_ope 
+-----------+----------
+ hsm_row4  | 10.01
+ hsm_row5  | 20.02
+ hsm_row6  | 30.03
+ hsm_row7  | 40.04
+ hsm_row8  | 50.05
+ hsm_row9  | 60.06
+ hsm_row10 | 70.07
+(7 rows)
+
+                stage                 
+--------------------------------------
+ === Part 4.17: NULL值查询（HSM） ===
+(1 row)
+
+         test_case          
+----------------------------
+ NULL: c_int4 IS NULL (HSM)
+(1 row)
+
+     tag      | c_int4 
+--------------+--------
+ hsm_null_row | 
+(1 row)
+
+                      test_case                      
+-----------------------------------------------------
+ NULL: c_vc_det IS NOT NULL AND c_int4 IS NULL (HSM)
+(1 row)
+
+ tag | c_vc_det 
+-----+----------
+(0 rows)
+
+                stage                 
+--------------------------------------
+ === Part 4.18: 边界值查询（HSM） ===
+(1 row)
+
+                test_case                 
+------------------------------------------
+ BOUNDARY: tag = 'hsm_boundary_min' (HSM)
+(1 row)
+
+       tag        |   c_int4    
+------------------+-------------
+ hsm_boundary_min | -2147483648
+(1 row)
+
+                test_case                 
+------------------------------------------
+ BOUNDARY: tag = 'hsm_boundary_max' (HSM)
+(1 row)
+
+       tag        |   c_int4   
+------------------+------------
+ hsm_boundary_max | 2147483647
+(1 row)
+
+                 test_case                 
+-------------------------------------------
+ BOUNDARY: tag = 'hsm_boundary_zero' (HSM)
+(1 row)
+
+        tag        | c_int4 
+-------------------+--------
+ hsm_boundary_zero | 0
+(1 row)
+
+                 test_case                 
+-------------------------------------------
+ BOUNDARY: tag = 'hsm_boundary_neg1' (HSM)
+(1 row)
+
+        tag        | c_int4 
+-------------------+--------
+ hsm_boundary_neg1 | -1
+(1 row)
+
+                  stage                  
+-----------------------------------------
+ === Part 4.19: DEFAULT值验证（HSM） ===
+(1 row)
+
+         test_case         
+---------------------------
+ DEFAULT: 全部默认值 (HSM)
+(1 row)
+
+ id | def_i4 |      def_vc       |     def_txt      |       note       
+----+--------+-------------------+------------------+------------------
+  1 | 100    | hsm_default_hello | hsm_default_text | hsm all defaults
+(1 row)
+
+         test_case         
+---------------------------
+ DEFAULT: 全部显式值 (HSM)
+(1 row)
+
+ id | def_i4 |      def_vc      |      def_txt      |       note       
+----+--------+------------------+-------------------+------------------
+  2 | 200    | hsm_explicit_val | hsm_explicit_text | hsm explicit all
+(1 row)
+
+        test_case        
+-------------------------
+ DEFAULT: 部分默认 (HSM)
+(1 row)
+
+ id | def_i4 |      def_vc       |      def_txt      |        note         
+----+--------+-------------------+-------------------+---------------------
+  3 | 100    | hsm_default_hello | hsm_only_text_set | hsm partial default
+(1 row)
+
+              test_case               
+--------------------------------------
+ DEFAULT: 等值查询 def_i4 = 100 (HSM)
+(1 row)
+
+ id | def_i4 
+----+--------
+  1 | 100
+  3 | 100
+(2 rows)
+
+                  test_case                   
+----------------------------------------------
+ DEFAULT: LIKE查询 def_txt LIKE '%hsm%' (HSM)
+(1 row)
+
+ id |      def_txt      
+----+-------------------
+  1 | hsm_default_text
+  2 | hsm_explicit_text
+  3 | hsm_only_text_set
+(3 rows)
+
+                 stage                  
+----------------------------------------
+ === Part 4.20: 聚合函数查询（HSM） ===
+(1 row)
+
+      test_case      
+---------------------
+ AGG: COUNT(*) (HSM)
+(1 row)
+
+ total_rows 
+------------
+         16
+(1 row)
+
+        test_case         
+--------------------------
+ AGG: COUNT(c_int4) (HSM)
+(1 row)
+
+ non_null_count 
+----------------
+             15
+(1 row)
+
+       test_case        
+------------------------
+ AGG: MIN/MAX OPE (HSM)
+(1 row)
+
+ min_val | max_val 
+---------+---------
+ -500    | 500
+(1 row)
+
+                         stage                          
+--------------------------------------------------------
+ === Part 5.1: UPDATE by plaintext condition（HSM） ===
+(1 row)
+
+UPDATE 1
+   tag    |     c_vc_det      
+----------+-------------------
+ hsm_row1 | Hello_HSM_Updated
+(1 row)
+
+                      stage                       
+--------------------------------------------------
+ === Part 5.2: UPDATE by DET condition（HSM） ===
+(1 row)
+
+UPDATE 1
+    tag     |       det_vc       
+------------+--------------------
+ hsm_det_r1 | alpha_hsm_modified
+(1 row)
+
+                    stage                     
+----------------------------------------------
+ === Part 5.3: UPDATE by OPE range（HSM） ===
+(1 row)
+
+UPDATE 2
+ ope_i4 |       tag       
+--------+-----------------
+ 400    | hsm_ope_updated
+ 500    | hsm_ope_updated
+(2 rows)
+
+                     stage                      
+------------------------------------------------
+ === Part 5.4: UPDATE by SEARCH LIKE（HSM） ===
+(1 row)
+
+UPDATE 2
+    srch_vc     |       tag        
+----------------+------------------
+ Alice HSM Wang | hsm_srch_updated
+ David HSM Liu  | hsm_srch_updated
+(2 rows)
+
+                stage                 
+--------------------------------------
+ === Part 5.5: UPDATE 多列（HSM） ===
+(1 row)
+
+UPDATE 1
+   tag    | c_int4 | c_f8_ope |       c_txt_all       
+----------+--------+----------+-----------------------
+ hsm_row5 | 99999  | 99.99    | HSM multi update test
+(1 row)
+
+                    stage                     
+----------------------------------------------
+ === Part 6.1: DELETE by plaintext（HSM） ===
+(1 row)
+
+INSERT 0 1
+DELETE 1
+                    test_case                     
+--------------------------------------------------
+ DELETE plaintext: row deleted, count check (HSM)
+(1 row)
+
+ count 
+-------
+     0
+(1 row)
+
+                 stage                  
+----------------------------------------
+ === Part 6.2: DELETE by DET（HSM） ===
+(1 row)
+
+INSERT 0 1
+DELETE 1
+                 test_case                  
+--------------------------------------------
+ DELETE DET: row deleted, count check (HSM)
+(1 row)
+
+ count 
+-------
+     0
+(1 row)
+
+                    stage                     
+----------------------------------------------
+ === Part 6.3: DELETE by OPE range（HSM） ===
+(1 row)
+
+INSERT 0 1
+DELETE 1
+              test_case               
+--------------------------------------
+ DELETE OPE: rows > 500 deleted (HSM)
+(1 row)
+
+ count 
+-------
+     0
+(1 row)
+
+                     stage                      
+------------------------------------------------
+ === Part 6.4: DELETE by SEARCH LIKE（HSM） ===
+(1 row)
+
+INSERT 0 1
+DELETE 1
+                test_case                 
+------------------------------------------
+ DELETE SEARCH: row deleted by LIKE (HSM)
+(1 row)
+
+ count 
+-------
+     0
+(1 row)
+
+                stage                
+-------------------------------------
+ === Part 7: 最终全表验证（HSM） ===
+(1 row)
+
+            test_case            
+---------------------------------
+ All enc table final state (HSM)
+(1 row)
+
+ id |        tag        
+----+-------------------
+  1 | hsm_row1
+  2 | hsm_row2
+  3 | hsm_row3
+  4 | hsm_row4
+  5 | hsm_row5
+  6 | hsm_row6
+  7 | hsm_row7
+  8 | hsm_row8
+  9 | hsm_row9
+ 10 | hsm_row10
+ 11 | hsm_null_row
+ 12 | hsm_boundary_min
+ 13 | hsm_boundary_max
+ 14 | hsm_boundary_neg1
+ 15 | hsm_boundary_zero
+ 16 | hsm_boundary_one
+(16 rows)
+
+          test_case          
+-----------------------------
+ DET table final state (HSM)
+(1 row)
+
+ id |    tag     |       det_vc       
+----+------------+--------------------
+  1 | hsm_det_r1 | alpha_hsm_modified
+  2 | hsm_det_r2 | beta_hsm
+  3 | hsm_det_r3 | gamma_hsm
+  4 | hsm_det_r4 | alpha_hsm
+  5 | hsm_det_r5 | delta_hsm
+(5 rows)
+
+          test_case          
+-----------------------------
+ OPE table final state (HSM)
+(1 row)
+
+ id | ope_i4 |       tag       
+----+--------+-----------------
+  1 | -500   | hsm_ope_r1
+  2 | 0      | hsm_ope_r2
+  3 | 100    | hsm_ope_r3
+  4 | 200    | hsm_ope_r4
+  5 | 300    | hsm_ope_r5
+  6 | 400    | hsm_ope_updated
+  7 | 500    | hsm_ope_updated
+(7 rows)
+
+           test_case            
+--------------------------------
+ SEARCH table final state (HSM)
+(1 row)
+
+ id |      srch_vc      |       tag        
+----+-------------------+------------------
+  1 | Alice HSM Wang    | hsm_srch_updated
+  2 | Bob HSM Chen      | hsm_srch_r2
+  3 | Charlie HSM Zhang | hsm_srch_r3
+  4 | David HSM Liu     | hsm_srch_updated
+  5 | Eve HSM Zhao      | hsm_srch_r5
+(5 rows)
+
+            test_case            
+---------------------------------
+ DEFAULT table final state (HSM)
+(1 row)
+
+ id | def_i4 |      def_vc       |      def_txt      |        note         
+----+--------+-------------------+-------------------+---------------------
+  1 | 100    | hsm_default_hello | hsm_default_text  | hsm all defaults
+  2 | 200    | hsm_explicit_val  | hsm_explicit_text | hsm explicit all
+  3 | 100    | hsm_default_hello | hsm_only_text_set | hsm partial default
+(3 rows)
+
+            stage            
+-----------------------------
+ === Part 8: 清理（HSM） ===
+(1 row)
+
+DROP SCHEMA
+DROP DEK
+DROP KEK
+psql:/.../swxa_enc_full_coverage.sql:18: NOTICE:  schema "swxa_full_test" does not exist, skipping
+psql:/.../swxa_enc_full_coverage.sql:19: NOTICE:  data encryption key "swxa_full_dek" does not exist, skipping
+psql:/.../swxa_enc_full_coverage.sql:20: NOTICE:  key encryption key "swxa_full_kek" does not exist, skipping
+psql:/.../swxa_enc_full_coverage.sql:712: NOTICE:  drop cascades to 5 other objects
+DETAIL:  drop cascades to table swxa_full_test.enc_all
+drop cascades to table swxa_full_test.enc_det
+drop cascades to table swxa_full_test.enc_ope
+drop cascades to table swxa_full_test.enc_search
+drop cascades to table swxa_full_test.enc_default

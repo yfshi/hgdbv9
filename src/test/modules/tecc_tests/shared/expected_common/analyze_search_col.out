@@ -1,0 +1,28 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+DROP TABLE
+CREATE TABLE
+0_setup_ok
+(1 row)
+INSERT 0 1
+1_data_ok
+(1 row)
+ANALYZE
+1_analyze_ok
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+ANALYZE
+2_det_analyze_ok
+(1 row)
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+3_cleanup_ok
+(1 row)
+NOTICE: key encryption key "kek_ana" does not exist, skipping
+NOTICE: table "ana_search_t" does not exist, skipping
+NOTICE: table "ana_det_t" does not exist, skipping

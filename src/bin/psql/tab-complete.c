@@ -77,6 +77,11 @@
 /* word break characters */
 #define WORD_BREAKS		"\t\n@$><=;|&{() "
 
+/* Modify - ReqID:TECC4.0 - Readline 6.2+ word-boundary hook support. */
+#if defined(RL_READLINE_VERSION) && RL_READLINE_VERSION >= 0x0600
+#define USE_TECC_COMPLETION_WORD_BREAK_HOOK 1
+#endif
+
 /*
  * Since readline doesn't let us pass any state through to the tab completion
  * callback, we have to use this global variable to let get_previous_words()
@@ -179,6 +184,7 @@ static const char *completion_info_charp;	/* to pass a second string */
 static const char *completion_info_charp2;	/* to pass a third string */
 static const VersionedQuery *completion_vquery; /* to pass a VersionedQuery */
 static const SchemaQuery *completion_squery;	/* to pass a SchemaQuery */
+static const char *completion_tecc_key_name; /* raw name field for KEK/DEK */
 static bool completion_case_sensitive;	/* completion is case sensitive */
 static bool completion_force_quote; /* true to force-quote filenames */
 
@@ -484,6 +490,23 @@ static const SchemaQuery Query_for_list_of_tables = {
 	.namespace = "c.relnamespace",
 	.result = "pg_catalog.quote_ident(c.relname)",
 };
+
+static const SchemaQuery Query_for_list_of_keks = {
+	.catname = "pg_catalog.hg_kek k",
+	.viscondition = "true",
+	.namespace = "k.key_namespace",
+	.result = "pg_catalog.quote_ident(k.kek_name)",
+};
+
+static const SchemaQuery Query_for_list_of_deks = {
+	.catname = "pg_catalog.hg_dek d",
+	.viscondition = "true",
+	.namespace = "d.key_namespace",
+	.result = "pg_catalog.quote_ident(d.dek_name)",
+};
+
+static const char *const Query_for_list_of_keks_raw_name = "k.kek_name";
+static const char *const Query_for_list_of_deks_raw_name = "d.dek_name";
 
 static const SchemaQuery Query_for_list_of_partitioned_tables = {
 	.catname = "pg_catalog.pg_class c",
@@ -1123,6 +1146,7 @@ static const pgsql_thing_t words_after_create[] = {
 	{"CONVERSION", "SELECT pg_catalog.quote_ident(conname) FROM pg_catalog.pg_conversion WHERE substring(pg_catalog.quote_ident(conname),1,%d)='%s'"},
 	{"DATABASE", Query_for_list_of_databases},
 	{"DEFAULT PRIVILEGES", NULL, NULL, NULL, THING_NO_CREATE | THING_NO_DROP},
+	{"DEK", NULL, NULL, &Query_for_list_of_deks},
 	{"DICTIONARY", Query_for_list_of_ts_dictionaries, NULL, NULL, THING_NO_SHOW},
 	{"DOMAIN", NULL, NULL, &Query_for_list_of_domains},
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
@@ -1137,6 +1161,7 @@ static const pgsql_thing_t words_after_create[] = {
 	{"GLOBAL", NULL, NULL, NULL, THING_NO_DROP | THING_NO_ALTER}, /* for CREATE GLOBAL TEMP/TEMPORARY TABLE
 																	* ... */
 	{"INDEX", NULL, NULL, &Query_for_list_of_indexes},
+	{"KEK", NULL, NULL, &Query_for_list_of_keks},
 	{"LANGUAGE", Query_for_list_of_languages},
 	{"LARGE OBJECT", NULL, NULL, NULL, THING_NO_CREATE | THING_NO_DROP},
 	{"MATERIALIZED VIEW", NULL, NULL, &Query_for_list_of_matviews},
@@ -1231,6 +1256,11 @@ static const char *const table_storage_parameters[] = {
 
 /* Forward declaration of functions */
 static char **psql_completion(const char *text, int start, int end);
+static bool tecc_support_algo_value_context(const char *buf, int point,
+											bool *quoted);
+#ifdef USE_TECC_COMPLETION_WORD_BREAK_HOOK
+static char *tecc_completion_word_break_hook(void);
+#endif
 static char *create_command_generator(const char *text, int state);
 static char *drop_command_generator(const char *text, int state);
 static char *alter_command_generator(const char *text, int state);
@@ -1238,6 +1268,7 @@ static char *complete_from_query(const char *text, int state);
 static char *complete_from_versioned_query(const char *text, int state);
 static char *complete_from_schema_query(const char *text, int state);
 static char *complete_from_versioned_schema_query(const char *text, int state);
+static char *complete_from_tecc_quoted_key_query(const char *text, int state);
 static char *_complete_from_query(const char *simple_query,
 								  const SchemaQuery *schema_query,
 								  const char *text, int state);
@@ -1287,6 +1318,11 @@ initialize_readline(void)
 	 * that's for another day.
 	 */
 	rl_completer_quote_characters = "'";
+
+#ifdef USE_TECC_COMPLETION_WORD_BREAK_HOOK
+	/* Modify - ReqID:TECC4.0 - Normalize quoted SUPPORT_ALGO completion. */
+	rl_completion_word_break_hook = tecc_completion_word_break_hook;
+#endif
 
 	/*
 	 * Set rl_filename_quote_characters to "all possible characters",
@@ -1505,6 +1541,112 @@ ends_with(const char *s, char c)
 	return (length > 0 && s[length - 1] == c);
 }
 
+/* Begin - ReqID:TECC4.0 */
+/*
+ * Check whether the word being completed is the value of a TECC
+ * SUPPORT_ALGO option.  This deliberately looks at the raw input before the
+ * current word, so compact option lists such as "dek=dek1,support_algo='"
+ * work even when WORD_BREAKS does not split on commas or quotes.
+ */
+static bool
+tecc_support_algo_value_context(const char *buf, int point, bool *quoted)
+{
+	int			i;
+	int			token_start;
+	int			token_end;
+	const char *keyword = "support_algo";
+	int			keyword_len = strlen(keyword);
+	bool		is_quoted = false;
+
+	if (quoted != NULL)
+		*quoted = false;
+
+	if (buf == NULL || point <= 0)
+		return false;
+
+	/* Modify - ReqID:TECC4.0 - Older Readline/libedit can report start > end
+	 * when the cursor is inside a quoted value and the closing quote plus SQL
+	 * suffix remain to its right.  point is the actual cursor offset; start is
+	 * not reliable for deciding which SQL option owns the value. */
+	i = point - 1;
+	while (i >= 0 && isspace((unsigned char) buf[i]))
+		i--;
+
+	if (i >= 0 && buf[i] == '\'')
+	{
+		is_quoted = true;
+		i--;
+		while (i >= 0 && isspace((unsigned char) buf[i]))
+			i--;
+	}
+	else
+	{
+		/* Skip a partially typed unquoted or quoted algorithm value. */
+		while (i >= 0 &&
+			   (isalnum((unsigned char) buf[i]) || buf[i] == '_' ||
+				buf[i] == '-' || buf[i] == ',' ||
+				isspace((unsigned char) buf[i])))
+			i--;
+		if (i >= 0 && buf[i] == '\'')
+		{
+			is_quoted = true;
+			i--;
+			while (i >= 0 && isspace((unsigned char) buf[i]))
+				i--;
+		}
+	}
+
+	if (i < 0 || buf[i] != '=')
+		return false;
+
+	i--;
+	while (i >= 0 && isspace((unsigned char) buf[i]))
+		i--;
+
+	token_end = i;
+	while (i >= 0 &&
+		   (isalnum((unsigned char) buf[i]) || buf[i] == '_'))
+		i--;
+	token_start = i + 1;
+
+	if (token_end - token_start + 1 != keyword_len)
+		return false;
+
+	if (pg_strncasecmp(buf + token_start, keyword, keyword_len) != 0)
+		return false;
+
+	if (quoted != NULL)
+		*quoted = is_quoted;
+
+	return true;
+}
+
+#ifdef USE_TECC_COMPLETION_WORD_BREAK_HOOK
+/*
+ * Readline 6.2 can place the completion start after point when point is
+ * immediately before the closing quote.  This hook runs before Readline
+ * finds the word boundaries.  Inside a quoted SUPPORT_ALGO value, make the
+ * quote a word break and disable Readline's paired-quote processing, so the
+ * replaceable word is always the text between the quotes.
+ */
+static char *
+tecc_completion_word_break_hook(void)
+{
+	bool		quoted = false;
+
+	if (tecc_support_algo_value_context(rl_line_buffer, rl_point, &quoted) &&
+		quoted)
+	{
+		rl_completer_quote_characters = "";
+		return WORD_BREAKS "'";
+	}
+
+	rl_completer_quote_characters = "'";
+	return WORD_BREAKS;
+}
+#endif
+/* End - ReqID:TECC4.0 */
+
 /*
  * The completion function.
  *
@@ -1518,6 +1660,11 @@ psql_completion(const char *text, int start, int end)
 {
 	/* This is the variable we'll return. */
 	char	  **matches = NULL;
+	char	   *text_copy;
+	bool		tecc_support_algo_context;
+	bool		tecc_support_algo_quoted = false;
+	bool		tecc_support_algo_inner_word = false;
+	bool		tecc_support_algo_closing_quote = false;
 
 	/* Workspace for parsed words. */
 	char	   *words_buffer;
@@ -1594,14 +1741,14 @@ psql_completion(const char *text, int start, int end)
 		"\\a",
 		"\\connect", "\\conninfo", "\\C", "\\cd", "\\copy",
 		"\\copyright", "\\crosstabview",
-		"\\d", "\\da", "\\dA", "\\dAc", "\\dAf", "\\dk" /* ReqID:SRS-SQL-PACKAGE */, "\\dAo", "\\dAp",
-		"\\db", "\\dc", "\\dC", "\\dd", "\\ddp", "\\dD",
+		"\\d", "\\da", "\\dA", "\\dAc", "\\dAf", "\\dkek", "\\dk" /* ReqID:SRS-SQL-PACKAGE */, "\\dAo", "\\dAp",
+		"\\db", "\\dc", "\\dC", "\\dd", "\\ddp", "\\dD","\\disable",
 		"\\des", "\\det", "\\deu", "\\dew", "\\dE", "\\df",
-		"\\dF", "\\dFd", "\\dFp", "\\dFt", "\\dg", "\\di", "\\dl", "\\dL",
-		"\\dm", "\\dn", "\\do", "\\dO", "\\dp", "\\dP", "\\dPi", "\\dPt",
+		"\\dF", "\\dFd", "\\dFp", "\\dFt", "\\dg", "\\di", "\\ddek", 
+		"\\dl", "\\dL", "\\dm", "\\dn", "\\do", "\\dO", "\\dp", "\\dP", "\\dPi", "\\dPt",
 		"\\drds", "\\dRs", "\\dRp", "\\ds", "\\dS",
 		"\\dt", "\\dT", "\\dv", "\\du", "\\dx", "\\dX", "\\dy",
-		"\\e", "\\echo", "\\ef", "\\elif", "\\else", "\\encoding",
+		"\\e", "\\echo", "\\ef", "\\elif", "\\else", "\\enable", "\\encoding",
 		"\\endif", "\\errverbose", "\\ev",
 		"\\f",
 		"\\g", "\\gdesc", "\\gexec", "\\gset", "\\gx",
@@ -1612,7 +1759,7 @@ psql_completion(const char *text, int start, int end)
 		"\\p", "\\password", "\\prompt", "\\pset",
 		"\\q", "\\qecho",
 		"\\r", "\\restrict",
-		"\\s", "\\set", "\\setenv", "\\sf", "\\sv",
+		"\\s", "\\set", "\\setenv", "\\sf", "\\show", "\\sk", "\\sK", "\\sT", "\\sv",
 		"\\t", "\\T", "\\timing",
 		"\\unrestrict", "\\unset",
 		"\\x",
@@ -1627,7 +1774,21 @@ psql_completion(const char *text, int start, int end)
 	 * de-escapes the input "text", causing us to fail to recognize backslash
 	 * commands.  So get the string to look at from rl_line_buffer instead.
 	 */
-	char	   *text_copy = pnstrdup(rl_line_buffer + start, end - start);
+	/* Modify - ReqID:TECC4.0 - Older Readline/libedit versions can return
+	 * start one byte beyond end when the cursor is before the closing quote.
+	 * Keep the completion word at the cursor in that case. */
+	tecc_support_algo_context =
+		tecc_support_algo_value_context(rl_line_buffer, end,
+										&tecc_support_algo_quoted);
+#ifdef USE_TECC_COMPLETION_WORD_BREAK_HOOK
+	tecc_support_algo_inner_word = tecc_support_algo_quoted;
+#endif
+	tecc_support_algo_closing_quote =
+		tecc_support_algo_inner_word && rl_line_buffer[end] == '\'';
+	if (tecc_support_algo_context && start > end)
+		start = end;
+
+	text_copy = pnstrdup(rl_line_buffer + start, end - start);
 	text = text_copy;
 
 	/* Remember last char of the given input word. */
@@ -1682,6 +1843,38 @@ psql_completion(const char *text, int start, int end)
 		COMPLETE_WITH("FUNCTION", "PROCEDURE", "LANGUAGE", "RULE", "VIEW",
 					  "AGGREGATE", "TRANSFORM", "TRIGGER", "PACKAGE", /* ReqID:SRS-SQL-PACKAGE */
 					  "PACKAGE BODY", "EDITIONABLE", "NONEDITIONABLE"); /* BUG#Z211 */
+	/* CREATE KEK */
+	else if (Matches("CREATE", "KEK", MatchAny) ||
+			 Matches("CREATE", "KEK", "IF", "NOT", "EXISTS", MatchAny))
+		COMPLETE_WITH("WITH (");
+	else if (HeadMatches("CREATE", "KEK") && TailMatches("WITH", "("))
+		COMPLETE_WITH("KEY_STORE =");
+	else if (HeadMatches("CREATE", "KEK") && TailMatches("KEY_STORE", "="))
+		COMPLETE_WITH("localkms", "tzwykms", "swxakms", "hsmkms");
+	else if (HeadMatches("CREATE", "KEK") &&
+			 TailMatches("KEY_STORE|KEY_PATH|ALGORITHM|KEY_LENGTH|KEY_ALGO", MatchAny))
+		COMPLETE_WITH(",");
+	else if (HeadMatches("CREATE", "KEK") &&
+			 (TailMatches(",") || ends_with(prev_wd, ',')))
+		COMPLETE_WITH("KEY_PATH =", "ALGORITHM =", "KEY_LENGTH =", "KEY_ALGO =");
+	else if (HeadMatches("CREATE", "KEK") && TailMatches("KEY_ALGO", "="))
+		COMPLETE_WITH("sym", "asym");
+
+	/* CREATE DEK */
+	else if (Matches("CREATE", "DEK", MatchAny) ||
+			 Matches("CREATE", "DEK", "IF", "NOT", "EXISTS", MatchAny))
+		COMPLETE_WITH("WITH VALUES(");
+	else if (HeadMatches("CREATE", "DEK") && TailMatches("WITH", "VALUES", "("))
+		COMPLETE_WITH("KEK =");
+	else if (HeadMatches("CREATE", "DEK") && TailMatches("KEK", "="))
+		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_keks, NULL);
+	else if (HeadMatches("CREATE", "DEK") && TailMatches("KEK", MatchAny))
+		COMPLETE_WITH(",");
+	else if (HeadMatches("CREATE", "DEK") &&
+			 (TailMatches(",") || ends_with(prev_wd, ',')))
+		COMPLETE_WITH("KEY_LENGTH =", "KEY_ALGO =");
+	else if (HeadMatches("CREATE", "DEK") && TailMatches("KEY_ALGO", "="))
+		COMPLETE_WITH("'he_ecelgamal'", "'he_elgamal'");
 
 /* DROP, but not DROP embedded in other commands */
 	/* complete with something you can drop */
@@ -3233,6 +3426,21 @@ psql_completion(const char *text, int start, int end)
 	else if (HeadMatches("DROP", "DATABASE") && (ends_with(prev_wd, '(')))
 		COMPLETE_WITH("FORCE");
 
+	/* DROP KEK/DEK */
+	else if (Matches("DROP", "KEK"))
+		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_keks,
+								   " UNION SELECT 'IF EXISTS'");
+	else if (Matches("DROP", "DEK"))
+		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_deks,
+								   " UNION SELECT 'IF EXISTS'");
+	else if (Matches("DROP", "KEK", "IF", "EXISTS"))
+		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_keks, NULL);
+	else if (Matches("DROP", "DEK", "IF", "EXISTS"))
+		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_deks, NULL);
+	else if (Matches("DROP", "KEK|DEK", MatchAny) ||
+			 Matches("DROP", "KEK|DEK", "IF", "EXISTS", MatchAny))
+		COMPLETE_WITH("CASCADE", "RESTRICT");
+
 	/* DROP INDEX */
 	else if (Matches("DROP", "INDEX"))
 		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_indexes,
@@ -3933,6 +4141,41 @@ psql_completion(const char *text, int start, int end)
 	else if (Matches("SET", MatchAny))
 		COMPLETE_WITH("TO");
 
+	/* TECC encrypted column clause */
+	else if (TailMatches("ENCRYPTED"))
+		COMPLETE_WITH("WITH (");
+	else if (TailMatches("ENCRYPTED", "WITH", "("))
+		COMPLETE_WITH("DEK =");
+	else if (TailMatches("DEK", "="))
+		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_deks, NULL);
+	else if (TailMatches("DEK", MatchAny))
+		COMPLETE_WITH(",");
+	else if (TailMatches("DEK", MatchAny, ",") ||
+		(TailMatches("DEK", "=", MatchAny) && ends_with(prev_wd, ',')))
+		COMPLETE_WITH("SUPPORT_ALGO =");
+	else if (TailMatches("SUPPORT_ALGO"))
+		COMPLETE_WITH("=");
+	else if (TailMatches("SUPPORT_ALGO", "=") ||
+			 tecc_support_algo_context)
+	{
+		/* Modify - ReqID:TECC4.0 - The hook makes the text between quotes
+		 * the completion word.  Preserve an existing closing quote, or add one
+		 * when the user is completing an unfinished quoted value. */
+		if (tecc_support_algo_inner_word &&
+			tecc_support_algo_closing_quote)
+			COMPLETE_WITH("DET", "OPE", "SEARCH", "DET,SEARCH",
+						  "OPE,SEARCH", "he-add", "he-mul",
+						  "he-add,he-mul");
+		else if (tecc_support_algo_inner_word)
+			COMPLETE_WITH("DET'", "OPE'", "SEARCH'", "DET,SEARCH'",
+						  "OPE,SEARCH'", "he-add'", "he-mul'",
+						  "he-add,he-mul'");
+		else
+			COMPLETE_WITH("'DET'", "'OPE'", "'SEARCH'", "'DET,SEARCH'",
+						  "'OPE,SEARCH'", "'he-add'", "'he-mul'",
+						  "'he-add,he-mul'");
+	}
+
 	/*
 	 * Complete ALTER DATABASE|FUNCTION|PROCEDURE|ROLE|ROUTINE|USER ... SET
 	 * <name>
@@ -4179,10 +4422,36 @@ psql_completion(const char *text, int start, int end)
 
 	else if (TailMatchesCS("\\di*"))
 		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_indexes, NULL);
+	else if (TailMatchesCS("\\dkek*"))
+	{
+		/* Begin - ReqID:TECC4.0 - quoted KEK name completion */
+		if (text[0] == '"')
+		{
+			completion_squery = &Query_for_list_of_keks;
+			completion_tecc_key_name = Query_for_list_of_keks_raw_name;
+			matches = rl_completion_matches(text, complete_from_tecc_quoted_key_query);
+		}
+		else
+			COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_keks, NULL);
+		/* End - ReqID:TECC4.0 - quoted KEK name completion */
+	}
 	/* Begin - BUG#Z211 */
 	else if (TailMatchesCS("\\dk*"))
 		COMPLETE_WITH_VERSIONED_SCHEMA_QUERY(Query_for_list_of_packages, NULL);
 	/* End - BUG#Z211*/
+	else if (TailMatchesCS("\\ddek*"))
+	{
+		/* Begin - ReqID:TECC4.0 - quoted DEK name completion */
+		if (text[0] == '"')
+		{
+			completion_squery = &Query_for_list_of_deks;
+			completion_tecc_key_name = Query_for_list_of_deks_raw_name;
+			matches = rl_completion_matches(text, complete_from_tecc_quoted_key_query);
+		}
+		else
+			COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_deks, NULL);
+		/* End - ReqID:TECC4.0 - quoted DEK name completion */
+	}
 	else if (TailMatchesCS("\\dL*"))
 		COMPLETE_WITH_QUERY(Query_for_list_of_languages);
 	else if (TailMatchesCS("\\dn*"))
@@ -4230,6 +4499,8 @@ psql_completion(const char *text, int start, int end)
 
 	else if (TailMatchesCS("\\encoding"))
 		COMPLETE_WITH_QUERY(Query_for_list_of_encodings);
+	else if (TailMatchesCS("\\enable|\\disable|\\show"))
+		COMPLETE_WITH("hg_tecc.mode");
 	else if (TailMatchesCS("\\h|\\help"))
 		COMPLETE_WITH_LIST(sql_commands);
 	else if (TailMatchesCS("\\h|\\help", MatchAny))
@@ -4329,6 +4600,12 @@ psql_completion(const char *text, int start, int end)
 	}
 	else if (TailMatchesCS("\\sf*"))
 		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_routines, NULL);
+	else if (TailMatchesCS("\\sT"))
+		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_tables, NULL);
+	else if (TailMatchesCS("\\sK"))
+		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_keks, NULL);
+	else if (TailMatchesCS("\\sk"))
+		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_deks, NULL);
 	else if (TailMatchesCS("\\sv*"))
 		COMPLETE_WITH_SCHEMA_QUERY(Query_for_list_of_views, NULL);
 	else if (TailMatchesCS("\\cd|\\e|\\edit|\\g|\\gx|\\i|\\include|"
@@ -4522,6 +4799,104 @@ complete_from_versioned_schema_query(const char *text, int state)
 
 	return _complete_from_query(vquery ? vquery->query : NULL,
 								squery, text, state);
+}
+
+/*
+ * Begin - ReqID:TECC4.0 - Complete a TECC KEK/DEK name when the user has already started a quoted
+ * identifier, such as \dkek "My<Tab>.  Readline does not treat double quotes
+ * as completer quotes in psql, so use the unquoted key-name prefix for the
+ * catalog lookup and return a double-quoted candidate.
+ * End - ReqID:TECC4.0
+ */
+static char *
+complete_from_tecc_quoted_key_query(const char *text, int state)
+{
+	static int	list_index,
+				byte_length;
+	static PGresult *result = NULL;
+	const SchemaQuery *squery = completion_squery;
+	const char *name_expr = completion_tecc_key_name;
+
+	if (state == 0)
+	{
+		PQExpBufferData query_buffer;
+		char	   *raw_prefix;
+		char	   *e_prefix;
+		const char *src;
+		char	   *dst;
+		const char *pstr;
+		int			char_length = 0;
+
+		list_index = 0;
+		byte_length = strlen(text);
+
+		PQclear(result);
+		result = NULL;
+
+		if (squery == NULL || name_expr == NULL || text[0] != '"')
+			return NULL;
+
+		raw_prefix = pg_malloc(strlen(text) + 1);
+		src = text + 1;
+		dst = raw_prefix;
+		while (*src)
+		{
+			if (*src == '"')
+			{
+				if (src[1] == '"')
+					src++;
+				else
+					break;
+			}
+			*dst++ = *src++;
+		}
+		*dst = '\0';
+
+		pstr = raw_prefix;
+		while (*pstr)
+		{
+			char_length++;
+			pstr += PQmblenBounded(pstr, pset.encoding);
+		}
+
+		e_prefix = escape_string(raw_prefix);
+		initPQExpBuffer(&query_buffer);
+
+		appendPQExpBuffer(&query_buffer,
+						  "SELECT '\"' || pg_catalog.replace(%s::pg_catalog.text, '\"', '\"\"') || '\"' FROM %s WHERE substring(%s,1,%d)='%s'",
+						  name_expr,
+						  squery->catname,
+						  name_expr,
+						  char_length,
+						  e_prefix);
+		if (squery->selcondition)
+			appendPQExpBuffer(&query_buffer, " AND %s",
+							  squery->selcondition);
+		appendPQExpBuffer(&query_buffer, " AND %s",
+						  squery->viscondition);
+		appendPQExpBuffer(&query_buffer, "\nLIMIT %d",
+						  completion_max_records);
+
+		result = exec_query(query_buffer.data);
+
+		termPQExpBuffer(&query_buffer);
+		free(e_prefix);
+		free(raw_prefix);
+	}
+
+	if (result && PQresultStatus(result) == PGRES_TUPLES_OK)
+	{
+		const char *item;
+
+		while (list_index < PQntuples(result) &&
+			   (item = PQgetvalue(result, list_index++, 0)))
+			if (pg_strncasecmp(text, item, byte_length) == 0)
+				return pg_strdup(item);
+	}
+
+	PQclear(result);
+	result = NULL;
+	return NULL;
 }
 
 

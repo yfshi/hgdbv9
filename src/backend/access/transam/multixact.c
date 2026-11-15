@@ -887,6 +887,7 @@ RecordNewMultiXact(MultiXactId multi, MultiXactOffset offset,
 	MultiXactOffset *next_offptr;
 	MultiXactOffset next_offset;
 
+
 	/* position of this multixid in the offsets SLRU area  */
 	pageno = MultiXactIdToOffsetPage(multi);
 	entryno = MultiXactIdToOffsetEntry(multi);

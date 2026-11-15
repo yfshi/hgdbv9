@@ -1,0 +1,28 @@
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+CREATE VIEW
+ id 
+----
+  1
+  2
+(2 rows)
+
+DROP VIEW
+CREATE VIEW
+DROP VIEW
+CREATE VIEW
+ id | col_det 
+----+---------
+  1 | Alice
+(1 row)
+
+DROP VIEW
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+psql:/.../temp_view_reject.sql:23: TECC query preprocessing failed: TECC does not support temporary views with encrypted columns
+psql:/.../temp_view_reject.sql:38: TECC query preprocessing failed: TECC does not support temporary views with encrypted columns

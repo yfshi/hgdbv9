@@ -6,7 +6,6 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
- *
  * IDENTIFICATION
  *	  src/backend/commands/statscmds.c
  *
@@ -145,6 +144,7 @@ CreateStatistics(List *relids, CreateStatsStmt *stmt, bool check_rights)
 		/*
 		 * You must own the relation to create stats on it. Skip check if
 		 * caller doesn't want it.
+		 * You must own the relation to create stats on it.
 		 *
 		 * NB: Concurrent changes could cause this function's lookup to find a
 		 * different relation than a previous lookup by the caller, so we must
@@ -152,6 +152,7 @@ CreateStatistics(List *relids, CreateStatsStmt *stmt, bool check_rights)
 		 */
 		if (check_rights &&
 			!pg_class_ownercheck(RelationGetRelid(rel), stxowner))
+		if (!pg_class_ownercheck(RelationGetRelid(rel), stxowner))
 			aclcheck_error(ACLCHECK_NOT_OWNER, get_relkind_objtype(rel->rd_rel->relkind),
 						   RelationGetRelationName(rel));
 

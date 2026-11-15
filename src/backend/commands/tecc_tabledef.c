@@ -46,7 +46,7 @@ PG_FUNCTION_INFO_V1(tecc_get_tabledef);
 /*
  * Append encryption type bitmask as human-readable algorithm string.
  *
- * Bitmask: 0x01=DET, 0x02=OPE, 0x04=SEARCH
+ * Bitmask: 0x01=DET, 0x02=OPE, 0x04=SEARCH, 0x08=HE_ADD, 0x10=HE_MUL
  * Output example: "DET,OPE"
  */
 static void
@@ -67,6 +67,16 @@ append_encryption_type_algo(StringInfo buf, int32 encryption_type)
     if (encryption_type & HG_ENCRYPTION_TYPE_SEARCH)
     {
         appendStringInfo(buf, "%sSEARCH", has_prev ? "," : "");
+        has_prev = true;
+    }
+    if (encryption_type & HG_ENCRYPTION_TYPE_HE_ADD)   /* ReqID:TECC4.0 */
+    {
+        appendStringInfo(buf, "%sEC-ELGAMAL", has_prev ? "," : "");
+        has_prev = true;
+    }
+    if (encryption_type & HG_ENCRYPTION_TYPE_HE_MUL)   /* ReqID:TECC4.0 */
+    {
+        appendStringInfo(buf, "%sELGAMAL", has_prev ? "," : "");
     }
 }
 
@@ -231,7 +241,9 @@ tecc_get_tabledef(PG_FUNCTION_ARGS)
                     if (ecform->encryption_type &
                         (HG_ENCRYPTION_TYPE_DET |
                          HG_ENCRYPTION_TYPE_OPE |
-                         HG_ENCRYPTION_TYPE_SEARCH))
+                         HG_ENCRYPTION_TYPE_SEARCH |
+                         HG_ENCRYPTION_TYPE_HE_ADD |    /* ReqID:TECC4.0 */
+                         HG_ENCRYPTION_TYPE_HE_MUL))    /* ReqID:TECC4.0 */
                     {
                         appendStringInfoString(&buf, ", algo = '");
                         append_encryption_type_algo(&buf,

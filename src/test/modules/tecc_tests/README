@@ -12,17 +12,19 @@ TECC (Transparent Encryption Columnar Cryptography) 是 PostgreSQL 的全密态
     sql/              共享SQL用例
     expected_common/  归一化输出预期（仅去掉列头/分隔线，保留(N rows)等）
     expected_libpq/   libpq原始输出预期（psql -X，含列头/分隔线/NOTICE）
-    expected_jdbc/    JDBC原始输出预期（TeccSqlTestRunner --output-format raw）
+    expected_jdbc/    JDBC侧预期（TeccSqlTestRunner --output-format psql，
+                      经 normalize_jdbc_runner_output + normalize_common_output 归一化）
     issues_jdbc_common.md  JDBC端已知差异记录
+    jdbc_vs_libpq_diff.md  跨驱动输出差异台账（逐用例分类）
 
-  libpq/              仅libpq执行
-    sql/              独有SQL用例（test_copy_extended: \copy扩展,
-                       test_only_insert: INSERT专有）
+  libpq/              仅libpq（psql）能执行的用例
+    sql/              独有SQL用例（copy_extended: \copy扩展、psql_tecc_*: 元命令、
+                      kek_*/dek_*: 密钥文件与权限边界等）
     expected/         psql完整输出格式（-X，含表头边框）
 
-  jdbc/               仅JDBC执行
-    sql/              独有SQL用例
-    expected/         JDBC原生输出格式
+  （原 jdbc/ 目录已于 2026-09-20 解散：它里面的用例其实由 psql 执行、Java 驱动从未参与，
+    名实不符。驱动无关的用例归 shared/，psql 独有的归 libpq/。
+    归档见仓库根 archive/jdbc_dir_retired_20260920/）
 
   cross/              跨驱动交替执行
     sql/              数字前缀排序的用例（不标驱动，按顺序交替分配）
@@ -101,9 +103,11 @@ TECC (Transparent Encryption Columnar Cryptography) 是 PostgreSQL 的全密态
 
      当前JDBC端已知差异见 shared/issues_jdbc_common.md。
 
-  2. 独有 (libpq/ jdbc/)
-     各驱动独有的功能测试，使用各自原生输出格式对比。
-     libpq 用 psql -X（完整表格式），JDBC 使用 JDBC 原生输出。
+  2. 独有 (libpq/)
+     仅能用 psql 执行的用例（依赖 psql 元命令/呈现等）。libpq 用 psql -X（完整表格式）。
+
+     JDBC 侧没有"独有"目录：驱动差异由"谁来执行"决定、不由主题决定——只要两个驱动都能执行，
+     用例就该放 shared/（见 AGENTS.md「测试 → 添加用例」第 0 条）。
 
   3. 交替 (cross/)
      以数字前缀排序的用例文件，不标注驱动。
@@ -172,12 +176,15 @@ output/*.out 文件，测试结果和差异信息通过以下方式查看：
 添加新用例
 ---------
 
-  1. 按测试范式将 SQL 文件放入对应的 sql/ 目录
+  1. **先判断归属：默认 shared/**
+     只要"两个驱动都能执行"（普通 SQL、无 psql 元命令、注释里无 ASCII `;` 与 `$$`），就放
+     shared/，两个驱动各留一份预期 —— 见 AGENTS.md「测试 → 添加用例」（含判定要点）。
+     只有确实依赖 psql 专有能力的才放 libpq/，且要在用例头注明理由。
   2. 确保对应 expected_xxx/ 中已有 .out 预期文件
      shared/ 用例需要三种预期：
-       expected_libpq/*.out   — libpq原始输出
-       expected_jdbc/*.out   — JDBC原始输出（暂无）
-       expected_common/*.out — 归一化输出（两边共用）
+       expected_libpq/*.out   — libpq原始输出（取自 tmp_check/results/shared_raw_*.out）
+       expected_jdbc/*.out    — JDBC侧输出（取自 tmp_check/results/jdbc_*.out）
+       expected_common/*.out  — 归一化输出（取自 tmp_check/results/shared_*_common.out）
   3. 用 TECC_TEST 过滤执行验证
 
   生成预期文件的标准方法：
@@ -201,17 +208,19 @@ output/*.out 文件，测试结果和差异信息通过以下方式查看：
 
   make check-tecc-perf-libpq 执行：
 
-  1. temp-install — 编译 + 安装到临时目录（~49s，与源码修改无关的固定开销）
+  1. temp-install — 编译 + 安装到临时目录（~49s，与源码修改无关的固定开销，跑完保留）
   2. 启动 PG 节点 — initdb + pg_ctl start
   3. DDL — 执行 perf/sql/perf_ddl.sql：
-     - 创建 KEK/DEK（kek_perf / dek_perf，key_store = localkms）
-     - 创建 3 张代表表（int4/float8/text，合并 DET+OPE+SEARCH 列）
+     - 创建 KEK/DEK（对称 kek_perf/dek_perf + 非对称 kek_perf_he/dek_perf_he_add/dek_perf_he_mul）
+     - 非对称密钥对由 tecc_ktool 预生成（key_path 用 %KEKPATH% 占位符由脚本替换为 tmp_check/keys）
+     - 创建 3 张代表表（int4/float8/text，合并 DET+OPE+SEARCH 列，int4 两列升级 INT8_ENC 并开启同态段）
      - 创建 5 个索引（DET 用 hash，OPE 用 btree）
   4. 数据初始化 — init_encrypted_data()，种子+倍增模式：
-     Phase 1: 客户端加密种子数据（seed=1000 行，3 张多列INSERT）
+     Phase 1: 客户端加密种子数据（seed=PERF_SEED 默认 100000 行，3 张多列INSERT，并行）
      Phase 2: 服务端 INSERT...SELECT CROSS JOIN 倍增密文到 PERF_ROWS
      - 密文为普通字节，服务端复制不触发客户端加密
      - PERF_ROWS≤seed 时跳过倍增，直接使用种子数据
+     - 同态列种子值 (i,i) 直接兼容 INT8_ENC，无需特殊处理
   5. 性能测量 — 对 perf/sql/ 下每个 .sql 文件：
      - 同一 psql 会话内：预热 1 次 + 正式测量 5 次
      - 多 -c 共享连接确保 TECC 缓存初始化开销只发生一次
@@ -219,14 +228,18 @@ output/*.out 文件，测试结果和差异信息通过以下方式查看：
   6. 阈值校验 — 对照 perf/thresholds.json 标记 PASS/FAIL
   7. 汇总输出 — 打印 PASS/FAIL 汇总表，保存 JSON 结果到 perf/results/
 
+  数据保留：脚本末尾 POSIX::_exit(0) 跳过 Perl 析构，跑完保留 PG 节点与数据目录，
+  便于连接分析；下次 make check 时 prove_check 自动 rm -rf tmp_check 清理旧数据。
+
 
 预置数据表
 ~~~~~~~~~~
 
-  3 张代表表，7 个加密列，覆盖 3 种加密算法：
+  3 张代表表，7 个加密列，覆盖 5 种加密算法（DET/OPE/SEARCH + 同态 he-add/he-mul）：
 
-  整数代表（DET + OPE，1 张）：
-    enc_int4 — INT4_ENC: val_det(DET) + val_ope(OPE)
+  整数代表（DET + OPE + 同态，1 张）：
+    enc_int4 — INT8_ENC:
+      val_det(DET + he-add) + val_ope(OPE + he-mul)
   浮点代表（DET + OPE，1 张）：
     enc_float8 — FLOAT8_ENC: val_det(DET) + val_ope(OPE)
   文本代表（DET + OPE + SEARCH，1 张）：
@@ -234,12 +247,13 @@ output/*.out 文件，测试结果和差异信息通过以下方式查看：
 
   同质类型合并原则：int2/int4/int8 加密开销一致（同 SM4 算法仅编码宽度不同），
   float4/float8/numeric 同理，text/varchar/bpchar 同理。各选 1 个代表类型。
+  int4 两列开启同态段，使全量/等值/范围/模糊查询也背负同态开销，体现整体真实性能。
 
 
 查询用例
 ~~~~~~~~
 
-  perf/sql/ 目录下 14 条 SQL 用例，自动发现，覆盖 5 种查询场景：
+  perf/sql/ 目录下 19 条 SQL 用例，自动发现，覆盖 6 种查询场景：
 
   - scan  (3条): SELECT val_det FROM enc_xxx      — 全表扫描 + 客户端解密
   - eq    (3条): WHERE val_det = N                — 等值查询（hash 索引）
@@ -247,6 +261,9 @@ output/*.out 文件，测试结果和差异信息通过以下方式查看：
   - range_large (3条): WHERE val_ope >= a AND < b — 大范围（~800行）
   - like_small  (1条): WHERE val_search LIKE '..' — 模糊查询小（仅文本）
   - like_large  (1条): WHERE val_search LIKE '..' — 模糊查询大（仅文本）
+  - he_add (3条): val_det+val_det 返回100行/10000行、SUM 10万行 — 同态加法
+  - he_mul (2条): val_ope*val_ope 返回100行/10000行 — 同态乘法
+
 
 
 KEK/DEK 缓存优化
@@ -292,3 +309,9 @@ KEK/DEK 缓存优化
   PERF_ROWS    每表预置数据行数，默认 1000。百万行测试: PERF_ROWS=1000000
   PERF_RUNS    每条用例执行次数（含预热），默认 5
   TECC_TEST    单用例过滤，如 TECC_TEST=int4_eq.sql
+  PERF_CLIENT_RESOURCE
+               是否采集 libpq 客户端资源，默认开启。设置为 0/false/off 可关闭。
+               开启后会通过 GNU time 采集 psql 进程 CPU、最大 RSS、缺页和上下文切换，
+               并在 perf/results/ 下生成 RESOURCE_*.md 与 RESOURCE_*.csv 报告。
+               已有 perf/results/*.json 时，可执行 perl perf/generate_resource_report.pl
+               快速重新生成资源报告，无需重跑 SQL。

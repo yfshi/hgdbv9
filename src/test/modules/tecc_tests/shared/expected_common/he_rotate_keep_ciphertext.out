@@ -1,0 +1,58 @@
+DROP TABLE
+DROP KEK
+=== 1 建 KEK/DEK/表 + 写入 ===
+(1 row)
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+1|1|10
+2|2|20
+(2 rows)
+=== 2 轮换前的 HE 运算（同时把旧信封灌进会话缓存） ===
+(1 row)
+he-add before|7
+(1 row)
+he-mul before|40
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+=== 3 ALTER KEK 轮换（换另一对密钥文件） ===
+(1 row)
+(1 row)
+=== 4 轮换后：私钥信封被重封，公钥保持不变 ===
+(1 row)
+t
+(1 row)
+t
+(1 row)
+=== 5 轮换后：同一会话对【轮换前写入的密文】做 HE 运算 ===
+(1 row)
+he-mul after|40
+(1 row)
+he-add after|7
+(1 row)
+=== 6 轮换后：新写入的数据也正常 ===
+(1 row)
+INSERT 0 1
+he-mul new row|90
+(1 row)
+=== 7 重连后读取（进程级缓存不随连接走） ===
+(1 row)
+he-mul reconnected|40
+(1 row)
+=== 99 CLEANUP ===
+(1 row)
+DROP TABLE
+DROP TABLE
+DROP KEK
+NOTICE: table "bug9263_t" does not exist, skipping
+NOTICE: key encryption key "bug9263_k" does not exist, skipping
+NOTICE: table "bug9263_meta" does not exist, skipping
+NOTICE: drop cascades to 3 other objects
+DETAIL:  drop cascades to data encryption key bug9263_sm4
+drop cascades to data encryption key bug9263_add
+drop cascades to data encryption key bug9263_mul

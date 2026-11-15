@@ -20,6 +20,9 @@
 
 #include "catalog/hg_kek.h"
 #include "catalog/hg_dek.h"
+#include "catalog/hg_dek_args.h"
+#include "catalog/hg_encrypted_columns.h"
+#include "catalog/hg_encrypted_column_args.h"
 #include "catalog/indexing.h"
 #include "catalog/namespace.h"
 #include "catalog/pg_authid.h"
@@ -370,3 +373,197 @@ is_valid_dek(Oid dekid)
 
 	return is_valid;
 }
+
+/* Begin - ReqID:TECC4.0 */
+/*
+ * get_dek_arg_value - retrieve the value of a named hg_dek_args entry
+ *
+ * Given a DEK OID and argument key name (e.g. "key_algo"),
+ * returns the text value stored in hg_dek_args, or NULL if not found.
+ * The caller is responsible for pfree()ing the result.
+ *
+ * This is used by the server-side HE operator code to determine
+ * the HE key type (EC-ElGamal vs finite field ElGamal).
+ */
+char *
+get_dek_arg_value(Oid dek_id, const char *arg_key)
+{
+	Relation	rel;
+	SysScanDesc scan;
+	ScanKeyData key[2];
+	HeapTuple	tup;
+	char	   *result = NULL;
+
+	rel = table_open(HgDekArgsRelationId, AccessShareLock);
+
+	ScanKeyInit(&key[0],
+				Anum_hg_dek_args_dek_id,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(dek_id));
+	ScanKeyInit(&key[1],
+				Anum_hg_dek_args_key,
+				BTEqualStrategyNumber, F_NAMEEQ,
+				CStringGetDatum(arg_key));
+
+	scan = systable_beginscan(rel, HgDekArgsPkeyIndexId, true,
+							  NULL, 2, key);
+
+	tup = systable_getnext(scan);
+	if (HeapTupleIsValid(tup))
+	{
+		Form_hg_dek_args form = (Form_hg_dek_args) GETSTRUCT(tup);
+		Datum		val_datum;
+		bool		isnull;
+		bytea	   *ba;
+
+		val_datum = heap_getattr(tup, Anum_hg_dek_args_value,
+								 RelationGetDescr(rel), &isnull);
+		if (!isnull)
+		{
+			ba = DatumGetByteaPP(val_datum);
+			result = (char *) palloc(VARSIZE_ANY_EXHDR(ba) + 1);
+			memcpy(result, VARDATA_ANY(ba), VARSIZE_ANY_EXHDR(ba));
+			result[VARSIZE_ANY_EXHDR(ba)] = '\0';
+		}
+	}
+
+	systable_endscan(scan);
+	table_close(rel, AccessShareLock);
+
+	return result;
+}
+/* End - ReqID:TECC4.0 */
+
+/* Begin - ReqID:TECC4.0 */
+/*
+ * get_dek_dist_id - 按 DEK OID 取分布式身份标识
+ *
+ *		即 hg_dek.column_key_distributed_id：由"模式名.密钥名"哈希得出的跨实例
+ *		确定性 DEK 身份。密文段内嵌的 4 字节 DEK ID 与加密列上的同态 DEK 绑定
+ *		存的都是这个值，因此它既用于解密时反查 DEK，也用于校验"密文是不是由本列
+ *		配置的 DEK 加密的"。
+ */
+Oid
+get_dek_dist_id(Oid dek_id)
+{
+	HeapTuple	tup;
+	Oid			dist_id = InvalidOid;
+
+	if (!OidIsValid(dek_id))
+		return InvalidOid;
+
+	tup = SearchSysCache1(HGDEKOID, ObjectIdGetDatum(dek_id));
+	if (HeapTupleIsValid(tup))
+	{
+		dist_id = ((Form_hg_dek) GETSTRUCT(tup))->column_key_distributed_id;
+		ReleaseSysCache(tup);
+	}
+
+	return dist_id;
+}
+
+/*
+ * find_he_dek_bound_column - 查找把该 DEK 当作同态密钥绑定的加密列
+ *
+ *		同态 DEK 不落在 hg_encrypted_columns.column_key_id 上，而是作为
+ *		'he_add_dek' / 'he_mul_dek' 条目写进 hg_encrypted_column_args，value
+ *		存 DEK 分布式身份标识的十进制文本。所以只按 column_key_id 判断"密钥
+ *		是否仍被列占用"的检查漏得掉纯同态列：列还引用着密钥，密钥却能删掉；
+ *		而重建同名 DEK 得到的分布式身份标识与原来完全相同，写入点那条按该标识
+ *		做的跨 DEK 校验会照样通过，遗留密文却已解不开。
+ *
+ *		出参均可传 NULL（只作存在性判断时）。arg_key 指向静态字面量，调用方
+ *		无需释放；column_name 为 palloc 结果，调用方负责 pfree。
+ */
+bool
+find_he_dek_bound_column(Oid dek_dist_id, Oid *table_oid,
+						 char **column_name, const char **arg_key)
+{
+	Relation	args_rel;
+	SysScanDesc	args_scan;
+	HeapTuple	args_tuple;
+	char		needle[16];
+	int			needle_len;
+	bool		found = false;
+
+	if (!OidIsValid(dek_dist_id))
+		return false;
+
+	needle_len = snprintf(needle, sizeof(needle), "%u", (unsigned int) dek_dist_id);
+
+	args_rel = table_open(HgEncryptedColumnArgsRelationId, AccessShareLock);
+	args_scan = systable_beginscan(args_rel, InvalidOid, false, NULL, 0, NULL);
+
+	while ((args_tuple = systable_getnext(args_scan)) != NULL)
+	{
+		Form_hg_encrypted_column_args args_form;
+		const char *key;
+		Datum		value;
+		bool		isnull;
+		bytea	   *bound_id;
+
+		args_form = (Form_hg_encrypted_column_args) GETSTRUCT(args_tuple);
+		key = NameStr(args_form->key);
+		if (strcmp(key, "he_add_dek") != 0 && strcmp(key, "he_mul_dek") != 0)
+			continue;
+
+		value = heap_getattr(args_tuple, Anum_hg_encrypted_column_args_value,
+							 RelationGetDescr(args_rel), &isnull);
+		if (isnull)
+			continue;
+
+		bound_id = DatumGetByteaPP(value);
+		if ((int) VARSIZE_ANY_EXHDR(bound_id) != needle_len ||
+			memcmp(VARDATA_ANY(bound_id), needle, needle_len) != 0)
+			continue;
+
+		if (table_oid != NULL || column_name != NULL)
+		{
+			Relation	enc_rel;
+			ScanKeyData enc_key[1];
+			SysScanDesc	enc_scan;
+			HeapTuple	enc_tuple;
+			Oid			tbl_oid = InvalidOid;
+			char	   *col_name = NULL;
+
+			enc_rel = table_open(HgEncryptedColumnsRelationId, AccessShareLock);
+			ScanKeyInit(&enc_key[0],
+						Anum_hg_encrypted_columns_oid,
+						BTEqualStrategyNumber, F_OIDEQ,
+						ObjectIdGetDatum(args_form->column_id));
+			enc_scan = systable_beginscan(enc_rel, HgEncryptedColumnsOidIndexId,
+										  true, NULL, 1, enc_key);
+			enc_tuple = systable_getnext(enc_scan);
+			if (HeapTupleIsValid(enc_tuple))
+			{
+				Form_hg_encrypted_columns enc_form =
+					(Form_hg_encrypted_columns) GETSTRUCT(enc_tuple);
+
+				tbl_oid = enc_form->table_oid;
+				col_name = pstrdup(NameStr(enc_form->column_name));
+			}
+			systable_endscan(enc_scan);
+			table_close(enc_rel, AccessShareLock);
+
+			if (table_oid != NULL)
+				*table_oid = tbl_oid;
+			if (column_name != NULL)
+				*column_name = col_name;
+			else if (col_name != NULL)
+				pfree(col_name);
+		}
+
+		if (arg_key != NULL)
+			*arg_key = (strcmp(key, "he_add_dek") == 0) ?
+				"he_add_dek" : "he_mul_dek";
+
+		found = true;
+		break;
+	}
+
+	systable_endscan(args_scan);
+	table_close(args_rel, AccessShareLock);
+
+	return found;
+}
+/* End - ReqID:TECC4.0 */

@@ -214,6 +214,7 @@ sub ecpgcheck
 
 sub isolationcheck
 {
+	setup_dll_path();
 	chdir "../isolation";
 	copy("../../../$Config/isolationtester/isolationtester.exe",
 		"../../../$Config/pg_isolation_regress");
@@ -372,6 +373,7 @@ sub mangle_plpython3
 
 sub plcheck
 {
+	setup_dll_path();
 	chdir "$topdir/src/pl";
 
 	foreach my $dir (glob("*/src *"))
@@ -507,6 +509,7 @@ sub subdircheck
 
 sub contribcheck
 {
+	setup_dll_path();
 	chdir "../../../contrib";
 	my $mstat = 0;
 	foreach my $module (glob("*"))
@@ -532,6 +535,7 @@ sub contribcheck
 
 sub modulescheck
 {
+	setup_dll_path();
 	chdir "../../../src/test/modules";
 	my $mstat = 0;
 	foreach my $module (glob("*"))
@@ -806,6 +810,20 @@ sub InstallTemp
 	}
 	$ENV{PATH} = "$tmp_installdir/bin;$ENV{PATH}";
 	return;
+}
+
+sub setup_dll_path
+{
+	# Add gmssl DLL directory to PATH.
+	if (defined($config->{gmssl}) && -d "$config->{gmssl}/bin")
+	{
+		$ENV{PATH} = "$config->{gmssl}/bin;$ENV{PATH}";
+	}
+	# Add ICU DLL directory to PATH.
+	if (defined($config->{icu}) && -d "$config->{icu}/bin64")
+	{
+		$ENV{PATH} = "$config->{icu}/bin64;$ENV{PATH}";
+	}
 }
 
 sub usage

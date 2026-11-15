@@ -232,6 +232,7 @@ int main(int argc, char **argv)
 		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
 		{
 			printf("licchk DB V%s\n", LICENSE_VERSION);
+			puts("licchk DB V1.5.7");
 			exit(0);
 		}
 	}

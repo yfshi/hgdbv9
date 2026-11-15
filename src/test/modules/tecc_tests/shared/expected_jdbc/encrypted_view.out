@@ -1,0 +1,97 @@
+ERROR: TECC SQL parse failed (tecc.rewrite.fail_closed=true)
+ERROR: TECC SQL parse failed (tecc.rewrite.fail_closed=true)
+NOTICE: table "ev_base" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "dek_ev" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "kek_ev" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 3
+=== 1 普通视图: 定义中 WHERE 密态列 ===
+CREATE VIEW
+1|Alice
+=== 2 普通视图: 查询时追加过滤 ===
+1|Alice
+=== 3 普通视图: OR REPLACE / 列名列表 ===
+CREATE OR
+2|Bob
+CREATE VIEW
+3|Charlie
+=== 3.1 Bug 9153: OR REPLACE 追加密态列 ===
+CREATE TABLE
+INSERT 0 2
+CREATE VIEW
+2
+CREATE OR
+1|10
+2|20
+DROP VIEW
+CREATE VIEW
+1|Alice
+CREATE OR
+1|Alice|10
+2|Bob|20
+DROP VIEW
+DROP TABLE
+=== 4 普通视图: 无加密列 ===
+CREATE VIEW
+1
+=== 5 普通视图: 边界报错 ===
+ERROR: TECC strict: || (string concatenation) operator is not supported with encrypted columns. Concatenate client-side after decryption.
+ERROR: View definition ORDER BY requires OPE (order-preserving encryption) on encrypted column ev_base.name, but the column has no OPE support (ordering by ciphertext does not match plaintext order); add 'ope' to the column's SUPPORT_ALGO, or remove the ORDER BY from the view definition.
+=== 6 物化视图: 定义中 WHERE 密态列 ===
+CREATE MATERIALIZED
+1|Alice
+=== 7 物化视图: 元数据继承 ===
+name|dek_ev|1
+=== 7.1 一列多 DEK: 视图读取 ===
+NOTICE: table "ev_multi" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+c|dek_ev|dek_ev_he|dek_ev_hm
+2
+ERROR: TECC SQL parse failed (tecc.rewrite.fail_closed=true)
+DROP TABLE
+ERROR: ERROR: relation "ev_multi_colid" does not exist
+  Position: 83
+=== 8 物化视图: REFRESH 同步 ===
+CREATE MATERIALIZED
+2|Bob
+3|Charlie
+INSERT 0 1
+REFRESH MATERIALIZED
+2|Bob
+3|Charlie
+4|David
+name|dek_ev
+=== 9 物化视图: WITH NO DATA ===
+CREATE MATERIALIZED
+ERROR: ERROR: materialized view "mv_empty" has not been populated
+  Hint: Use the REFRESH MATERIALIZED VIEW command.
+REFRESH MATERIALIZED
+3|Charlie
+4|David
+=== 10 物化视图: 查询时追加过滤 ===
+2|Bob
+=== 11 物化视图: 边界报错 ===
+ERROR: TECC strict: || (string concatenation) operator is not supported with encrypted columns. Concatenate client-side after decryption.
+ERROR: ERROR: cannot compare encrypted values for ordering: no OPE ciphertext available
+ERROR: TECC SQL parse failed (tecc.rewrite.fail_closed=true)
+ERROR: TECC SQL parse failed (tecc.rewrite.fail_closed=true)
+NOTICE: drop cascades to 5 other objects
+DROP TABLE
+DROP DEK
+DROP KEK
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+WARNING: Encrypted column [ev_base.name] in ORDER BY without OPE: ordering by ciphertext bytes, semantic order may differ from plaintext order.

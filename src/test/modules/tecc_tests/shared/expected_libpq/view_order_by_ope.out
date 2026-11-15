@@ -1,0 +1,53 @@
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 3
+CREATE VIEW
+ id | col_ope 
+----+---------
+  1 | Alice
+  2 | Bob
+  3 | Carol
+(3 rows)
+
+DROP VIEW
+CREATE VIEW
+ id | col_plain 
+----+-----------
+  1 | Alice
+  2 | Bob
+  3 | Carol
+(3 rows)
+
+DROP VIEW
+CREATE VIEW
+ id | col_det 
+----+---------
+  1 | Alice
+  2 | Bob
+  3 | Carol
+(3 rows)
+
+DROP VIEW
+CREATE VIEW
+DROP VIEW
+CREATE VIEW
+DROP VIEW
+DROP MATERIALIZED VIEW
+DROP VIEW
+DROP VIEW
+DROP VIEW
+DROP VIEW
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+psql:/.../view_order_by_ope.sql:44: TECC query preprocessing failed: ORDER BY column "col_det" requires OPE (order-preserving encryption) but the column is not configured with OPE. Please include 'ope' in support_algo.
+psql:/.../view_order_by_ope.sql:79: ERROR:  cannot compare encrypted values for ordering: no OPE ciphertext available
+psql:/.../view_order_by_ope.sql:88: ERROR:  cannot compare encrypted values for ordering: no OPE ciphertext available
+psql:/.../view_order_by_ope.sql:93: NOTICE:  materialized view "mv_vobo_det" does not exist, skipping
+psql:/.../view_order_by_ope.sql:94: NOTICE:  view "v_vobo_det" does not exist, skipping
+psql:/.../view_order_by_ope.sql:95: NOTICE:  view "v_vobo_ope" does not exist, skipping
+psql:/.../view_order_by_ope.sql:96: NOTICE:  view "v_vobo_plain" does not exist, skipping
+psql:/.../view_order_by_ope.sql:97: NOTICE:  view "v_vobo_nosort" does not exist, skipping

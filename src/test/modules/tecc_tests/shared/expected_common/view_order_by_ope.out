@@ -1,0 +1,44 @@
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 3
+CREATE VIEW
+1|Alice
+2|Bob
+3|Carol
+(3 rows)
+DROP VIEW
+CREATE VIEW
+1|Alice
+2|Bob
+3|Carol
+(3 rows)
+DROP VIEW
+CREATE VIEW
+1|Alice
+2|Bob
+3|Carol
+(3 rows)
+DROP VIEW
+CREATE VIEW
+DROP VIEW
+CREATE VIEW
+DROP VIEW
+DROP MATERIALIZED VIEW
+DROP VIEW
+DROP VIEW
+DROP VIEW
+DROP VIEW
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+psql:/.../view_order_by_ope.sql:44: TECC query preprocessing failed: ORDER BY column "col_det" requires OPE (order-preserving encryption) but the column is not configured with OPE. Please include 'ope' in support_algo.
+ERROR: cannot compare encrypted values for ordering: no OPE ciphertext available
+ERROR: cannot compare encrypted values for ordering: no OPE ciphertext available
+NOTICE: materialized view "mv_vobo_det" does not exist, skipping
+NOTICE: view "v_vobo_det" does not exist, skipping
+NOTICE: view "v_vobo_ope" does not exist, skipping
+NOTICE: view "v_vobo_plain" does not exist, skipping
+NOTICE: view "v_vobo_nosort" does not exist, skipping

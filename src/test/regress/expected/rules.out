@@ -1320,13 +1320,23 @@ hg_encrypted_columns_info| SELECT ec.oid AS column_oid,
             ELSE col.collcollate
         END AS collation_locale,
     ec.column_key_id,
-    ec.create_date
-   FROM ((hg_encrypted_columns ec
-     JOIN hg_dek d ON ((ec.column_key_id = d.oid)))
+    ec.create_date,
+    he_add.dek_name AS he_add_dek,
+    he_mul.dek_name AS he_mul_dek
+   FROM ((((((hg_encrypted_columns ec
+     LEFT JOIN hg_dek d ON ((ec.column_key_id = d.oid)))
      LEFT JOIN pg_collation col ON ((ec.collation_oid = col.oid)))
-  WHERE (EXISTS ( SELECT 1
+     LEFT JOIN hg_encrypted_column_args eca_add ON (((eca_add.column_id = ec.oid) AND (eca_add.key = 'he_add_dek'::name))))
+     LEFT JOIN hg_dek he_add ON ((he_add.oid = tecc_dek_oid_from_dist_id(( SELECT (convert_from(a.value, 'UTF8'::name))::oid AS convert_from
+           FROM hg_encrypted_column_args a
+          WHERE ((a.column_id = ec.oid) AND (a.key = 'he_add_dek'::name)))))))
+     LEFT JOIN hg_encrypted_column_args eca_mul ON (((eca_mul.column_id = ec.oid) AND (eca_mul.key = 'he_mul_dek'::name))))
+     LEFT JOIN hg_dek he_mul ON ((he_mul.oid = tecc_dek_oid_from_dist_id(( SELECT (convert_from(a.value, 'UTF8'::name))::oid AS convert_from
+           FROM hg_encrypted_column_args a
+          WHERE ((a.column_id = ec.oid) AND (a.key = 'he_mul_dek'::name)))))))
+  WHERE ((ec.column_key_id = (0)::oid) OR (EXISTS ( SELECT 1
            FROM hg_dek d2
-          WHERE (d2.oid = ec.column_key_id)));
+          WHERE (d2.oid = ec.column_key_id))));
 hg_kek_info| SELECT k.oid AS kek_oid,
     k.kek_name,
     n.nspname AS key_namespace_name,

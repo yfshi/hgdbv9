@@ -87,6 +87,12 @@ typedef struct {
     char column_name[NAMEDATALEN];    /* 列名称 */
 } ColumnNameHashKey;
 
+/* ReqID:TECC4.0 - 未限定表名 → 真实 schema 映射缓存键（表级） */
+typedef struct {
+    char database_name[NAMEDATALEN];  /* 数据库名称 */
+    char table_name[NAMEDATALEN];     /* 表名称（未限定） */
+} TableSchemaHashKey;
+
 /* int16 type for frontend code */
 #ifndef int16
 typedef int16_t int16;
@@ -139,6 +145,9 @@ typedef struct TeccEncryptedColumnMetadata {
     int         data_type_original_mod;   /* Base data type modifier */
     char       *dek_name;                 /* DEK name (动态分配) */
     char       *kek_name;                 /* KEK name (动态分配) - 新增字段 */
+    /* ReqID:TECC4.0 - 一列多 DEK：HE 加法/乘法 DEK 名（纯 HE 列 dek_name 为 NULL） */
+    char       *he_add_dek;               /* HE 加法 DEK 名 (动态分配) */
+    char       *he_mul_dek;               /* HE 乘法 DEK 名 (动态分配) */
     int         encryption_type;          /* Encryption type bitmask */
     Oid         collation_oid;            /* Collation OID */
     char       *collation_locale;         /* Collation locale (动态分配), e.g. "en_US.UTF-8" */
@@ -150,6 +159,8 @@ typedef struct TeccEncryptedColumnMetadata {
     bool        enable_det;               /* Enable DET encryption (兼容字段) */
     bool        enable_ope;               /* Enable OPE encryption (兼容字段) */
     bool        enable_search;            /* Enable SEARCH encryption (兼容字段) */
+    bool        enable_he_add;            /* Enable EC-ElGamal additive homomorphic (bit 0x08) */
+    bool        enable_he_mul;            /* Enable finite field ElGamal multiplicative (bit 0x10) */
 } TeccEncryptedColumnMetadata;
 
 /* ReqID:TECC4.0 - Metadata cache interface */
@@ -277,6 +288,9 @@ typedef struct TeccColumnCacheItem {
     /* 加密信息 */
     Oid dek_id;                     /* 关联DEK ID */
     char *dek_name;                 /* DEK名称 */
+    /* ReqID:TECC4.0 - 一列多 DEK：HE 加法/乘法 DEK 名（纯 HE 列 dek_name 为 NULL） */
+    char *he_add_dek_name;          /* HE 加法 DEK 名称（HE_ADD_DEK） */
+    char *he_mul_dek_name;          /* HE 乘法 DEK 名称（HE_MUL_DEK） */
     int encryption_type;            /* 加密类型位掩码 */
 
     /* 排序规则信息 */
@@ -320,6 +334,7 @@ typedef struct TeccCacheManager {
     FeHashTable *kek_name_cache;    /* KEK缓存哈希表（名称查找） */
     FeHashTable *dek_name_cache;    /* DEK缓存哈希表（名称查找） */
     FeHashTable *column_name_cache; /* 加密列缓存哈希表（名称查找） */
+    FeHashTable *table_schema_cache; /* 未限定表名→schema 映射缓存（search_path 变更时重建） */
 
     int max_cache_size;             /* 最大缓存大小 */
     int current_size;               /* 当前缓存大小 */
@@ -413,6 +428,9 @@ int tecc_cache_insert_pending(TeccState *state, const char *database_name,
                                const char *schema_name, const char *table_name);
 int tecc_cache_remove_pending(TeccState *state, const char *database_name,
                                const char *schema_name, const char *table_name);
+/* ReqID:TECC4.0 - Remove any table-level name sentinel (PENDING/NOT_ENCRYPTED/TABLE_LOADED) */
+int tecc_cache_remove_name_sentinel(TeccState *state, const char *database_name,
+                                    const char *schema_name, const char *table_name);
 /* ReqID:TECC4.0 - Public wrapper to insert a single column cache item into formal cache */
 int tecc_cache_insert_column_item(TeccState *state, TeccColumnCacheItem *item);
 
@@ -464,6 +482,13 @@ int tecc_cache_update_guc_param(const TeccState *state, const char *param_name, 
 void tecc_cache_parse_search_path(TeccCacheManager *manager, PGconn *conn);
 extern const char **tecc_cache_get_search_path_schemas(const TeccState *state, int *count);
 extern void tecc_cache_update_search_path(struct TeccState *state, const char *new_search_path);
+
+/* ReqID:TECC4.0 - 未限定表名解析：返回表在 search_path 下的真实 schema。
+ * 命中缓存返回缓存内指针（语句处理期间使用，search_path 变更时会重建失效）；
+ * 表不在 search_path 任何 schema 或查询失败时返回 NULL（查询失败不写负缓存）。 */
+extern const char *tecc_cache_get_table_schema(const TeccState *state,
+                                               const char *database_name,
+                                               const char *table_name);
 
 /* 统计接口 */
 typedef struct TeccCacheStats {

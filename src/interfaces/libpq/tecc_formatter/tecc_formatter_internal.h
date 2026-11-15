@@ -24,10 +24,10 @@
 /* Note: postgres.h is a backend header and should not be included in frontend code */
 /* Using postgres_fe.h provides frontend-compatible definitions */
 
-/* Internal constants - must match backend CIPHERDATA_VERSION_1_0 (0x00010000) */
-#define TECC_FORMATTER_VERSION CIPHERDATA_VERSION_1_0
+/* Internal constants - support both V1.0 (SM4) and V2.0 (SM4 + HE) cipherdata */
+#define TECC_FORMATTER_VERSION CIPHERDATA_VERSION_2_0
 #define TECC_FORMATTER_MIN_VERSION CIPHERDATA_VERSION_1_0
-#define TECC_FORMATTER_MAX_VERSION CIPHERDATA_VERSION_1_0
+#define TECC_FORMATTER_MAX_VERSION CIPHERDATA_VERSION_2_0
 
 /* Buffer size constants */
 #define TECC_FORMATTER_DEFAULT_WORK_BUFFER_SIZE (64 * 1024)  /* 64KB default work buffer */

@@ -1,0 +1,27 @@
+NOTICE: table "conc_t" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "conc_dek" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "conc_kek" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+ALTER KEK
+main_after|1|100
+main_after|2|200
+main_after|3|300
+INSERT 0 1
+main_final|1|100
+main_final|2|200
+main_final|3|300
+main_final|4|500
+INSERT 0 1
+bg_final|1|100
+bg_final|2|200
+bg_final|3|300
+bg_final|4|500
+DROP TABLE
+NOTICE: drop cascades to data encryption key conc_dek
+DROP KEK

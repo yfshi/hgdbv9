@@ -104,6 +104,8 @@ tecc_column_ref_data_init(TeccColumnRefData *data,
     TECC_STRNCPY(data->column_name, column);
     /* ReqID:TECC4.0 - table_alias defaults to table_name, overridable via set_alias */
     TECC_STRNCPY(data->table_alias, table);
+    /* Bug 9323 - 重新初始化即视为未重命名的底层列 */
+    data->column_alias[0] = '\0';
 
     /* Construct fully qualified domain name */
     tecc_concat_col_fqdn(data);
@@ -117,6 +119,28 @@ tecc_column_ref_data_set_alias(TeccColumnRefData *data, const char *alias_name)
 {
     if (data != NULL && alias_name != NULL)
         TECC_STRNCPY(data->table_alias, alias_name);
+}
+
+/* Bug 9323 - 记录该列被子查询/CTE 重命名后对外暴露的名字。
+ * 与 table_alias 不同，column_alias 只影响"外层能否按名字匹配到这一列"，
+ * 不影响列元数据/DEK 查询（那些仍用 column_name）。 */
+void
+tecc_column_ref_data_set_column_alias(TeccColumnRefData *data, const char *column_alias)
+{
+    if (data != NULL && column_alias != NULL)
+        TECC_STRNCPY(data->column_alias, column_alias);
+}
+
+/* Bug 9323 - 返回该列对外暴露的名字：重命名过则返回 column_alias，
+ * 否则返回底层列名 column_name。 */
+const char *
+tecc_column_ref_data_get_exposed_name(const TeccColumnRefData *data)
+{
+    if (data == NULL)
+        return NULL;
+
+    return (data->column_alias[0] != '\0') ? data->column_alias
+                                           : data->column_name;
 }
 
 /*
@@ -267,6 +291,42 @@ tecc_column_ref_data_set_dek_name(TeccColumnRefData *data, const char *dek_name)
     }
 }
 
+/* ReqID:TECC4.0 - 一列多 DEK：he-add DEK 存取 */
+const char *
+tecc_column_ref_data_get_he_add_dek_name(const TeccColumnRefData *data)
+{
+    if (data == NULL)
+        return NULL;
+    return data->he_add_dek_name[0] != '\0' ? data->he_add_dek_name : NULL;
+}
+
+void
+tecc_column_ref_data_set_he_add_dek_name(TeccColumnRefData *data, const char *dek_name)
+{
+    if (data != NULL)
+    {
+        TECC_STRNCPY(data->he_add_dek_name, dek_name);
+    }
+}
+
+/* ReqID:TECC4.0 - 一列多 DEK：he-mul DEK 存取 */
+const char *
+tecc_column_ref_data_get_he_mul_dek_name(const TeccColumnRefData *data)
+{
+    if (data == NULL)
+        return NULL;
+    return data->he_mul_dek_name[0] != '\0' ? data->he_mul_dek_name : NULL;
+}
+
+void
+tecc_column_ref_data_set_he_mul_dek_name(TeccColumnRefData *data, const char *dek_name)
+{
+    if (data != NULL)
+    {
+        TECC_STRNCPY(data->he_mul_dek_name, dek_name);
+    }
+}
+
 /*
  * Get supported algorithms
  */
@@ -311,6 +371,7 @@ tecc_column_ref_data_copy(const TeccColumnRefData *src)
     memcpy(dst->schema_name, src->schema_name, sizeof(dst->schema_name));
     memcpy(dst->table_name, src->table_name, sizeof(dst->table_name));
     memcpy(dst->column_name, src->column_name, sizeof(dst->column_name));
+    memcpy(dst->column_alias, src->column_alias, sizeof(dst->column_alias));
     memcpy(dst->alias_fqdn, src->alias_fqdn, sizeof(dst->alias_fqdn));
     dst->is_encrypted = src->is_encrypted;
     dst->column_oid = src->column_oid;
@@ -318,6 +379,9 @@ tecc_column_ref_data_copy(const TeccColumnRefData *src)
     dst->location = src->location;
     memcpy(dst->dek_name, src->dek_name, sizeof(dst->dek_name));
     memcpy(dst->support_algo, src->support_algo, sizeof(dst->support_algo));
+    /* ReqID:TECC4.0 - 一列多 DEK */
+    memcpy(dst->he_add_dek_name, src->he_add_dek_name, sizeof(dst->he_add_dek_name));
+    memcpy(dst->he_mul_dek_name, src->he_mul_dek_name, sizeof(dst->he_mul_dek_name));
     /* ReqID:TECC4.0 - pending_tables support */
     memcpy(dst->original_type_name, src->original_type_name, sizeof(dst->original_type_name));
 

@@ -1,0 +1,119 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 3
+INSERT 0 3
+INSERT 0 2
+INSERT 0 2
+0 plain|1|Alice|100
+0 plain|2|Bob|200
+=== 1 单表子查询导出（对照） ===
+COPY 3
+1,Alice
+2,Bob
+3,Carol
+=== 2 JOIN 子查询导出（原缺陷） ===
+COPY 2
+1,Alice,100
+2,Bob,200
+=== 3 逗号连接 ===
+COPY 2
+1,Alice,100
+2,Bob,200
+=== 4 镜像（FROM 首项换表） ===
+COPY 2
+1,Alice,10
+2,Bob,20
+=== 5 同表两列不同算法 ===
+COPY 3
+Alice,10
+Bob,20
+Carol,30
+=== 6 attnum 冲突（不同 DEK/算法） ===
+COPY 2
+1,111,9001
+2,222,9002
+=== 7 LEFT JOIN ===
+COPY 3
+1,Alice,9001
+2,Bob,9002
+3,Carol,
+=== 8 自连接 ===
+COPY 3
+1,Alice,Alice
+2,Bob,Bob
+3,Carol,Carol
+=== 9 JOIN + TEXT 格式 ===
+COPY 2
+1	Alice	100
+2	Bob	200
+=== 10 三段限定列名 ===
+COPY 2
+Alice,100
+Bob,200
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 2
+INSERT 0 2
+INSERT 0 2
+=== 11 单表 SELECT * ===
+COPY 2
+1,S1a,n1,41
+2,S1b,n2,42
+=== 11b 单表 s1.* ===
+COPY 2
+1,S1a,n1,41
+2,S1b,n2,42
+=== 12 多表 SELECT * ===
+COPY 2
+1,S1a,n1,41,1,T1,51,e1
+2,S1b,n2,42,2,T2,52,e2
+=== 13 s1.* + 显式列 ===
+COPY 2
+1,S1a,n1,41,51
+2,S1b,n2,42,52
+=== 14 x.* + y.* ===
+COPY 2
+1,S1a,n1,41,1,T1,51,e1
+2,S1b,n2,42,2,T2,52,e2
+=== 15 含 DROP 列的 SELECT * ===
+COPY 2
+1,S3a,31,61
+2,S3b,32,62
+=== 16 自连接 SELECT * ===
+COPY 2
+1,S1a,n1,41,1,S1a,n1,41
+2,S1b,n2,42,2,S1b,n2,42
+=== 17 USING 连接（fail-closed 回退） ===
+COPY 2
+1,S1a,n1,41,\x被隐藏的HEX输出,\x被隐藏的HEX输出,e1
+2,S1b,n2,42,\x被隐藏的HEX输出,\x被隐藏的HEX输出,e2
+=== 17b 普通查询 t.*（语法修复旁证） ===
+1|S1a|n1|41
+2|S1b|n2|42
+17b_where_const|1
+=== 18 回环导入 ===
+TRUNCATE TABLE
+COPY 3
+18 roundtrip|1|Alice
+18 roundtrip|2|Bob
+18 roundtrip|3|Carol
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../copy_subquery_join.sql:36: NOTICE:  table "csj_a" does not exist, skipping
+psql:/.../copy_subquery_join.sql:36: NOTICE:  table "csj_b" does not exist, skipping
+psql:/.../copy_subquery_join.sql:36: NOTICE:  table "csj_c" does not exist, skipping
+psql:/.../copy_subquery_join.sql:36: NOTICE:  table "csj_d" does not exist, skipping
+psql:/.../copy_subquery_join.sql:37: NOTICE:  data encryption key "dek_csj" does not exist, skipping
+psql:/.../copy_subquery_join.sql:37: NOTICE:  data encryption key "dek_csj2" does not exist, skipping
+psql:/.../copy_subquery_join.sql:38: NOTICE:  key encryption key "kek_csj" does not exist, skipping

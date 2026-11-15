@@ -101,22 +101,14 @@ TeccValuesProcessorResult tecc_values_processor_process_update_values(List *targ
                                                                      const char *table_name,
                                                                      TeccStatementData *statement_data);
 
-/* Process individual value */
-TeccValuesProcessorResult tecc_values_processor_process_value(TeccRawValue *raw_value,
-                                                             const char *column_name,
-                                                             const char *column_type,
-                                                             TeccStatementData *statement_data);
 
 /* Encrypt single value */
 TeccValuesProcessorResult tecc_values_processor_encrypt_value(TeccRawValue *raw_value,
                                                              const char *algorithm,
-                                                             const char *key,
                                                              TeccStatementData *statement_data);
 
 /* Decrypt single value */
 TeccValuesProcessorResult tecc_values_processor_decrypt_value(TeccRawValue *raw_value,
-                                                             const char *algorithm,
-                                                             const char *key,
                                                              TeccStatementData *statement_data);
 
 /* Get algorithm for column with statement data */
@@ -138,17 +130,6 @@ TeccValuesProcessorResult tecc_values_processor_process_parameters(TeccStatement
 /* Rewrite values in SQL query */
 TeccValuesProcessorResult tecc_values_processor_rewrite_values(TeccStatementData *statement_data);
 
-/* Decrypt and restore value (参考openGauss设计) */
-TeccDecryptResult tecc_values_processor_deprocess_value(PGconn *conn,
-                                                       const unsigned char *processed_data,
-                                                       size_t processed_data_size,
-                                                       int original_typeid,
-                                                       int format,
-                                                       unsigned char **plain_text,
-                                                       size_t *plain_text_size,
-                                                       TeccProcessStatus process_status,
-                                                       const char *table_name,
-                                                       const char *column_name);
 
 /* Error handling functions */
 void tecc_values_processor_set_error(TeccStatementData *statement_data,

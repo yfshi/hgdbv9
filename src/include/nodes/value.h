@@ -62,5 +62,6 @@ extern Value *makeInteger(int i);
 extern Value *makeFloat(char *numericStr);
 extern Value *makeString(char *str);
 extern Value *makeBitString(char *str);
+extern Value *makeIntroducerString(char *str);	/* Req:SRS-MYSQL-SQL-Select */
 
 #endif							/* VALUE_H */

@@ -52,6 +52,7 @@
 #include "catalog/hg_kek.h"
 #include "catalog/hg_dek.h"
 #include "catalog/hg_encrypted_columns.h"
+#include "catalog/hg_encrypted_column_args.h"
 #include "utils/hg_key_utils.h"
 #include "catalog/pg_publication_rel.h"
 #include "catalog/pg_rewrite.h"
@@ -766,6 +767,34 @@ static const ObjectPropertyType ObjectProperty[] =
 		OBJECT_DEK,
 		true
 	},
+	{
+		"encrypted column",
+		HgEncryptedColumnsRelationId,
+		HgEncryptedColumnsOidIndexId,
+		-1,						/* no catcache keyed by oid alone */
+		-1,
+		Anum_hg_encrypted_columns_oid,
+		Anum_hg_encrypted_columns_column_name,
+		InvalidAttrNumber,
+		InvalidAttrNumber,
+		InvalidAttrNumber,
+		OBJECT_COLUMN,
+		false
+	},
+	{
+		"encrypted column args",
+		HgEncryptedColumnArgsRelationId,
+		HgEncryptedColumnArgsOidIndexId,
+		-1,
+		-1,
+		Anum_hg_encrypted_column_args_oid,
+		Anum_hg_encrypted_column_args_key,
+		InvalidAttrNumber,
+		InvalidAttrNumber,
+		InvalidAttrNumber,
+		OBJECT_COLUMN,
+		false
+	},
 };
 
 /*
@@ -1332,6 +1361,63 @@ get_object_address(ObjectType objtype, Node *object,
 			/* End - ReqID:SRS-SQL-SYNONYM */
 			case OBJECT_KEK:
 			case OBJECT_DEK:
+				/* Begin - ReqID:TECC4.0 */
+				/*
+				 * KEK/DEK 是 any_name 类对象（见 gram.y 的 object_type_any_name）：
+				 * 正常调用方（pg_get_object_address、Citus 的对象归属校验等）交付的是
+				 * 名字列表，而 get_object_address_unqualified() 是按 Value 取名字的
+				 * （直接强转会读无效指针）。这里按语法一致的方式处理两种形状：
+				 *   · List（1~2 段）→ 按（模式, 名字）解析，限定名走
+				 *     LookupExplicitNamespace + get_*_oid_ext()，裸名字走
+				 *     get_*_oid()（它自己按 search_path 解析）；
+				 *   · 单个 Value → 保留原路径（历史调用方与 fork 自己的
+				 *     pg_get_object_address 早期行为）。
+				 */
+				if (object != NULL && IsA(object, List))
+				{
+					char	   *schemaName = NULL;
+					char	   *objectName = NULL;
+					Oid			namespaceId = InvalidOid;
+					Oid			resolvedOid = InvalidOid;
+
+					DeconstructQualifiedName(castNode(List, object),
+											 &schemaName, &objectName);
+
+					if (objectName != NULL)
+					{
+						if (schemaName != NULL)
+						{
+							namespaceId = LookupExplicitNamespace(schemaName,
+																  missing_ok);
+							if (OidIsValid(namespaceId))
+							{
+								resolvedOid = (objtype == OBJECT_KEK) ?
+									get_kek_oid_ext(objectName, namespaceId,
+													missing_ok) :
+									get_dek_oid_ext(objectName, namespaceId,
+													missing_ok);
+							}
+						}
+						else
+						{
+							resolvedOid = (objtype == OBJECT_KEK) ?
+								get_kek_oid(objectName, missing_ok) :
+								get_dek_oid(objectName, missing_ok);
+						}
+					}
+
+					address.classId = (objtype == OBJECT_KEK) ? HgKekRelationId :
+						HgDekRelationId;
+					address.objectId = resolvedOid;
+					address.objectSubId = 0;
+					break;
+				}
+				if (object == NULL || !IsA(object, String))
+				{
+					elog(ERROR, "unrecognized %s name",
+						 objtype == OBJECT_KEK ? "KEK" : "DEK");
+				}
+				/* End - ReqID:TECC4.0 */
 				address = get_object_address_unqualified(objtype,
 														 (Value *) object, missing_ok);
 			default:
@@ -2533,6 +2619,23 @@ pg_get_object_address(PG_FUNCTION_ARGS)
 		case OBJECT_OPFAMILY:
 			objnode = (Node *) name;
 			break;
+		/* Begin - ReqID:TECC4.0 */
+		/*
+		 * KEK/DEK 的名字是 any_name（见 gram.y 的 object_type_any_name），
+		 * getObjectIdentityParts() 也按（模式, 名字）两段产出（同文件 OCLASS_KEK/DEK
+		 * 分支的 list_make2）。因此这里把整张名字列表交给 get_object_address()，
+		 * 由它按模式解析 —— 不再要求"恰好一个名字"，否则
+		 * pg_identify_object_as_address() 的结果无法用 pg_get_object_address() 反查。
+		 */
+		case OBJECT_KEK:
+		case OBJECT_DEK:
+			if (list_length(name) < 1 || list_length(name) > 2)
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 errmsg("name list length must be between %d and %d", 1, 2)));
+			objnode = (Node *) name;
+			break;
+		/* End - ReqID:TECC4.0 */
 		case OBJECT_ACCESS_METHOD:
 		case OBJECT_DATABASE:
 		case OBJECT_EVENT_TRIGGER:
@@ -2545,8 +2648,6 @@ pg_get_object_address(PG_FUNCTION_ARGS)
 		case OBJECT_SCHEMA:
 		case OBJECT_SUBSCRIPTION:
 		case OBJECT_TABLESPACE:
-		case OBJECT_KEK:
-		case OBJECT_DEK:
 			if (list_length(name) != 1)
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -2633,6 +2734,44 @@ pg_get_object_address(PG_FUNCTION_ARGS)
 
 	PG_RETURN_DATUM(HeapTupleGetDatum(htup));
 }
+
+/* Begin - ReqID:TECC4.0 */
+/*
+ * tecc_object_display_name returns the name to print in error messages for the
+ * any_name-based TECC object types (KEK/DEK).
+ *
+ * Callers may hand us either a bare Value (legacy callers, and the fork's own
+ * get_object_address_unqualified() path) or an any_name List
+ * (pg_get_object_address, Citus's object checks), so both shapes must be
+ * tolerated: strVal() on a List would read a field that is not a string pointer.
+ */
+static const char *
+tecc_object_display_name(Node *object)
+{
+	if (object == NULL)
+	{
+		return "";
+	}
+
+	if (IsA(object, String))
+	{
+		return strVal((Value *) object);
+	}
+
+	if (IsA(object, List) && list_length((List *) object) > 0)
+	{
+		/* any_name 的每一段都是 String，最后一段就是对象名 */
+		Node	   *lastPart = (Node *) llast(castNode(List, object));
+
+		if (IsA(lastPart, String))
+		{
+			return strVal((Value *) lastPart);
+		}
+	}
+
+	return "";
+}
+/* End - ReqID:TECC4.0 */
 
 /*
  * Check ownership of an object previously identified by get_object_address.
@@ -2817,13 +2956,13 @@ check_object_ownership(Oid roleid, ObjectType objtype, ObjectAddress address,
 		case OBJECT_KEK:
 			if (!pg_kek_ownercheck(address.objectId, roleid))
 				aclcheck_error(ACLCHECK_NOT_OWNER, objtype,
-							   strVal((Value *) object));
+							   tecc_object_display_name(object));
 			break;
 
 		case OBJECT_DEK:
 			if (!pg_dek_ownercheck(address.objectId, roleid))
 				aclcheck_error(ACLCHECK_NOT_OWNER, objtype,
-							   strVal((Value *) object));
+							   tecc_object_display_name(object));
 			break;
 		case OBJECT_ROLE:
 
@@ -4440,6 +4579,10 @@ getObjectDescription(const ObjectAddress *object, bool missing_ok)
 			appendStringInfoString(&buffer, _("data encryption key args"));
 			break;
 
+	case OCLASS_ENCRYPTED_COLUMN_ARGS:
+		appendStringInfoString(&buffer, _("encrypted column args"));
+		break;
+
 			/*
 			 * There's intentionally no default: case here; we want the
 			 * compiler to warn if a new OCLASS hasn't been handled above.
@@ -5043,6 +5186,10 @@ getObjectTypeDescription(const ObjectAddress *object, bool missing_ok)
 		case OCLASS_DEK_ARGS:
 			appendStringInfoString(&buffer, "data encryption key args");
 			break;
+
+	case OCLASS_ENCRYPTED_COLUMN_ARGS:
+		appendStringInfoString(&buffer, "encrypted column args");
+		break;
 		/*End: ReqId: TECC-v4.0*/
 		/*
 		 * There's intentionally no default: case here; we want the
@@ -6546,6 +6693,15 @@ getObjectIdentityParts(const ObjectAddress *object,
 				appendStringInfoString(&buffer, name_buf);
 			}
 				break;
+		case OCLASS_ENCRYPTED_COLUMN_ARGS:
+		{
+			char		name_buf[32];
+
+			snprintf(name_buf, sizeof(name_buf), "encrypted_column_args_%u", object->objectId);
+			appendStringInfoString(&buffer, name_buf);
+			break;
+		}
+
 		/* End - ReqID:TECC4.0 */
 			/*
 			 * There's intentionally no default: case here; we want the

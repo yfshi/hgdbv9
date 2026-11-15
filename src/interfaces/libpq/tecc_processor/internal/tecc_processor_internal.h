@@ -71,6 +71,8 @@ typedef enum TeccProcessorInternalError
 #define TECC_ENC_TYPE_DET    0x01
 #define TECC_ENC_TYPE_OPE    0x02
 #define TECC_ENC_TYPE_SEARCH 0x04
+#define TECC_ENC_TYPE_HE_ADD 0x08
+#define TECC_ENC_TYPE_HE_MUL 0x10
 #define TECC_ENC_TYPE_DET_OPE (TECC_ENC_TYPE_DET | TECC_ENC_TYPE_OPE)
 
 /*
@@ -127,6 +129,9 @@ typedef struct TeccProcessorColumnRef {
     Oid column_oid;                                   /* 列OID */
     Oid table_oid;                                    /* 表OID */
     int location;                                     /* 在SQL中的位置 */
+    /* Bug 9323 - 与 TeccColumnRefData 保持前缀布局一致：encrypted_columns
+     * 链表实际存的是 TeccColumnRefData，历史代码按本类型强转读取公共前缀。 */
+    char column_alias[TECC_PROCESSOR_MAX_NAME_LEN];   /* 输出列别名，未重命名时为空 */
 } TeccProcessorColumnRef;
 
 /*

@@ -42,7 +42,7 @@ typedef enum
     SM4_OPE_ERROR_DECRYPT_FAILED = -4,
     SM4_OPE_ERROR_DATA_TOO_LARGE = -5,
     SM4_OPE_ERROR_INVALID_FORMAT = -6,
-    SM4_OPE_ERROR_DECRYPT_NOT_SUPPORTED = -7,  /* OPE does not support decryption */
+    SM4_OPE_ERROR_DECRYPT_NOT_SUPPORTED = -7,  /* Reserved (unused) */
     SM4_OPE_ERROR_OPENSSL = -8,
     SM4_OPE_ERROR_KEY_DERIVATION = -9
 } Sm4OpeErrorCode;
@@ -55,6 +55,15 @@ int tecc_sm4_ope_encrypt(const unsigned char *key, size_t key_len,
                         unsigned char *output_buffer, size_t buffer_size,
                         size_t *output_len);
 
+/*
+ * SM4-OPE decryption - recover normalized OPE input (debug path).
+ * ReqID:TECC4.0
+ */
+int tecc_sm4_ope_decrypt(const unsigned char *key, size_t key_len,
+                         const unsigned char *ciphertext, size_t cipher_len,
+                         unsigned char *output_buffer, size_t buffer_size,
+                         size_t *output_len);
+
 
 /*
  * OPE ciphertext comparison (order-preserving property)
@@ -65,11 +74,6 @@ int OPE_cmp(const uint8_t *ctx_1, const uint8_t *ctx_2, int ctx_len);
  * Data format validation interface
  */
 int tecc_sm4_ope_validate_format(const unsigned char *ciphertext, size_t cipher_len);
-
-/*
- * Get SM4-OPE output buffer size
- */
-size_t tecc_sm4_ope_get_format_size(size_t plain_len);
 
 /*
  * Clear sensitive memory

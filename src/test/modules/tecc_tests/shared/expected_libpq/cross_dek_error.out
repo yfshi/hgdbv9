@@ -1,0 +1,91 @@
+DROP KEK
+DROP KEK
+DROP DEK
+DROP DEK
+CREATE KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+INSERT 0 2
+INSERT 0 2
+INSERT 0 2
+          ?column?          
+----------------------------
+ === 1 DET eq cross DEK ===
+(1 row)
+
+  ?column?   | count 
+-------------+-------
+ 1k_same_dek |     4
+(1 row)
+
+           ?column?            
+-------------------------------
+ === 2 OPE range cross DEK ===
+(1 row)
+
+   ?column?    | count 
+---------------+-------
+ 2c_same_range |     6
+(1 row)
+
+         ?column?          
+---------------------------
+ === 3 LIKE col-to-col ===
+(1 row)
+
+   ?column?    | count 
+---------------+-------
+ 3c_like_const |     1
+(1 row)
+
+     ?column?      
+-------------------
+ === 9 CLEANUP ===
+(1 row)
+
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+psql:/.../cross_dek_error.sql:15: NOTICE:  key encryption key "cdk_kek_b" does not exist, skipping
+psql:/.../cross_dek_error.sql:16: NOTICE:  key encryption key "cdk_kek_c" does not exist, skipping
+psql:/.../cross_dek_error.sql:17: NOTICE:  data encryption key "cdk_dek_b" does not exist, skipping
+psql:/.../cross_dek_error.sql:18: NOTICE:  data encryption key "cdk_dek_c" does not exist, skipping
+psql:/.../cross_dek_error.sql:24: NOTICE:  table "cd_t_a" does not exist, skipping
+psql:/.../cross_dek_error.sql:24: NOTICE:  table "cd_t_b" does not exist, skipping
+psql:/.../cross_dek_error.sql:24: NOTICE:  table "cd_t_s1" does not exist, skipping
+psql:/.../cross_dek_error.sql:24: NOTICE:  table "cd_t_s2" does not exist, skipping
+TECC ERROR: Cannot compare encrypted columns with different DEKs: cdk_dek_b vs cdk_dek_c
+psql:/.../cross_dek_error.sql:45: TECC query preprocessing failed: Cannot compare encrypted columns with different DEKs. Please ensure the compared columns use the same DEK.
+TECC ERROR: Cannot compare encrypted columns with different DEKs: cdk_dek_b vs cdk_dek_c
+psql:/.../cross_dek_error.sql:47: TECC query preprocessing failed: Cannot compare encrypted columns with different DEKs. Please ensure the compared columns use the same DEK.
+TECC ERROR: Cannot compare encrypted columns with different DEKs: cdk_dek_b vs cdk_dek_c
+psql:/.../cross_dek_error.sql:49: TECC query preprocessing failed: Cannot compare encrypted columns with different DEKs. Please ensure the compared columns use the same DEK.
+TECC ERROR: Cannot compare encrypted columns with different DEKs: cdk_dek_b vs cdk_dek_c
+psql:/.../cross_dek_error.sql:51: TECC query preprocessing failed: Cannot compare encrypted columns with different DEKs. Please ensure the compared columns use the same DEK.
+TECC ERROR: Cannot compare encrypted columns with different DEKs: cdk_dek_b vs cdk_dek_c
+psql:/.../cross_dek_error.sql:53: TECC query preprocessing failed: Cannot compare encrypted columns with different DEKs. Please ensure the compared columns use the same DEK.
+TECC ERROR: Cannot compare encrypted columns with different DEKs: cdk_dek_b vs cdk_dek_c
+psql:/.../cross_dek_error.sql:55: TECC query preprocessing failed: Cannot compare encrypted columns with different DEKs. Please ensure the compared columns use the same DEK.
+TECC ERROR: Cannot compare encrypted columns with different DEKs: cdk_dek_b vs cdk_dek_c
+psql:/.../cross_dek_error.sql:57: TECC query preprocessing failed: Cannot compare encrypted columns with different DEKs. Please ensure the compared columns use the same DEK.
+TECC ERROR: Cannot compare encrypted columns with different DEKs: cdk_dek_b vs cdk_dek_c
+psql:/.../cross_dek_error.sql:59: TECC query preprocessing failed: Cannot compare encrypted columns with different DEKs. Please ensure the compared columns use the same DEK.
+TECC ERROR: Cannot compare encrypted columns with different DEKs: cdk_dek_b vs cdk_dek_c
+psql:/.../cross_dek_error.sql:61: TECC query preprocessing failed: Cannot compare encrypted columns with different DEKs. Please ensure the compared columns use the same DEK.
+TECC ERROR: Cannot compare encrypted columns with different DEKs: cdk_dek_c vs cdk_dek_b
+psql:/.../cross_dek_error.sql:63: TECC query preprocessing failed: Cannot compare encrypted columns with different DEKs. Please ensure the compared columns use the same DEK.
+TECC ERROR: Cannot compare encrypted columns with different DEKs: cdk_dek_b vs cdk_dek_c
+psql:/.../cross_dek_error.sql:72: TECC query preprocessing failed: Cannot compare encrypted columns with different DEKs. Please ensure the compared columns use the same DEK.
+TECC ERROR: Cannot compare encrypted columns with different DEKs: cdk_dek_b vs cdk_dek_c
+psql:/.../cross_dek_error.sql:74: TECC query preprocessing failed: Cannot compare encrypted columns with different DEKs. Please ensure the compared columns use the same DEK.
+psql:/.../cross_dek_error.sql:83: TECC query preprocessing failed: LIKE/NOT LIKE between two encrypted columns is not supported. The LIKE pattern must be a plain string constant.
+psql:/.../cross_dek_error.sql:85: TECC query preprocessing failed: LIKE/NOT LIKE between two encrypted columns is not supported. The LIKE pattern must be a plain string constant.

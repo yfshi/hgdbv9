@@ -1,0 +1,14 @@
+diff a/src/backend/commands/copyfrom.c b/src/backend/commands/copyfrom.c	(rejected hunks)
+@@ -1037,6 +1038,12 @@ CopyFrom(CopyFromState cstate)
+ 					resultRelInfo->ri_RelationDesc->rd_att->constr)
+ 					ExecConstraints(resultRelInfo, myslot, estate);
+ 
++				/* ReqID:TECC4.0 - Validate encrypted column slots; runs
++				 * unconditionally (ExecConstraints is skipped when the table
++				 * has no constraint at all). */
++				if (resultRelInfo->ri_FdwRoutine == NULL)
++					tecc_validate_encrypted_slots(resultRelInfo, myslot);
++
+ 				/*
+ 				 * Also check the tuple against the partition constraint, if
+ 				 * there is one; except that if we got here via tuple-routing,

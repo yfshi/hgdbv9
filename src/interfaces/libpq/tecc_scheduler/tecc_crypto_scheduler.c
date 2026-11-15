@@ -15,6 +15,13 @@
  *   src/interfaces/libpq/tecc_scheduler/tecc_crypto_scheduler.c
  */
 
+/* ReqID:TECC4.0 - HE 批量解密并发：pthread 与 sysconf（核数探测）。
+ * unistd.h/sysconf 为 POSIX 专用，Windows MSVC 不可用（仅并行路径需要）。 */
+#include <pthread.h>
+#ifndef WIN32
+#include <unistd.h>
+#endif
+
 #include "tecc_crypto_scheduler.h"
 #include "tecc_algorithm_scheduler.h"
 #include "tecc_key_manager_adapter.h"
@@ -26,6 +33,7 @@
 #include "../tecc_data_fetcher/include/tecc_data_fetcher.h"  /* For tecc_free_encrypted_column_metadata */
 #include "../../../common/tecc_types.h"  /* Formatter error code definitions */
 #include "common/fe_memutils.h"  /* Frontend memory management */
+#include "mb/pg_wchar.h"  /* ReqID:TECC4.0 - 客户端编码（字符数校验用） */
 #include "../tecc_libpq_integration/fe-tecc-integration.h"  /* TECC state management */
 #include "../tecc_common/tecc_logging.h"  /* TECC logging system */
 #include "../tecc_formatter/tecc_type_output.h"  /* Numeric text-to-binary conversion */
@@ -53,6 +61,458 @@ extern int tecc_sm4_rnd_batch_decrypt_with_keys(
 extern void tecc_record_error(struct TeccState *state, int error_code,
                               const char *error_msg, const char *function_name,
                               int line_number, bool recoverable);
+
+/*
+ * tecc_split_qualified_name
+ *    ReqID:TECC4.0 - Split a possibly schema-qualified name (schema.obj) into
+ *    its schema part and bare object name.  Mirrors the backend get_dek_oid()
+ *    semantics so frontend hg_dek/hg_kek lookups can filter by key_namespace.
+ *
+ *    Returns 1 and fills *schema_out / *name_out when the name contains a dot
+ *    (with both parts non-empty); returns 0 if no dot (name stays bare).
+ */
+static int
+tecc_split_qualified_name(const char *name,
+                          char *schema_out, size_t schema_sz,
+                          char *name_out, size_t name_sz)
+{
+    const char *dot;
+
+    if (name == NULL)
+        return 0;
+    dot = strchr(name, '.');
+    if (dot == NULL || dot == name || dot[1] == '\0')
+        return 0;
+
+    {
+        size_t schema_len = (size_t) (dot - name);
+
+        if (schema_len >= schema_sz)
+            schema_len = schema_sz - 1;
+        memcpy(schema_out, name, schema_len);
+        schema_out[schema_len] = '\0';
+        strlcpy(name_out, dot + 1, name_sz);
+        return 1;
+    }
+}
+
+/* ReqID:TECC4.0 - Check DEK USAGE against the exact schema-qualified key. */
+static bool
+tecc_dek_has_usage_permission(TeccState *state, const char *dek_name)
+{
+	TeccDekCacheItem *dek_item;
+	const char *check_name;
+	const char *check_schema;
+	char		schema_name[NAMEDATALEN];
+	char		bare_name[NAMEDATALEN];
+
+	if (state == NULL || dek_name == NULL || dek_name[0] == '\0')
+		return false;
+
+	check_name = dek_name;
+	check_schema = NULL;
+	dek_item = tecc_cache_get_dek_by_name_search_path(state, dek_name);
+	if (dek_item != NULL && dek_item->key_name != NULL)
+	{
+		check_name = dek_item->key_name;
+		check_schema = dek_item->key_namespace;
+	}
+	else if (tecc_split_qualified_name(dek_name,
+									   schema_name, sizeof(schema_name),
+									   bare_name, sizeof(bare_name)))
+	{
+		check_name = bare_name;
+		check_schema = schema_name;
+	}
+
+	return tecc_check_dek_permission(state, check_name, check_schema) ==
+		TECC_FETCHER_OK;
+}
+
+/*
+ * ReqID:TECC4.0 - Load HE key material (he_pubkey / he_privkey) for a DEK
+ * from hg_dek_args. Returns 0 on success (output hex allocated), -1 on error.
+ *
+ * @param state   TECC state (has conn for query)
+ * @param dek_name DEK name (may be schema-qualified, e.g. public.dek_x)
+ * @param key     "he_pubkey" or "he_privkey"
+ * @param hex_out Output: hex string (pg_malloc'd), or NULL if not found
+ */
+
+/* ==================== HE 元数据查询缓存 ====================
+ * ReqID:TECC4.0 - tecc_he_load_dek_key_hex（DEK 公钥）和
+ * tecc_load_column_he_dek_name（列 HE DEK 名）每次直接用主连接 PQexec。
+ * 字段级并行 worker 并发用主连接（libpq 非线程安全）会卡死，且每次查询
+ * 是串行路径的主要固定开销。加固定小缓存（线性覆盖）：字段级并行前主线程
+ * 预热填充，worker 内命中缓存不碰主连接；无值（-1）也缓存，避免 worker
+ * 重复查询。HE DEK/列数量通常极少，16 项足够。 */
+#define TECC_HE_META_CACHE_SIZE 16
+
+typedef struct TeccHeMetaCacheEntry
+{
+    bool valid;
+    Oid table_oid;              /* 列 HE DEK 名缓存键 */
+    int16 column_attnum;
+    char key[32];               /* he_add_dek / he_mul_dek / he_ec_pubkey / he_eg_pubkey */
+    char dek_name[NAMEDATALEN]; /* DEK 公钥缓存键 */
+    char value[1024];           /* 公钥 hex（未压缩 EC 点可达 130 hex）或 DEK 名 */
+} TeccHeMetaCacheEntry;
+
+static TeccHeMetaCacheEntry tecc_he_meta_cache[TECC_HE_META_CACHE_SIZE];
+static int tecc_he_meta_cache_next = 0;
+static pthread_mutex_t tecc_he_meta_cache_lock = PTHREAD_MUTEX_INITIALIZER;
+
+/* ReqID:TECC4.0 - 写入缓存（线性覆盖；线程安全） */
+static void
+tecc_he_meta_cache_put(const TeccHeMetaCacheEntry *entry)
+{
+    int idx;
+
+    pthread_mutex_lock(&tecc_he_meta_cache_lock);
+    idx = tecc_he_meta_cache_next;
+    tecc_he_meta_cache[idx] = *entry;
+    tecc_he_meta_cache_next = (idx + 1) % TECC_HE_META_CACHE_SIZE;
+    pthread_mutex_unlock(&tecc_he_meta_cache_lock);
+}
+
+/*
+ * ReqID:TECC4.0 - Bug 9263: 清空 HE 元数据缓存（线程安全）。
+ *
+ * 该缓存缓存的是 hg_dek_args 里 he_ec_privkey/he_eg_privkey 等字段的**原始 hex**；
+ * 对 HE 私钥而言，那就是【KEK 加密后的信封】。ALTER KEK 轮换会用新 KEK 公钥重新
+ * 封装这些信封，但本缓存既不在 tecc_cache_clear()（KEK/DEK/列元数据）的清理范围，
+ * 也不在 tecc_key_cache_clear()（key_manager 的 DEK 明文）的清理范围，于是执行过
+ * 轮换的客户端会继续拿【旧信封】配【新 KEK】去解封：SM2 信封不带完整性校验，
+ * 解不出错而是静默产出一把错误的私钥，HE 解密结果变成垃圾值，表现为
+ * "HE result out of range for column ..."。另起一个进程的客户端没有这份缓存，
+ * 一切正常（注意：缓存是进程级的，同进程内 \connect 重连也清不掉）。
+ *
+ * 缓存是进程内全局的（字段级并行 worker 要复用，故不能用连接级缓存替代），
+ * 这里整体清空：轮换是 DDL，代价可忽略；且其他连接缓存的同样是已经过期的旧
+ * 信封，一并失效反而更正确。
+ */
+void
+tecc_he_meta_cache_clear(void)
+{
+    pthread_mutex_lock(&tecc_he_meta_cache_lock);
+    memset(tecc_he_meta_cache, 0, sizeof(tecc_he_meta_cache));
+    tecc_he_meta_cache_next = 0;
+    pthread_mutex_unlock(&tecc_he_meta_cache_lock);
+}
+
+/* ReqID:TECC4.0 - 按 DEK 公钥键查缓存（线程安全） */
+static bool
+tecc_he_meta_cache_get_dek_hex(const char *dek_name, const char *key,
+                               char *out, size_t out_size)
+{
+    int i;
+    bool found = false;
+
+    if (dek_name == NULL || key == NULL || out == NULL)
+        return false;
+
+    pthread_mutex_lock(&tecc_he_meta_cache_lock);
+    for (i = 0; i < TECC_HE_META_CACHE_SIZE && !found; i++)
+    {
+        if (tecc_he_meta_cache[i].valid &&
+            tecc_he_meta_cache[i].dek_name[0] != '\0' &&
+            strcmp(tecc_he_meta_cache[i].dek_name, dek_name) == 0 &&
+            strcmp(tecc_he_meta_cache[i].key, key) == 0)
+        {
+            strlcpy(out, tecc_he_meta_cache[i].value, out_size);
+            found = true;
+        }
+    }
+    pthread_mutex_unlock(&tecc_he_meta_cache_lock);
+    return found;
+}
+
+/* ReqID:TECC4.0 - 按列 HE DEK 名键查缓存（线程安全） */
+static bool
+tecc_he_meta_cache_get_col_dek(Oid table_oid, int16 column_attnum,
+                               const char *key, char *out, size_t out_size)
+{
+    int i;
+    bool found = false;
+
+    if (key == NULL || out == NULL)
+        return false;
+
+    pthread_mutex_lock(&tecc_he_meta_cache_lock);
+    for (i = 0; i < TECC_HE_META_CACHE_SIZE && !found; i++)
+    {
+        if (tecc_he_meta_cache[i].valid &&
+            tecc_he_meta_cache[i].table_oid == table_oid &&
+            tecc_he_meta_cache[i].column_attnum == column_attnum &&
+            strcmp(tecc_he_meta_cache[i].key, key) == 0)
+        {
+            strlcpy(out, tecc_he_meta_cache[i].value, out_size);
+            found = true;
+        }
+    }
+    pthread_mutex_unlock(&tecc_he_meta_cache_lock);
+    return found;
+}
+
+int
+tecc_he_load_dek_key_hex(void *state_arg, const char *dek_name,
+                         const char *key, char **hex_out)
+{
+    TeccState  *state = (TeccState *)state_arg;
+    PGconn     *conn;
+    PGresult   *res;
+    char        esc[NAMEDATALEN * 2];
+    char        query[1024];
+    const char *val;
+    bool        saved_disable;
+    char        cached[1024];
+    TeccHeMetaCacheEntry entry;
+
+    *hex_out = NULL;
+    if (state == NULL || state->conn == NULL || dek_name == NULL || key == NULL)
+        return -1;
+
+    /* ReqID:TECC4.0 - 先查缓存（字段级并行 worker 内命中，不碰主连接） */
+    if (tecc_he_meta_cache_get_dek_hex(dek_name, key, cached, sizeof(cached)))
+    {
+        if (cached[0] == '\0')
+            return -1;      /* 已缓存：该 DEK 无此 key */
+        *hex_out = pg_strdup(cached);
+        return 0;
+    }
+
+    conn = state->conn;
+
+    /* ReqID:TECC4.0 - Escape DEK name; handle schema-qualified names
+     * (public.dek_x) by splitting schema + name and filtering by
+     * key_namespace (backend get_dek_oid semantics).  Otherwise the exact
+     * dek_name match below fails for qualified names (hg_dek.dek_name has
+     * no schema prefix). */
+    {
+        char schema_buf[NAMEDATALEN];
+        char name_buf[NAMEDATALEN];
+
+        if (tecc_split_qualified_name(dek_name, schema_buf, sizeof(schema_buf),
+                                      name_buf, sizeof(name_buf)))
+        {
+            char esc_schema[NAMEDATALEN * 2];
+            char esc_name[NAMEDATALEN * 2];
+
+            PQescapeStringConn(conn, esc_schema, schema_buf, strlen(schema_buf), NULL);
+            PQescapeStringConn(conn, esc_name, name_buf, strlen(name_buf), NULL);
+
+            snprintf(query, sizeof(query),
+                "SELECT encode(value, 'escape') FROM hg_dek_args "
+                "WHERE dek_id = (SELECT d.oid FROM hg_dek d "
+                "  JOIN pg_namespace n ON d.key_namespace = n.oid "
+                "  WHERE d.dek_name = '%s' AND n.nspname = '%s') "
+                "AND key = '%s'",
+                esc_name, esc_schema, key);
+        }
+        else
+        {
+            /* Bare name: look up by dek_name alone (keeps existing behavior) */
+            PQescapeStringConn(conn, esc, dek_name, strlen(dek_name), NULL);
+
+            snprintf(query, sizeof(query),
+                "SELECT encode(value, 'escape') FROM hg_dek_args "
+                "WHERE dek_id = (SELECT oid FROM hg_dek WHERE dek_name = '%s') "
+                "AND key = '%s'",
+                esc, key);
+        }
+    }
+
+    /* Temporarily disable TECC to avoid recursive processing */
+    saved_disable = state->disable_once;
+    state->disable_once = true;
+    res = PQexec(conn, query);
+    state->disable_once = saved_disable;
+
+    if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK || PQntuples(res) == 0)
+    {
+        if (res)
+            PQclear(res);
+        return -1;
+    }
+
+    val = PQgetvalue(res, 0, 0);
+
+    /* ReqID:TECC4.0 - 写缓存（无论有无值，避免 worker 重复查询主连接） */
+    memset(&entry, 0, sizeof(entry));
+    entry.valid = true;
+    strlcpy(entry.dek_name, dek_name, sizeof(entry.dek_name));
+    strlcpy(entry.key, key, sizeof(entry.key));
+    if (val != NULL && val[0] != '\0')
+        strlcpy(entry.value, val, sizeof(entry.value));
+    tecc_he_meta_cache_put(&entry);
+
+    if (val != NULL && val[0] != '\0')
+        *hex_out = pg_strdup(val);
+    PQclear(res);
+
+    return (*hex_out != NULL) ? 0 : -1;
+}
+
+/* ReqID:TECC4.0 - P0-2 一列多 DEK：查询列的 he-add/he-mul DEK 名称。
+ * 通过 table_oid + column_attnum 精确匹配 hg_encrypted_columns_info 视图，
+ * 返回 he_add_dek/he_mul_dek 字段（DEK 名，无则失败）。
+ * ReqID:TECC4.0 - 加元数据缓存（同 tecc_he_load_dek_key_hex），字段级
+ * 并行前主线程预热，worker 内命中缓存不碰主连接。 */
+int
+tecc_load_column_he_dek_name(void *state_arg, Oid table_oid, int16 column_attnum,
+                             const char *key, char *name_out, size_t name_out_size)
+{
+    TeccState  *state = (TeccState *)state_arg;
+    PGconn     *conn;
+    PGresult   *res;
+    char        query[512];
+    const char *col_field;
+    const char *val;
+    bool        saved_disable;
+    char        cached[NAMEDATALEN];
+    TeccHeMetaCacheEntry entry;
+
+    if (name_out == NULL || name_out_size == 0)
+        return -1;
+    name_out[0] = '\0';
+    if (state == NULL || state->conn == NULL || key == NULL)
+        return -1;
+
+    if (strcmp(key, "he_add_dek") == 0)
+        col_field = "he_add_dek";
+    else if (strcmp(key, "he_mul_dek") == 0)
+        col_field = "he_mul_dek";
+    else
+        return -1;
+
+    /* ReqID:TECC4.0 - 先查缓存（字段级并行 worker 内命中，不碰主连接） */
+    if (tecc_he_meta_cache_get_col_dek(table_oid, column_attnum, key,
+                                       cached, sizeof(cached)))
+    {
+        if (cached[0] == '\0')
+            return -1;      /* 已缓存：该列无此 DEK */
+        strlcpy(name_out, cached, name_out_size);
+        return 0;
+    }
+
+    conn = state->conn;
+    snprintf(query, sizeof(query),
+             "SELECT %s FROM hg_encrypted_columns_info "
+             "WHERE table_oid = %u AND column_attnum = %d",
+             col_field, table_oid, (int) column_attnum);
+
+    /* Temporarily disable TECC to avoid recursive processing */
+    saved_disable = state->disable_once;
+    state->disable_once = true;
+    res = PQexec(conn, query);
+    state->disable_once = saved_disable;
+
+    if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK || PQntuples(res) == 0)
+    {
+        if (res)
+            PQclear(res);
+        return -1;
+    }
+
+    val = PQgetvalue(res, 0, 0);
+
+    /* ReqID:TECC4.0 - 写缓存（无论有无值，避免 worker 重复查询主连接） */
+    memset(&entry, 0, sizeof(entry));
+    entry.valid = true;
+    entry.table_oid = table_oid;
+    entry.column_attnum = column_attnum;
+    strlcpy(entry.key, key, sizeof(entry.key));
+    if (val != NULL && val[0] != '\0')
+        strlcpy(entry.value, val, sizeof(entry.value));
+    tecc_he_meta_cache_put(&entry);
+
+    if (val != NULL && val[0] != '\0')
+        strlcpy(name_out, val, name_out_size);
+    PQclear(res);
+
+    return (name_out[0] != '\0') ? 0 : -1;
+}
+
+/*
+ * ReqID:TECC4.0 - Load a KEK arg (key_algo / public_key) from hg_kek_args.
+ * Returns 0 on success with *hex_out allocated, -1 on error.
+ */
+int
+tecc_he_load_kek_arg_hex(void *state_arg, const char *kek_name,
+                         const char *key, char **hex_out)
+{
+    TeccState  *state = (TeccState *)state_arg;
+    PGconn     *conn;
+    PGresult   *res;
+    char        query[1024];
+    const char *val;
+    bool        saved_disable;
+
+    *hex_out = NULL;
+    if (state == NULL || state->conn == NULL || kek_name == NULL || key == NULL)
+        return -1;
+
+    conn = state->conn;
+
+    /* ReqID:TECC4.0 - Escape KEK name; support schema-qualified names
+     * (schema.kek) by splitting schema + name and filtering by
+     * key_namespace, consistent with tecc_he_load_dek_key_hex. */
+    {
+        char schema_buf[NAMEDATALEN];
+        char name_buf[NAMEDATALEN];
+        char esc_schema[NAMEDATALEN * 2];
+        char esc_name[NAMEDATALEN * 2];
+        char ns_join[80];
+        char ns_where[NAMEDATALEN + 64];
+        bool qualified;
+
+        qualified = tecc_split_qualified_name(kek_name,
+                                              schema_buf, sizeof(schema_buf),
+                                              name_buf, sizeof(name_buf));
+        if (qualified)
+        {
+            PQescapeStringConn(conn, esc_schema, schema_buf, strlen(schema_buf), NULL);
+            PQescapeStringConn(conn, esc_name, name_buf, strlen(name_buf), NULL);
+            snprintf(ns_join, sizeof(ns_join),
+                     " JOIN pg_namespace n ON k.key_namespace = n.oid");
+            snprintf(ns_where, sizeof(ns_where),
+                     " AND n.nspname = '%s'", esc_schema);
+        }
+        else
+        {
+            PQescapeStringConn(conn, esc_name, kek_name, strlen(kek_name), NULL);
+            ns_join[0] = '\0';
+            ns_where[0] = '\0';
+        }
+
+        snprintf(query, sizeof(query),
+            "SELECT encode(value, 'hex') FROM hg_kek_args "
+            "WHERE kek_id = (SELECT k.oid FROM hg_kek k%s "
+            "  WHERE k.kek_name = '%s'%s) "
+            "AND upper(key) = upper('%s')",
+            ns_join, esc_name, ns_where, key);
+    }
+
+    /* Temporarily disable TECC to avoid recursive processing */
+    saved_disable = state->disable_once;
+    state->disable_once = true;
+    res = PQexec(conn, query);
+    state->disable_once = saved_disable;
+
+    if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK || PQntuples(res) == 0)
+    {
+        if (res)
+            PQclear(res);
+        return -1;
+    }
+
+    val = PQgetvalue(res, 0, 0);
+    if (val != NULL && val[0] != '\0')
+        *hex_out = pg_strdup(val);
+    PQclear(res);
+
+    return (*hex_out != NULL) ? 0 : -1;
+}
 
 /* Utility macros */
 #ifndef MAX
@@ -118,6 +578,110 @@ tecc_map_to_original_type_oid(Oid enc_oid)
 /* Global scheduler instance - REMOVED for thread safety */
 /* Connection-specific scheduler should be used instead, stored in TeccState structure */
 
+/* ReqID:TECC4.0 - Begin：连接级 HSM 初始化锁（说明见 fe-tecc-integration.h 的
+ * TeccState.hsm_init_lock）。仅在 tecc_setup_hsm_context 的首次初始化段使用，
+ * 软加密（localkms）列在 KEK 路由阶段即早退，不经过该段。 */
+
+/*
+ * tecc_hsm_init_lock_create - 创建连接级 HSM 初始化锁
+ *
+ * 在连接级状态创建时调用（此时还没有任何 worker 线程，故创建本身无竞争）。
+ * 返回 0 成功；内存或互斥量不可用时返回 -1，由调用方降级为不加锁。
+ */
+int
+tecc_hsm_init_lock_create(void *tecc_state)
+{
+    TeccState *state = (TeccState *)tecc_state;
+    pthread_mutex_t *lock;
+
+    if (state == NULL || state->hsm_init_lock != NULL)
+        return 0;
+
+    lock = (pthread_mutex_t *)pg_malloc(sizeof(pthread_mutex_t));
+    if (lock == NULL)
+        return -1;
+
+    if (pthread_mutex_init(lock, NULL) != 0)
+    {
+        pg_free(lock);
+        return -1;
+    }
+
+    state->hsm_init_lock = (void *)lock;
+    return 0;
+}
+
+/* tecc_hsm_init_lock_destroy - 释放连接级 HSM 初始化锁（幂等） */
+void
+tecc_hsm_init_lock_destroy(void *tecc_state)
+{
+    TeccState *state = (TeccState *)tecc_state;
+
+    if (state == NULL || state->hsm_init_lock == NULL)
+        return;
+
+    pthread_mutex_destroy((pthread_mutex_t *)state->hsm_init_lock);
+    pg_free(state->hsm_init_lock);
+    state->hsm_init_lock = NULL;
+}
+
+/*
+ * tecc_hsm_init_device - 初始化 HSM 适配器并写入连接级缓存
+ *
+ * 调用方须持有 TeccState.hsm_init_lock（冷缓存的首次初始化必须串行，见
+ * tecc_setup_hsm_context 内说明）。
+ * 返回 0 成功（*cached_tried = 1，adapter/device 就绪）；返回 -1 失败
+ * （*cached_tried = -1 且 adapter/device 已清空，失败原因已记录日志）。
+ */
+static int
+tecc_hsm_init_device(HsmAdapterInterface **cached_adapter,
+                     HsmDevice **cached_device,
+                     int *cached_tried,
+                     bool is_swxa,
+                     const char *kek_name)
+{
+    /* Tianzheng adapter uses init(NULL)/connect; SWXA uses init(id)/connect.
+     * For column data encryption we pass NULL config - adapter defaults work. */
+    if (is_swxa)
+        *cached_adapter = get_swxa_adapter();
+    else
+        *cached_adapter = get_tzhsm_adapter();
+    if (!*cached_adapter)
+    {
+        *cached_tried = -1;
+        TECC_LOG(TECC_LOG_ERROR, "TECC_ROUTE: Failed to get %s adapter for KEK '%s', refusing software fallback",
+                 is_swxa ? "SWXA" : "HSM", kek_name);
+        return -1;
+    }
+
+    if ((*cached_adapter)->init(cached_device, NULL) != HSM_SUCCESS)
+    {
+        *cached_tried = -1;
+        *cached_adapter = NULL;
+        TECC_LOG(TECC_LOG_ERROR, "TECC_ROUTE: %s init failed for KEK '%s', refusing software fallback",
+                 is_swxa ? "SWXA" : "HSM", kek_name);
+        return -1;
+    }
+
+    if ((*cached_adapter)->connect(*cached_device) != HSM_SUCCESS)
+    {
+        (*cached_adapter)->cleanup(*cached_device);
+        *cached_device = NULL;
+        *cached_tried = -1;
+        *cached_adapter = NULL;
+        TECC_LOG(TECC_LOG_ERROR, "TECC_ROUTE: %s connect failed for KEK '%s', refusing software fallback",
+                 is_swxa ? "SWXA" : "HSM", kek_name);
+        return -1;
+    }
+
+    /* ReqID:TECC4.0 - 发布顺序：adapter/device 先写好（上面的 init/connect 已写），
+     * tried 最后写。无锁快路径以 tried 判断缓存是否可用，故 tried 必须最后发布。 */
+    *cached_tried = 1;
+    return 0;
+}
+
+/* ReqID:TECC4.0 - End：连接级 HSM 初始化锁 */
+
 /*
  * Set up HSM SM4 encryption on context when the KEK's KMS type is HSM.
  * Checks the KEK cache item's kms_type field (2 = hsmkms, 4 = swxakms)
@@ -133,13 +697,8 @@ tecc_setup_hsm_context(TeccCryptoContextExtended *context,
                        TeccEncryptedColumnMetadata *col_meta,
                        void *tecc_state)
 {
-    /* Static caches for both HSM adapter types */
-    static HsmAdapterInterface *tz_hsm_adapter = NULL;
-    static HsmDevice *tz_hsm_device = NULL;
-    static int tz_hsm_tried = 0;  /* 0=not tried, 1=success, -1=failed */
-    static HsmAdapterInterface *swxa_hsm_adapter = NULL;
-    static HsmDevice *swxa_hsm_device = NULL;
-    static int swxa_hsm_tried = 0;
+    /* ReqID:TECC4.0 - 从连接级 TeccState 获取 HSM 缓存（替代进程级 static 变量） */
+    TeccState *state = (TeccState *)tecc_state;
 
     HsmAdapterInterface **cached_adapter;
     HsmDevice **cached_device;
@@ -150,7 +709,7 @@ tecc_setup_hsm_context(TeccCryptoContextExtended *context,
         return 0;
 
     /* Need KEK info and tecc_state to look up KEK cache */
-    if (!col_meta || !tecc_state)
+    if (!col_meta || !state)
     {
         TECC_LOG(TECC_LOG_DEBUG1, "TECC_ROUTE: no col_meta/tecc_state, using SOFTWARE encryption");
         context->hsm_kms_type = 0;
@@ -180,7 +739,7 @@ tecc_setup_hsm_context(TeccCryptoContextExtended *context,
         {
             TECC_LOG(TECC_LOG_DEBUG1, "TECC_ROUTE: no kek_name, using SOFTWARE encryption");
             context->hsm_kms_type = 0;
-            return;
+            return 0;
         }
     }
 
@@ -212,18 +771,18 @@ tecc_setup_hsm_context(TeccCryptoContextExtended *context,
         }
     }
 
-    /* Select which static cache to use */
+    /* ReqID:TECC4.0 - 从连接级 TeccState 获取 HSM 缓存（替代进程级 static 变量） */
     if (is_swxa)
     {
-        cached_adapter = &swxa_hsm_adapter;
-        cached_device = &swxa_hsm_device;
-        cached_tried = &swxa_hsm_tried;
+        cached_adapter = (HsmAdapterInterface **)&state->hsm_swxa_adapter;
+        cached_device = (HsmDevice **)&state->hsm_swxa_device;
+        cached_tried = &state->hsm_swxa_tried;
     }
     else
     {
-        cached_adapter = &tz_hsm_adapter;
-        cached_device = &tz_hsm_device;
-        cached_tried = &tz_hsm_tried;
+        cached_adapter = (HsmAdapterInterface **)&state->hsm_tz_adapter;
+        cached_device = (HsmDevice **)&state->hsm_tz_device;
+        cached_tried = &state->hsm_tz_tried;
     }
 
     /* If we already tried and failed, don't retry */
@@ -247,51 +806,76 @@ tecc_setup_hsm_context(TeccCryptoContextExtended *context,
         return 0;
     }
 
-    /* First time: try to initialize the appropriate HSM adapter */
-    if (is_swxa)
-        *cached_adapter = get_swxa_adapter();
-    else
-        *cached_adapter = get_tzhsm_adapter();
-    if (!*cached_adapter)
+    /* ReqID:TECC4.0 - 首次初始化必须串行执行：同态字段级并行的 worker 线程会并发
+     * 到达这里，无锁时各自 init + SDF_OpenSession，而上面的缓存槽只有一份、只留
+     * 最后一个写入者，其余 HsmDevice（含会话句柄与各自的会话密钥句柄缓存）无人
+     * disconnect/cleanup，一直挂到进程退出；交错还可能把 tried 写成 -1，使同一
+     * 连接后续语句非确定性地报"拒绝软件回退"。
+     * 因此：上面的 -1/复用分支是快路径、不加锁（本函数每值都会被调用，锁不能进
+     * 热路径），只有冷缓存这一次进锁，等锁期间别人做完了就走下面的双检。
+     * 锁未创建（state->hsm_init_lock == NULL）时降级为不加锁，行为与改动前一致。 */
+    if (state->hsm_init_lock != NULL)
+        pthread_mutex_lock((pthread_mutex_t *)state->hsm_init_lock);
+
+    /* 双检：等锁期间可能已有其它线程完成初始化（成功或失败） */
+    if (*cached_tried == 0 &&
+        tecc_hsm_init_device(cached_adapter, cached_device, cached_tried,
+                             is_swxa, col_meta->kek_name) != 0)
     {
-        *cached_tried = -1;
-        TECC_LOG(TECC_LOG_ERROR, "TECC_ROUTE: Failed to get %s adapter for KEK '%s', refusing software fallback",
-                 is_swxa ? "SWXA" : "HSM", col_meta->kek_name);
+        if (state->hsm_init_lock != NULL)
+            pthread_mutex_unlock((pthread_mutex_t *)state->hsm_init_lock);
         context->hsm_kms_type = 0;
         return -1;
     }
 
-    /* Tianzheng adapter uses init(NULL)/connect; SWXA uses init(id)/connect.
-     * For column data encryption we pass NULL config - adapter defaults work. */
-    if ((*cached_adapter)->init(cached_device, NULL) != HSM_SUCCESS)
+    if (state->hsm_init_lock != NULL)
+        pthread_mutex_unlock((pthread_mutex_t *)state->hsm_init_lock);
+
+    /* 初始化未就绪（本线程失败，或等锁期间别的线程失败）：与上面的拒绝语义一致 */
+    if (*cached_tried < 0 || *cached_adapter == NULL || *cached_device == NULL)
     {
-        *cached_tried = -1;
-        *cached_adapter = NULL;
         TECC_LOG(TECC_LOG_ERROR, "TECC_ROUTE: %s init failed for KEK '%s', refusing software fallback",
                  is_swxa ? "SWXA" : "HSM", col_meta->kek_name);
         context->hsm_kms_type = 0;
         return -1;
     }
 
-    if ((*cached_adapter)->connect(*cached_device) != HSM_SUCCESS)
-    {
-        (*cached_adapter)->cleanup(*cached_device);
-        *cached_device = NULL;
-        *cached_tried = -1;
-        *cached_adapter = NULL;
-        TECC_LOG(TECC_LOG_ERROR, "TECC_ROUTE: %s connect failed for KEK '%s', refusing software fallback",
-                 is_swxa ? "SWXA" : "HSM", col_meta->kek_name);
-        context->hsm_kms_type = 0;
-        return -1;
-    }
-
-    *cached_tried = 1;
     context->hsm_adapter = (void *)*cached_adapter;
     context->hsm_device = (void *)*cached_device;
     context->hsm_kms_type = is_swxa ? 4 : 2;
     TECC_LOG(TECC_LOG_DEBUG1, "TECC_ROUTE: %s initialized for KEK '%s', using HARDWARE encryption",
              is_swxa ? "SWXA" : "HSM", col_meta->kek_name);
     return 0;
+}
+
+/*
+ * ReqID:TECC4.0 - Bug 9384: 结果列背后没有真实加密列时（纯加密常量表达式，如
+ * coalesce(10::int2_enc encrypted with (dek = d), NULL) 或裸加密常量），预处理
+ * 阶段不会记录 pending_expr_col_*，上游按表名 "unknown" 查不到列元数据，
+ * col_meta 为 NULL；但密文头 dek_dist_oid 仍能解析出 DEK 名。
+ *
+ * HSM 路由必须按"密文实际使用的 DEK"判定：否则 tecc_setup_hsm_context 整段被
+ * 跳过，hsm_kms_type 保持 0，硬加密的裸 [IV(16)][SM4-CBC] 密文会被交给软件
+ * 批量解密（期望 [version][auth_tag][IV][ct_len][ct] 包装），格式校验失败，
+ * 报 "Batch decrypt: item N failed"。
+ *
+ * 这里合成一份只含 dek_name 的最小元数据：tecc_setup_hsm_context 内部会用
+ * dek_name 反查 DEK/KEK 缓存补齐 kek_name，因此无需真实列元数据。
+ * 调用方用 tecc_free_encrypted_column_metadata 释放（dek_name 与补齐的 kek_name
+ * 都会一并释放）。DEK 名为空时返回 NULL，调用方保持原有的软件路由行为。
+ */
+static TeccEncryptedColumnMetadata *
+tecc_hsm_meta_synth_from_dek(const char *dek_name)
+{
+    TeccEncryptedColumnMetadata *meta;
+
+    if (dek_name == NULL || dek_name[0] == '\0')
+        return NULL;
+
+    meta = pg_malloc0(sizeof(TeccEncryptedColumnMetadata));
+    meta->dek_name = pg_strdup(dek_name);
+
+    return meta;
 }
 
 /*
@@ -329,8 +913,7 @@ tecc_get_scheduler_from_conn(PGconn *conn)
 /* Begin - ReqID:TECC4.0 - Decryption validation functions */
 static bool tecc_validate_hex_string(const char *hex_string, size_t *valid_length);
 static bool tecc_validate_cipherdata_integrity(const CipherDataType *cipherdata, size_t cipher_len);
-static bool tecc_detect_tampering(const CipherDataType *cipherdata, size_t cipher_len,
-                                 const unsigned char *dek_key, size_t dek_key_len);
+static bool tecc_detect_tampering(const CipherDataType *cipherdata, size_t cipher_len);
 /* End - ReqID:TECC4.0 - Decryption validation functions */
 
 /* Begin - ReqID:TECC4.0 - Batch optimization functions */
@@ -347,46 +930,123 @@ static TeccUnifiedEncryptResult *tecc_unified_encrypt_string_with_preloaded_key(
     const unsigned char *preloaded_derived_auth_key);
 /* End - ReqID:TECC4.0 - Batch optimization functions */
 
-#if 0
-/* DEPRECATED: This function uses global scheduler and is not thread-safe */
-static TeccUnifiedDecryptResult *tecc_unified_decrypt_hex_internal(
-    const char *hex_string,
-    const char *table_name,
-    const char *column_name)
-{
-    TeccCryptoScheduler *scheduler = g_crypto_scheduler;
-
-    /* Validate parameters */
-    if (!hex_string || !table_name || !column_name)
-    {
-        TECC_SCHEDULER_ERROR("Invalid parameters to unified decrypt");
-        return NULL;
-    }
-
-    TECC_SCHEDULER_DEBUG("Unified decrypt: %s.%s (hex_len=%zu)",
-                        table_name, column_name, strlen(hex_string));
-
-    /* Ensure scheduler is initialized */
-    if (!tecc_crypto_scheduler_ensure_initialized())
-    {
-        TECC_SCHEDULER_ERROR("Failed to initialize scheduler for decryption");
-        return NULL;
-    }
-
-    /* Call internal implementation with scheduler */
-    return tecc_unified_decrypt_hex_internal_with_scheduler(conn,
-                                                           scheduler,
-                                                           hex_string,
-                                                           table_name,
-                                                           column_name);
-}
-#endif
-
 static TeccAlgorithmSupport tecc_unified_get_algorithm_support_internal_with_scheduler(
     PGconn *conn,
     TeccCryptoScheduler *scheduler,
     const char *table_name,
     const char *column_name);
+
+/* ReqID:TECC4.0 - HE 批量解密并发：并行阈值（行数低于此走串行，避免线程开销） */
+#define TECC_HE_PARALLEL_MIN_ROWS 256
+
+/* ReqID:TECC4.0 - HE 批量解密并发优化：worker 线程参数。
+ * Windows 下 libpq 的 pthread-win32 仅实现 mutex/thread-local，无
+ * pthread_create，故 worker 结构与函数仅非 Windows 平台编译。 */
+#ifndef WIN32
+typedef struct TeccHeWorkerArg
+{
+    int             start;
+    int             end;
+    char          **hex_strings;
+    const BIGNUM  *ec_priv;     /* 共享只读 EC 私钥（NULL = 硬编码 fallback） */
+    const BIGNUM  *ff_priv;     /* 共享只读 FF 私钥 */
+    TeccUnifiedDecryptResult **results;
+} TeccHeWorkerArg;
+
+/* ReqID:TECC4.0 - HE 批量解密 worker 线程：独立 BN_CTX，处理 [start, end) 行。
+ * 私钥为共享只读 BIGNUM*（OpenSSL BN 只读访问线程安全），结果按行号写入
+ * 各自区间（无竞争），pg_malloc/pg_free 直接映射 malloc/free（线程安全）。 */
+static void *
+tecc_he_decrypt_worker(void *arg)
+{
+    TeccHeWorkerArg *wa = (TeccHeWorkerArg *)arg;
+    BN_CTX *ctx = BN_CTX_new();
+    int     i;
+
+    for (i = wa->start; i < wa->end; i++)
+    {
+        unsigned char *bin = NULL;
+        size_t         bin_len = 0;
+        TeccParsedCipherdata pd;
+
+        if (wa->hex_strings[i] == NULL)
+            continue;
+
+        if (tecc_formatter_hex_decode(wa->hex_strings[i], &bin, &bin_len) == 0 &&
+            bin != NULL && bin_len >= 24 &&
+            tecc_formatter_parse_cipherdata((CipherDataType *)bin, bin_len, &pd) == 0 &&
+            pd.rnd_data_len == 0 &&
+            (pd.eg_add_data_len > 0 || pd.eg_mul_data_len > 0))
+        {
+            char        *he_str = NULL;
+            size_t       he_str_len = 0;
+            const BIGNUM *row_priv = (pd.eg_add_data_len > 0) ? wa->ec_priv : wa->ff_priv;
+
+            if (ctx != NULL &&
+                tecc_he_decrypt_cipherdata_ex(pd.eg_add_data, pd.eg_add_data_len,
+                                              pd.eg_mul_data, pd.eg_mul_data_len,
+                                              row_priv, ctx,
+                                              &he_str, &he_str_len) == 0 &&
+                he_str != NULL)
+            {
+                wa->results[i] = pg_malloc0(sizeof(TeccUnifiedDecryptResult));
+                if (wa->results[i] != NULL)
+                {
+                    wa->results[i]->plaintext = he_str;
+                    wa->results[i]->plain_len = he_str_len;
+                    wa->results[i]->skipped_decrypt = true;
+                    wa->results[i]->error_code = TECC_CRYPTO_SUCCESS;
+                }
+                else
+                    pg_free(he_str);
+            }
+        }
+        if (bin)
+            pg_free(bin);
+    }
+
+    if (ctx)
+        BN_CTX_free(ctx);
+    return NULL;
+}
+#endif /* !WIN32 */
+
+/* ReqID:TECC4.0 - HE 并行 worker 数：TECC_HE_THREADS 环境变量（0/1=串行），
+ * 默认 8，实际取 clamp(N, 1, min(核数, 行数))。Windows 下无 pthread_create，
+ * 恒返回 1（串行）。 */
+static int
+tecc_he_get_thread_count(int row_count)
+{
+#ifdef WIN32
+    /* ReqID:TECC4.0 - Windows 禁用并行（pthread-win32 无 pthread_create） */
+    return 1;
+#else
+    const char *env;
+    long        cores;
+    int         n = 8;
+
+    env = getenv("TECC_HE_THREADS");
+    if (env != NULL && env[0] != '\0')
+    {
+        n = atoi(env);
+        if (n <= 1)
+            return 1;
+    }
+
+    cores = sysconf(_SC_NPROCESSORS_ONLN);
+    if (cores < 1)
+        cores = 1;
+    if (cores > 256)
+        cores = 256;
+    if (n > (int)cores)
+        n = (int)cores;
+    if (n > row_count)
+        n = row_count;
+    if (n < 1)
+        n = 1;
+    return n;
+#endif
+}
 
 static TeccUnifiedDecryptResult *tecc_unified_decrypt_hex_internal_with_scheduler(
     PGconn *conn,
@@ -394,9 +1054,11 @@ static TeccUnifiedDecryptResult *tecc_unified_decrypt_hex_internal_with_schedule
     const char *hex_string,
     const char *table_name,
     const char *column_name,
-    TeccCryptoContext *external_context);
+    TeccCryptoContext *external_context,
+    bool supports_he_add,
+    bool supports_he_mul);
 
-static TeccUnifiedEncryptResult *tecc_unified_encrypt_string_with_operator_internal_with_scheduler(
+static TeccUnifiedEncryptResult *tecc_encrypt_search_with_rnd(
     PGconn *conn,
     TeccCryptoScheduler *scheduler,
     const char *plaintext,
@@ -411,12 +1073,15 @@ static TeccUnifiedEncryptResult *tecc_unified_encrypt_string_internal_with_sched
     const char *plaintext,
     const char *table_name,
     const char *column_name,
+    const char *schema_name,
     const char *kek_name,
     const char *dek_name,
     Oid collation_oid,
     void *tecc_state,
     TeccEncryptedColumnMetadata *col_meta_in,
-    TeccCryptoContext *external_context);
+    TeccCryptoContext *external_context,
+    bool supports_he_add,
+    bool supports_he_mul);
 
 /* Thread-safe encryption function with connection parameter */
 TeccUnifiedEncryptResult *tecc_unified_encrypt_string_with_conn(
@@ -667,21 +1332,78 @@ tecc_unified_encrypt_string(PGconn *conn,
                                                               plaintext,
                                                               table_name,
                                                               column_name,
+                                                              NULL, /* schema_name - 未限定，按 search_path 查找 */
                                                               kek_name,
                                                               dek_name,
                                                               0, /* No collation */
                                                               tecc_get_state(conn),
                                                               NULL,
-                                                              external_context);
+                                                              external_context,
+                                                              false,   /* supports_he_add */
+                                                              false);  /* supports_he_mul */
+}
+
+/*
+ * Schema-aware unified encryption.
+ * For DML literal encryption on schema-qualified tables (e.g. sch1.tb1):
+ * the plain tecc_unified_encrypt_string() has no schema parameter and its
+ * metadata lookup falls back to search_path, which misses tables outside
+ * the current search_path. Pass the target table's real schema here so the
+ * scheduler can resolve column metadata (and DEK) for that table.
+ */
+TeccUnifiedEncryptResult *
+tecc_unified_encrypt_string_with_schema(PGconn *conn,
+                                        const char *schema_name,
+                                        const char *plaintext,
+                                        const char *table_name,
+                                        const char *column_name,
+                                        const char *kek_name,
+                                        const char *dek_name,
+                                        TeccCryptoContext *external_context)
+{
+    TeccCryptoScheduler *scheduler;
+
+    /* Validate parameters */
+    if (conn == NULL || plaintext == NULL || table_name == NULL || column_name == NULL)
+    {
+        TECC_SCHEDULER_ERROR("Invalid parameters to tecc_unified_encrypt_string_with_schema");
+        return NULL;
+    }
+
+    /* Get scheduler from connection state */
+    scheduler = tecc_get_scheduler_from_conn(conn);
+    if (scheduler == NULL)
+    {
+        TECC_SCHEDULER_ERROR("Failed to get crypto scheduler from connection");
+        return NULL;
+    }
+
+    /* Call internal implementation with scheduler */
+    return tecc_unified_encrypt_string_internal_with_scheduler(scheduler,
+                                                              plaintext,
+                                                              table_name,
+                                                              column_name,
+                                                              schema_name,
+                                                              kek_name,
+                                                              dek_name,
+                                                              0, /* No collation */
+                                                              tecc_get_state(conn),
+                                                              NULL,
+                                                              external_context,
+                                                              false,   /* supports_he_add */
+                                                              false);  /* supports_he_mul */
 }
 
 /*
  * ReqID:TECC4.0 - Unified encryption with explicit algorithm options.
  * For scenarios where column metadata is not in the cache (e.g. CREATE TABLE
  * DEFAULT encryption). The caller specifies algorithm support directly.
+ *
+ * collation_locale is an optional override used only when the metadata cache
+ * lookup below finds nothing (see tecc_unified_encrypt_string_with_options_and_collation).
  */
-TeccUnifiedEncryptResult *
-tecc_unified_encrypt_string_with_options(
+static TeccUnifiedEncryptResult *
+tecc_unified_encrypt_string_with_options_internal(
     PGconn *conn,
     const char *plaintext,
     const char *table_name,
@@ -693,6 +1415,11 @@ tecc_unified_encrypt_string_with_options(
     bool supports_det,
     bool supports_ope,
     bool supports_search,
+    bool supports_he_add,
+    bool supports_he_mul,
+    const char *collation_locale,
+    const char *he_add_dek_name,
+    const char *he_mul_dek_name,
     TeccCryptoContext *external_context)
 {
     TeccCryptoScheduler *scheduler;
@@ -721,11 +1448,16 @@ tecc_unified_encrypt_string_with_options(
     col_meta_local.enable_ope = supports_ope;
     col_meta_local.enable_search = supports_search;
     col_meta_local.dek_name = (char *)dek_name;
+    col_meta_local.enable_he_add = supports_he_add;
+    col_meta_local.enable_he_mul = supports_he_mul;
     col_meta_local.kek_name = (char *)kek_name;
     /* ReqID:TECC4.0 - Look up collation from cache so DET/OPE normalization
      * produces the same ICU sort key as the INSERT VALUES path. Without this,
      * constants in INSERT...SELECT get encrypted with collation=InvalidOid,
-     * producing different DET ciphertext than the VALUES path → equality fails. */
+     * producing different DET ciphertext than the VALUES path → equality fails.
+     *
+     * ReqID:TECC4.0 - 建表路径（列还没入库，缓存必然 miss）由调用方显式传入
+     * collation_locale，否则同一情景会在建表与查询之间产生两套密文。 */
     col_meta_local.collation_oid = InvalidOid;
     col_meta_local.collation_locale = NULL;
     {
@@ -739,74 +1471,121 @@ tecc_unified_encrypt_string_with_options(
             cache_item =
                 tecc_cache_get_encrypted_column_by_name(
                     state, db_name, "public", table_name, column_name);
+            if (cache_item == NULL)
+                cache_item =
+                    tecc_cache_get_encrypted_column_by_name(
+                        state, db_name, NULL, table_name, column_name);
             if (cache_item != NULL)
             {
                 col_meta_local.collation_oid = cache_item->collation_oid;
                 col_meta_local.collation_locale = cache_item->collation_locale;
+                /* ReqID:TECC4.0 - 带上 table_oid/column_attnum，使调度器能按
+                 * hg_encrypted_column_args 解析列真实的 HE_ADD_DEK/HE_MUL_DEK
+                 * （一列多 DEK）。缺失时该解析被跳过，加密器回退到列级 DEK
+                 * 找 HE 公钥：纯 HE 列还能靠传入的 HE DEK 名兜住，但
+                 * det+he-add 这类混合列会拿对称 DEK 去找 EC 公钥而失败。 */
+                col_meta_local.table_oid = cache_item->table_oid;
+                col_meta_local.column_attnum = (int16) cache_item->column_attnum;
             }
         }
     }
+
+    /* Cache miss (or a column the cache knows nothing about yet): fall back to
+     * the caller-supplied locale so normalization matches the query paths. */
+    if (col_meta_local.collation_locale == NULL &&
+        collation_locale != NULL && collation_locale[0] != '\0')
+        col_meta_local.collation_locale = (char *)collation_locale;
+
+    /* ReqID:TECC4.0 - 同一情形下的同态 DEK 名：目标列还不存在的写入路径
+     * （CTAS、视图/物化视图定义里的 cast、加密列 DEFAULT）拿不到
+     * hg_encrypted_column_args，同态 DEK 只能由调用方从 ENCRYPTED WITH 里解析后
+     * 传入。语义与 TeccEncryptedColumnMetadata.he_add_dek/he_mul_dek 一致
+     * （见 tecc_column_cache.c 里从缓存项构造该结构处）。 */
+    col_meta_local.he_add_dek = (char *)he_add_dek_name;
+    col_meta_local.he_mul_dek = (char *)he_mul_dek_name;
 
     return tecc_unified_encrypt_string_internal_with_scheduler(
         scheduler,
         plaintext,
         table_name,
         column_name,
+        NULL, /* schema_name - 未限定，按 search_path 查找 */
         kek_name,
         dek_name,
         0, /* No collation */
         tecc_get_state(conn),
         &col_meta_local,
-        external_context);
+        external_context,
+        supports_he_add,
+        supports_he_mul);
 }
 
 /*
- * Unified encryption with operator type support for SEARCH algorithm interface
- * Note: This function now requires connection parameter for thread safety
+ * ReqID:TECC4.0 - Public entry: collation comes from the metadata cache only.
  */
 TeccUnifiedEncryptResult *
-tecc_unified_encrypt_string_with_operator(PGconn *conn,
-                                         const char *plaintext,
-                                         const char *table_name,
-                                         const char *column_name,
-                                         const char *kek_name,
-                                         const char *dek_name,
-                                         TeccOperatorType operator_type,
-                                         TeccCryptoContext *external_context)
+tecc_unified_encrypt_string_with_options(
+    PGconn *conn,
+    const char *plaintext,
+    const char *table_name,
+    const char *column_name,
+    const char *kek_name,
+    const char *dek_name,
+    Oid data_type_oid,
+    int32 type_mod,
+    bool supports_det,
+    bool supports_ope,
+    bool supports_search,
+    bool supports_he_add,
+    bool supports_he_mul,
+    TeccCryptoContext *external_context)
 {
-    TeccCryptoScheduler *scheduler;
-
-    /* Validate parameters */
-    if (conn == NULL || plaintext == NULL || table_name == NULL || column_name == NULL)
-    {
-        TECC_SCHEDULER_ERROR("Invalid parameters to tecc_unified_encrypt_string_with_operator");
-        return NULL;
-    }
-
-    /* Get scheduler from connection state */
-    scheduler = tecc_get_scheduler_from_conn(conn);
-    if (scheduler == NULL)
-    {
-        TECC_SCHEDULER_ERROR("Failed to get crypto scheduler from connection");
-        return NULL;
-    }
-
-    /* Call internal implementation with scheduler */
-    return tecc_unified_encrypt_string_with_operator_internal_with_scheduler(conn,
-                                                                            scheduler,
-                                                                            plaintext,
-                                                                            table_name,
-                                                                            column_name,
-                                                                            kek_name,
-                                                                            dek_name,
-                                                                            operator_type);
+    return tecc_unified_encrypt_string_with_options_internal(
+        conn, plaintext, table_name, column_name, kek_name, dek_name,
+        data_type_oid, type_mod, supports_det, supports_ope, supports_search,
+        supports_he_add, supports_he_mul, NULL, NULL, NULL, external_context);
 }
 
 /*
- * Internal encryption with operator type support and scheduler parameter
+ * ReqID:TECC4.0 - Public entry for callers that know the collation the column
+ * will end up with (CREATE TABLE ... DEFAULT, before the table exists), and,
+ * for the same reason, the homomorphic DEK names the column will be bound to
+ * (he_add_dek_name / he_mul_dek_name, from the ENCRYPTED WITH clause).
+ */
+TeccUnifiedEncryptResult *
+tecc_unified_encrypt_string_with_options_and_collation(
+    PGconn *conn,
+    const char *plaintext,
+    const char *table_name,
+    const char *column_name,
+    const char *kek_name,
+    const char *dek_name,
+    Oid data_type_oid,
+    int32 type_mod,
+    bool supports_det,
+    bool supports_ope,
+    bool supports_search,
+    bool supports_he_add,
+    bool supports_he_mul,
+    const char *collation_locale,
+    const char *he_add_dek_name,
+    const char *he_mul_dek_name,
+    TeccCryptoContext *external_context)
+{
+    return tecc_unified_encrypt_string_with_options_internal(
+        conn, plaintext, table_name, column_name, kek_name, dek_name,
+        data_type_oid, type_mod, supports_det, supports_ope, supports_search,
+        supports_he_add, supports_he_mul, collation_locale,
+        he_add_dek_name, he_mul_dek_name, external_context);
+}
+
+
+/*
+ * SEARCH algorithm encryption with RND ciphertext generation for storage.
+ * Used by streaming encryption path (tecc_stream_encrypt_data).
  */
 static TeccUnifiedEncryptResult *
-tecc_unified_encrypt_string_with_operator_internal_with_scheduler(
+tecc_encrypt_search_with_rnd(
     PGconn *conn,
     TeccCryptoScheduler *scheduler,
     const char *plaintext,
@@ -836,7 +1615,7 @@ tecc_unified_encrypt_string_with_operator_internal_with_scheduler(
     /* Validate parameters */
     if (plaintext == NULL || table_name == NULL || column_name == NULL)
     {
-        TECC_SCHEDULER_ERROR("Invalid parameters to tecc_unified_encrypt_string_with_operator_internal_with_scheduler");
+        TECC_SCHEDULER_ERROR("Invalid parameters to tecc_encrypt_search_with_rnd");
         return NULL;
     }
 
@@ -943,9 +1722,25 @@ tecc_unified_encrypt_string_with_operator_internal_with_scheduler(
     context->core.algo_support.supports_det = col_meta->enable_det;
     context->core.algo_support.supports_ope = col_meta->enable_ope;
     context->core.algo_support.supports_search = col_meta->enable_search;
+        context->core.algo_support.supports_he_add = col_meta->enable_he_add;
+        context->core.algo_support.supports_he_mul = col_meta->enable_he_mul;
+    /* Begin - ReqID:TECC4.0 - HE algorithm support */
+    context->core.algo_support.supports_he_add = col_meta->enable_he_add;
+    context->core.algo_support.supports_he_mul = col_meta->enable_he_mul;
+    /* End - ReqID:TECC4.0 */
 
-    /* Set selected algorithms - SEARCH algorithm is selected for this operation */
-    context->core.selected_algorithms = TECC_ALGO_RND;
+    /* Set selected algorithms.
+     * ReqID:TECC4.0 - HE-only columns (he-add/he-mul, no symmetric algo) must
+     * NOT select RND, otherwise the RND slot gets filled and the HE decrypt
+     * path (which requires rnd_data_len == 0) is skipped.  For HE-only, only
+     * the HE algorithm flags are set; selected_algorithms stays 0 (RND slot
+     * empty).  Mixed columns keep RND. */
+    if (col_meta != NULL &&
+        (col_meta->enable_he_add || col_meta->enable_he_mul) &&
+        !col_meta->enable_det && !col_meta->enable_ope && !col_meta->enable_search)
+        context->core.selected_algorithms = 0;
+    else
+        context->core.selected_algorithms = TECC_ALGO_RND;
 
     /* Get DEK key with pre-derived SM4-RND keys */
     ret = tecc_key_manager_adapter_get_dek_key_ext(scheduler->key_adapter,
@@ -1220,7 +2015,478 @@ tecc_unified_decrypt_hex(PGconn *conn,
                                                            hex_string,
                                                            table_name,
                                                            column_name,
-                                                           external_context);
+                                                           external_context,
+                                                           false,   /* supports_he_add */
+                                                           false);  /* supports_he_mul */
+}
+
+/* ReqID:TECC4.0 - Decrypt raw algorithm segment hex for tecc_decrypt_raw(). */
+TeccUnifiedDecryptResult *
+tecc_decrypt_raw_segment_hex(PGconn *conn,
+							 const char *hex_string,
+							 const char *algorithm,
+							 const char *schema_name,
+							 const char *table_name,
+							 const char *column_name,
+							 TeccCryptoContext *external_context)
+{
+	TeccCryptoScheduler *scheduler;
+	TeccUnifiedDecryptResult *result;
+	TeccCryptoContextExtended *context;
+	bool		context_is_external;
+	TeccState  *state;
+	TeccColumnCacheItem *cache_item;
+	TeccEncryptedColumnMetadata *col_meta;
+	TeccAlgorithmType algo_type;
+	bool		is_he_add;
+	bool		is_he_mul;
+	unsigned char *cipher_data;
+	size_t		cipher_len;
+	unsigned char *dek_key;
+	size_t		dek_key_len;
+	unsigned char *derived_enc_key;
+	unsigned char *derived_auth_key;
+	unsigned char *plaintext;
+	size_t		plain_len;
+	size_t		buffer_size;
+	const unsigned char *decrypt_cipher_data;
+	size_t		decrypt_cipher_len;
+	uint32_t	text_space_count;
+	int			ret;
+	TeccFormatterErrorCode fmt_ret;
+
+	if (conn == NULL || hex_string == NULL || algorithm == NULL ||
+		table_name == NULL || column_name == NULL)
+		return NULL;
+
+	scheduler = tecc_get_scheduler_from_conn(conn);
+	state = tecc_get_state(conn);
+	if (scheduler == NULL || state == NULL)
+		return NULL;
+
+	result = pg_malloc0(sizeof(TeccUnifiedDecryptResult));
+	if (result == NULL)
+		return NULL;
+	result->error_code = TECC_CRYPTO_SUCCESS;
+	is_he_add = false;
+	is_he_mul = false;
+
+	if (pg_strcasecmp(algorithm, "rnd") == 0)
+		algo_type = TECC_ALGO_RND;
+	else if (pg_strcasecmp(algorithm, "ope") == 0)
+		algo_type = TECC_ALGO_OPE;
+	else if (pg_strcasecmp(algorithm, "det") == 0)
+		algo_type = TECC_ALGO_DET;
+	else if (pg_strcasecmp(algorithm, "he_add") == 0 ||
+			 pg_strcasecmp(algorithm, "he-add") == 0)
+	{
+		algo_type = TECC_ALGO_RND;
+		is_he_add = true;
+	}
+	else if (pg_strcasecmp(algorithm, "he_mul") == 0 ||
+			 pg_strcasecmp(algorithm, "he-mul") == 0)
+	{
+		algo_type = TECC_ALGO_RND;
+		is_he_mul = true;
+	}
+	else if (pg_strcasecmp(algorithm, "search") == 0)
+	{
+		result->error_code = TECC_CRYPTO_ALGO_ERROR;
+		snprintf(result->error_msg, sizeof(result->error_msg),
+				 "SEARCH raw segment decryption is not supported");
+		return result;
+	}
+	else
+	{
+		result->error_code = TECC_CRYPTO_ALGO_ERROR;
+		snprintf(result->error_msg, sizeof(result->error_msg),
+				 "raw segment decryption is not supported for algorithm \"%s\"",
+				 algorithm);
+		return result;
+	}
+
+	cache_item = tecc_cache_get_encrypted_column_by_name(state, PQdb(conn),
+														 schema_name,
+														 table_name,
+														 column_name);
+	if (cache_item == NULL)
+	{
+		result->error_code = TECC_CRYPTO_KEY_ERROR;
+		snprintf(result->error_msg, sizeof(result->error_msg),
+				 "encrypted column metadata not found for %s.%s",
+				 table_name, column_name);
+		return result;
+	}
+
+	col_meta = tecc_convert_column_cache_item_to_metadata(state, cache_item);
+	if (col_meta == NULL ||
+		(!is_he_add && !is_he_mul &&
+		 (col_meta->dek_name == NULL || col_meta->dek_name[0] == '\0')))
+	{
+		result->error_code = TECC_CRYPTO_KEY_ERROR;
+		snprintf(result->error_msg, sizeof(result->error_msg),
+				 "DEK metadata not found for %s.%s", table_name, column_name);
+		if (col_meta != NULL)
+			tecc_free_encrypted_column_metadata(col_meta);
+		return result;
+	}
+
+	/* ReqID:TECC4.0 - Check DEK USAGE before decoding ciphertext or loading
+	 * key material.  HE algorithms use their algorithm-specific DEK below. */
+	if (!is_he_add && !is_he_mul &&
+		!tecc_dek_has_usage_permission(state, col_meta->dek_name))
+	{
+		result->error_code = TECC_CRYPTO_KEY_ERROR;
+		snprintf(result->error_msg, sizeof(result->error_msg),
+				 "permission denied for DEK \"%s\"", col_meta->dek_name);
+		tecc_free_encrypted_column_metadata(col_meta);
+		return result;
+	}
+
+	fmt_ret = tecc_formatter_hex_decode(hex_string, &cipher_data, &cipher_len);
+	if (fmt_ret != TECC_FORMATTER_SUCCESS)
+	{
+		result->error_code = TECC_CRYPTO_FORMAT_ERROR;
+		snprintf(result->error_msg, sizeof(result->error_msg),
+				 "Failed to decode raw ciphertext segment");
+		tecc_free_encrypted_column_metadata(col_meta);
+		return result;
+	}
+
+	if (is_he_add || is_he_mul)
+	{
+		const char *he_dek_name;
+		char	   *he_plain;
+		size_t		he_plain_len;
+		Oid			seg_dek_id;
+		int			he_ret;
+
+		he_dek_name = NULL;
+		he_plain = NULL;
+		he_plain_len = 0;
+		seg_dek_id = InvalidOid;
+		if (cipher_len >= CIPHERDATA_HE_DEK_ID_SIZE)
+			seg_dek_id = *(Oid *)cipher_data;
+		if (OidIsValid(seg_dek_id))
+			he_dek_name = tecc_cache_get_dek_name_by_distributed_id(state,
+																	seg_dek_id);
+		if (he_dek_name == NULL && col_meta != NULL)
+		{
+			if (is_he_add)
+				he_dek_name = col_meta->he_add_dek;
+			else
+				he_dek_name = col_meta->he_mul_dek;
+			if (he_dek_name == NULL || he_dek_name[0] == '\0')
+				he_dek_name = col_meta->dek_name;
+		}
+
+		if (he_dek_name == NULL || he_dek_name[0] == '\0')
+		{
+			result->error_code = TECC_CRYPTO_KEY_ERROR;
+			snprintf(result->error_msg, sizeof(result->error_msg),
+					 "HE DEK metadata not found for %s.%s",
+					 table_name, column_name);
+			pg_free(cipher_data);
+			tecc_free_encrypted_column_metadata(col_meta);
+			return result;
+		}
+
+		/* ReqID:TECC4.0 - HE raw decryption requires USAGE on the DEK
+		 * selected by the ciphertext segment, not the column's base DEK. */
+		if (!tecc_dek_has_usage_permission(state, he_dek_name))
+		{
+			result->error_code = TECC_CRYPTO_KEY_ERROR;
+			snprintf(result->error_msg, sizeof(result->error_msg),
+					 "permission denied for DEK \"%s\"", he_dek_name);
+			pg_free(cipher_data);
+			tecc_free_encrypted_column_metadata(col_meta);
+			return result;
+		}
+
+		he_ret = tecc_he_decrypt_cipherdata(is_he_add ? cipher_data : NULL,
+											is_he_add ? cipher_len : 0,
+											is_he_mul ? cipher_data : NULL,
+											is_he_mul ? cipher_len : 0,
+											he_dek_name, state,
+											&he_plain, &he_plain_len);
+		if (he_ret != TECC_ALGO_SUCCESS || he_plain == NULL)
+		{
+			result->error_code = TECC_CRYPTO_DATA_ERROR;
+			snprintf(result->error_msg, sizeof(result->error_msg),
+					 "%s raw segment decryption failed",
+					 is_he_add ? "HE_ADD" : "HE_MUL");
+			if (he_plain != NULL)
+				pg_free(he_plain);
+		}
+		else
+		{
+			result->plaintext = he_plain;
+			result->plain_len = he_plain_len;
+			scheduler->decryption_count++;
+		}
+
+		pg_free(cipher_data);
+		tecc_free_encrypted_column_metadata(col_meta);
+		return result;
+	}
+
+	context_is_external = (external_context != NULL);
+	if (context_is_external)
+	{
+		context = external_context;
+		tecc_crypto_context_reset(context);
+		strlcpy(context->table_name, table_name, NAMEDATALEN);
+		strlcpy(context->column_name, column_name, NAMEDATALEN);
+	}
+	else
+	{
+		context = tecc_create_crypto_context_with_pool(table_name, column_name,
+													  NULL, NULL);
+		if (context == NULL)
+		{
+			result->error_code = TECC_CRYPTO_MEMORY_ERROR;
+			snprintf(result->error_msg, sizeof(result->error_msg),
+					 "Failed to create crypto context");
+			pg_free(cipher_data);
+			tecc_free_encrypted_column_metadata(col_meta);
+			return result;
+		}
+	}
+
+	context->core.algo_support.supports_det = col_meta->enable_det;
+	context->core.algo_support.supports_ope = col_meta->enable_ope;
+	context->core.algo_support.supports_search = col_meta->enable_search;
+	context->core.algo_support.supports_he_add = col_meta->enable_he_add;
+	context->core.algo_support.supports_he_mul = col_meta->enable_he_mul;
+	context->core.data_type = tecc_map_to_original_type_oid(col_meta->data_type_original_oid);
+	context->core.type_mod = col_meta->data_type_original_mod;
+	context->core.collation_oid = col_meta->collation_oid;
+	if (col_meta->collation_locale != NULL)
+		strlcpy(context->core.collation_locale, col_meta->collation_locale,
+				NAMEDATALEN);
+
+	dek_key = NULL;
+	dek_key_len = 0;
+	derived_enc_key = NULL;
+	derived_auth_key = NULL;
+	ret = tecc_key_manager_adapter_get_dek_key_ext(scheduler->key_adapter,
+												   col_meta->dek_name,
+												   &dek_key, &dek_key_len,
+												   &derived_enc_key,
+												   &derived_auth_key);
+	if (ret != TECC_CRYPTO_SUCCESS)
+	{
+		result->error_code = TECC_CRYPTO_KEY_ERROR;
+		snprintf(result->error_msg, sizeof(result->error_msg),
+				 "Failed to load DEK for raw segment decryption");
+		pg_free(cipher_data);
+		if (!context_is_external)
+			pg_free(context);
+		tecc_free_encrypted_column_metadata(col_meta);
+		return result;
+	}
+
+	context->dek_key = dek_key;
+	context->dek_key_len = dek_key_len;
+	decrypt_cipher_data = cipher_data;
+	decrypt_cipher_len = cipher_len;
+	text_space_count = 0;
+
+	/* ReqID:TECC4.0 - Text DET/OPE segments wrap the encrypted core as
+	 * [format byte][ciphertext][trailing-space count:4].  The comparison
+	 * format is part of CipherDataType, not input to the DET/OPE decryptor.
+	 * OPE returns the normalized input only; trailing spaces stay in the
+	 * wrapper and are not re-appended. */
+	if ((algo_type == TECC_ALGO_DET || algo_type == TECC_ALGO_OPE) &&
+		TECC_IS_TEXT_TYPE(context->core.data_type))
+	{
+		unsigned char format_byte;
+
+		if (cipher_len < 5)
+		{
+			result->error_code = TECC_CRYPTO_FORMAT_ERROR;
+			snprintf(result->error_msg, sizeof(result->error_msg),
+					 "invalid text ciphertext wrapper");
+			tecc_key_manager_adapter_release_key(scheduler->key_adapter,
+											 dek_key, dek_key_len);
+			pg_free(cipher_data);
+			if (!context_is_external)
+				pg_free(context);
+			tecc_free_encrypted_column_metadata(col_meta);
+			return result;
+		}
+
+		format_byte = cipher_data[0];
+		text_space_count = ((uint32_t)cipher_data[cipher_len - 4] << 24) |
+			((uint32_t)cipher_data[cipher_len - 3] << 16) |
+			((uint32_t)cipher_data[cipher_len - 2] << 8) |
+			(uint32_t)cipher_data[cipher_len - 1];
+		if (format_byte > 1 ||
+			(format_byte == 0 && text_space_count != 0) ||
+			(format_byte == 1 && text_space_count == 0))
+		{
+			result->error_code = TECC_CRYPTO_FORMAT_ERROR;
+			snprintf(result->error_msg, sizeof(result->error_msg),
+					 "invalid text DET ciphertext wrapper");
+			tecc_key_manager_adapter_release_key(scheduler->key_adapter,
+											 dek_key, dek_key_len);
+			pg_free(cipher_data);
+			if (!context_is_external)
+				pg_free(context);
+			tecc_free_encrypted_column_metadata(col_meta);
+			return result;
+		}
+
+		decrypt_cipher_data = cipher_data + 1;
+		decrypt_cipher_len = cipher_len - 5;
+	}
+
+	if (algo_type == TECC_ALGO_RND && col_meta != NULL)
+	{
+		if (tecc_setup_hsm_context(context, col_meta, state) < 0)
+		{
+			result->error_code = TECC_CRYPTO_KEY_ERROR;
+			snprintf(result->error_msg, sizeof(result->error_msg),
+					 "HSM hardware required but initialization failed");
+			tecc_key_manager_adapter_release_key(scheduler->key_adapter,
+												 dek_key, dek_key_len);
+			pg_free(cipher_data);
+			if (!context_is_external)
+				pg_free(context);
+			tecc_free_encrypted_column_metadata(col_meta);
+			return result;
+		}
+	}
+
+	if (algo_type == TECC_ALGO_RND && context->hsm_adapter != NULL &&
+		context->hsm_device != NULL)
+		buffer_size = decrypt_cipher_len;
+	else
+		buffer_size = tecc_algo_calc_decrypt_buffer_size(algo_type,
+												 decrypt_cipher_len);
+	if (buffer_size == 0)
+		buffer_size = decrypt_cipher_len;
+	/* ReqID:TECC4.0 - Only DET re-appends trailing spaces after decrypt;
+	 * OPE buffer stays the normalized plaintext size. */
+	if (algo_type == TECC_ALGO_DET &&
+		text_space_count > SIZE_MAX - buffer_size)
+	{
+		result->error_code = TECC_CRYPTO_FORMAT_ERROR;
+		snprintf(result->error_msg, sizeof(result->error_msg),
+				 "text trailing-space count is too large");
+		tecc_key_manager_adapter_release_key(scheduler->key_adapter,
+										 dek_key, dek_key_len);
+		pg_free(cipher_data);
+		if (!context_is_external)
+			pg_free(context);
+		tecc_free_encrypted_column_metadata(col_meta);
+		return result;
+	}
+	if (algo_type == TECC_ALGO_DET)
+		buffer_size += text_space_count;
+
+	plaintext = pg_malloc(buffer_size);
+	if (plaintext == NULL)
+	{
+		result->error_code = TECC_CRYPTO_MEMORY_ERROR;
+		snprintf(result->error_msg, sizeof(result->error_msg),
+				 "Failed to allocate raw segment plaintext buffer");
+		tecc_key_manager_adapter_release_key(scheduler->key_adapter,
+											 dek_key, dek_key_len);
+		pg_free(cipher_data);
+		if (!context_is_external)
+			pg_free(context);
+		tecc_free_encrypted_column_metadata(col_meta);
+		return result;
+	}
+
+	plain_len = 0;
+	if (algo_type == TECC_ALGO_RND && context->hsm_adapter != NULL &&
+		context->hsm_device != NULL)
+	{
+		HsmAdapterInterface *hsm;
+
+		hsm = (HsmAdapterInterface *)context->hsm_adapter;
+		ret = TECC_CRYPTO_KEY_ERROR;
+		if (hsm->sm4_decrypt != NULL && cipher_len > 16)
+		{
+			unsigned char sm4_key[TECC_SM4_KEY_SIZE];
+			size_t		actual_key_len;
+			size_t		hsm_plain_len;
+			HsmErrorCode hsm_ret;
+
+			actual_key_len = (dek_key_len >= TECC_SM4_KEY_SIZE) ?
+				TECC_SM4_KEY_SIZE : dek_key_len;
+			memcpy(sm4_key, dek_key, actual_key_len);
+			hsm_plain_len = buffer_size;
+			hsm_ret = hsm->sm4_decrypt((HsmDevice *)context->hsm_device,
+									   sm4_key, actual_key_len,
+									   cipher_data,
+									   cipher_data + 16,
+									   cipher_len - 16,
+									   plaintext, &hsm_plain_len);
+			memset(sm4_key, 0, sizeof(sm4_key));
+			if (hsm_ret == HSM_SUCCESS)
+			{
+				plain_len = hsm_plain_len;
+				ret = TECC_CRYPTO_SUCCESS;
+			}
+		}
+	}
+	else if (algo_type == TECC_ALGO_RND &&
+			 derived_enc_key != NULL && derived_auth_key != NULL)
+	{
+		ret = tecc_sm4_rnd_decrypt_with_keys(dek_key, TECC_SM4_KEY_SIZE,
+											 decrypt_cipher_data,
+											 decrypt_cipher_len,
+											 plaintext, buffer_size,
+											 &plain_len,
+											 derived_enc_key,
+											 derived_auth_key);
+	}
+	else
+	{
+		ret = tecc_algo_decrypt_zero_copy(algo_type,
+										  dek_key, dek_key_len,
+										  decrypt_cipher_data,
+										  decrypt_cipher_len,
+										  plaintext, buffer_size,
+										  &plain_len);
+	}
+
+	if (ret != TECC_CRYPTO_SUCCESS)
+	{
+		result->error_code = TECC_CRYPTO_DATA_ERROR;
+		snprintf(result->error_msg, sizeof(result->error_msg),
+				 "%s raw segment decryption failed",
+				 tecc_get_algorithm_name(algo_type));
+		memset(plaintext, 0, buffer_size);
+		pg_free(plaintext);
+	}
+	else
+	{
+		/* ReqID:TECC4.0 - DET restores trailing spaces to rebuild the
+		 * original text; OPE returns the normalized input as encrypted. */
+		if (text_space_count > 0 && algo_type == TECC_ALGO_DET)
+		{
+			memset(plaintext + plain_len, ' ', text_space_count);
+			plain_len += text_space_count;
+		}
+		result->plaintext = (char *)plaintext;
+		result->plain_len = plain_len;
+		scheduler->decryption_count++;
+	}
+
+	tecc_key_manager_adapter_release_key(scheduler->key_adapter,
+										 dek_key, dek_key_len);
+	context->dek_key = NULL;
+	context->dek_key_len = 0;
+	pg_free(cipher_data);
+	if (!context_is_external)
+		pg_free(context);
+	tecc_free_encrypted_column_metadata(col_meta);
+
+	return result;
 }
 
 
@@ -1307,6 +2573,8 @@ static TeccAlgorithmSupport tecc_unified_get_algorithm_support_internal_with_sch
         support.supports_det = col_meta->enable_det;
         support.supports_ope = col_meta->enable_ope;
         support.supports_search = col_meta->enable_search;
+        support.supports_he_add = col_meta->enable_he_add;
+        support.supports_he_mul = col_meta->enable_he_mul;
 
         /* Free metadata - only if it came from real cache (conn != NULL) */
         if (conn != NULL)
@@ -1727,20 +2995,56 @@ tecc_crypto_scheduler_apply_guc_to_data(TeccCryptoScheduler *scheduler,
         TECC_SCHEDULER_DEBUG("Applying GUC to data type OID %u", context->core.data_type);
     }
 
-    /* Apply standard_conforming_strings if applicable */
-    if (!scheduler->guc_params->standard_conforming_strings)
-    {
-        TECC_SCHEDULER_DEBUG("standard_conforming_strings is false - applying escape processing");
-        /* TODO: Implement escape sequence processing for non-standard strings */
-    }
-
-    /* Update statistics */
-    scheduler->encryption_count++;  /* This will be incremented later in encryption, but track GUC applications */
     TECC_SCHEDULER_DEBUG("GUC parameters applied to data successfully");
     return TECC_CRYPTO_SUCCESS;
 }
 
 /* ==================== Thread-Safe Functions with Connection Parameter ==================== */
+
+/*
+ * ReqID:TECC4.0 - 释放加密列元数据，仅当元数据由本函数自行从缓存构造时。
+ *
+ * col_meta_in 非空表示元数据由调用方提供（例如
+ * tecc_unified_encrypt_string_with_options 传入的栈对象，其字符串字段还
+ * 指向缓存私有内存）。这类内存本函数无权释放 —— 释放会 free 栈地址并
+ * double free 缓存字段，触发 glibc "free(): invalid pointer" 使进程 abort，
+ * 表现为客户端连接被断开。错误路径必须与成功路径采用同一所有权判据。
+ */
+static void
+tecc_free_internal_col_meta(TeccEncryptedColumnMetadata *col_meta,
+                            const TeccEncryptedColumnMetadata *col_meta_in)
+{
+    if (col_meta != NULL && col_meta_in == NULL)
+        tecc_free_encrypted_column_metadata(col_meta);
+}
+
+/*
+ * ReqID:TECC4.0 - 写入侧长度校验（Bug 9327）。
+ *
+ * 判据本身在 tecc_type_output.c 的 tecc_char_typmod_effective_len()（读取侧
+ * 定型用的是同一个函数，保证两侧一致）：按字符计数，超过列声明的 N 个字符时，
+ * 只有超出部分全是空格才被服务端接受（服务端会截掉后再存）。
+ *
+ * 返回 true  —— *effective_len 是应采用的长度，可能小于明文长度（表示超出部分
+ *               是空格、应截断后加密，写入侧据此与服务端存同一份值）；
+ * 返回 false —— 超出部分含非空格字符，err_msg 带上服务端同款错误文本，调用方
+ *               必须拒绝本次写入。
+ */
+static bool
+tecc_check_char_typmod(Oid data_type, int32 type_mod,
+                       const char *plaintext, size_t plaintext_len,
+                       int encoding, size_t *effective_len,
+                       char *err_msg, size_t err_msg_size)
+{
+    if (tecc_char_typmod_effective_len(data_type, type_mod, plaintext,
+                                       plaintext_len, encoding, effective_len))
+        return true;
+
+    snprintf(err_msg, err_msg_size, "value too long for type %s(%d)",
+             (data_type == BPCHAROID) ? "character" : "character varying",
+             (int) (type_mod - (int32) sizeof(int32)));
+    return false;
+}
 
 /*
  * Internal encryption implementation with explicit scheduler parameter
@@ -1751,12 +3055,15 @@ tecc_unified_encrypt_string_internal_with_scheduler(
     const char *plaintext,
     const char *table_name,
     const char *column_name,
+    const char *schema_name,
     const char *kek_name,
     const char *dek_name,
     Oid collation_oid,
     void *tecc_state,
     TeccEncryptedColumnMetadata *col_meta_in,
-    TeccCryptoContext *external_context)
+    TeccCryptoContext *external_context,
+    bool supports_he_add,
+    bool supports_he_mul)
 {
     TeccCryptoContextExtended *context = NULL;
     bool context_is_external = (external_context != NULL);
@@ -1773,6 +3080,8 @@ tecc_unified_encrypt_string_internal_with_scheduler(
     TeccCryptoBuffer *cipherdata_buffer;
     /* ReqID:TECC4.0 - Fix C90 mixed declaration warning */
     const char *dek_name_to_use;
+    /* ReqID:TECC4.0 - 字符型列按声明长度截断后的明文长度（0 = 未声明长度/非字符型） */
+    size_t char_typmod_len = 0;
 
     /* Validate parameters */
     if (!scheduler || !plaintext || !table_name || !column_name)
@@ -1845,7 +3154,9 @@ tecc_unified_encrypt_string_internal_with_scheduler(
                 const char *db_name = (state->conn != NULL) ? PQdb(state->conn) : NULL;
                 if (db_name == NULL || db_name[0] == '\0')
                     db_name = "postgres";
-                cache_item = tecc_cache_get_encrypted_column_by_name(state, db_name, NULL, table_name, column_name);
+                /* 使用调用方传入的 schema（限定表名如 sch1.tb1），
+                 * NULL 时缓存层按 search_path 查找（与解密路径一致） */
+                cache_item = tecc_cache_get_encrypted_column_by_name(state, db_name, schema_name, table_name, column_name);
             }
             if (cache_item != NULL)
             {
@@ -1870,9 +3181,53 @@ tecc_unified_encrypt_string_internal_with_scheduler(
         context->core.algo_support.supports_det = col_meta->enable_det;
         context->core.algo_support.supports_ope = col_meta->enable_ope;
         context->core.algo_support.supports_search = col_meta->enable_search;
+        context->core.algo_support.supports_he_add = col_meta->enable_he_add;
+        context->core.algo_support.supports_he_mul = col_meta->enable_he_mul;
         context->core.data_type = tecc_map_to_original_type_oid(col_meta->data_type_original_oid);
         context->core.type_mod = col_meta->data_type_original_mod;
         context->core.collation_oid = col_meta->collation_oid;
+
+        /*
+         * ReqID:TECC4.0 - 字符型列的声明长度在写入点生效（Bug 9327）。
+         *
+         * 值还是明文，只有这里能判断长度；服务端拿到的是密文，无从校验。
+         * 覆盖全部写入路径（INSERT/UPDATE 字面量、EXECUTE 参数、COPY 等都
+         * 经本函数加密）。WHERE 比较走 tecc_unified_encrypt_for_where，不受
+         * 影响 —— 与服务端行为一致（超长常量比较返回空集，不报错）。
+         *
+         * 超出部分是空格时不是拒绝而是截断：服务端也是这么存的，前端必须存
+         * 同一份值，否则回读会比服务端多出这些空格（char_typmod_len 记下
+         * 截断后的长度，供本函数后面构造 RND 密文与比较核心值时使用）。
+         */
+        {
+            char        len_err[128];
+            int         client_encoding = PG_UTF8;
+            TeccState  *len_state = (TeccState *) tecc_state;
+            size_t      effective_len = 0;
+
+            if (len_state != NULL && len_state->conn != NULL)
+                client_encoding = PQclientEncoding(len_state->conn);
+
+            if (!tecc_check_char_typmod(context->core.data_type,
+                                        context->core.type_mod,
+                                        (const char *) context->plaintext,
+                                        context->plaintext_len,
+                                        client_encoding, &effective_len,
+                                        len_err, sizeof(len_err)))
+            {
+                TECC_SCHEDULER_ERROR("%s", len_err);
+                if (tecc_state != NULL)
+                    tecc_record_error((TeccState *) tecc_state, TECC_ERR_ENCRYPT,
+                                      len_err, __func__, __LINE__, false);
+                tecc_free_internal_col_meta(col_meta, col_meta_in);
+                if (!context_is_external) pg_free(context);
+                return NULL;
+            }
+
+            /* 只有字符型列会给出长度；未声明长度/非字符型保持 0（用原长） */
+            if (effective_len > 0)
+                char_typmod_len = effective_len;
+        }
 
                 if (col_meta->collation_locale != NULL)
             strlcpy(context->core.collation_locale, col_meta->collation_locale, NAMEDATALEN);
@@ -1937,7 +3292,7 @@ tecc_unified_encrypt_string_internal_with_scheduler(
                                         "Failed to calculate normalized size",
                                         __func__, __LINE__, false);
                     }
-                    tecc_free_encrypted_column_metadata(col_meta);
+                    tecc_free_internal_col_meta(col_meta, col_meta_in);
                     if (!context_is_external) pg_free(context);
                     return NULL;
                 }
@@ -1946,7 +3301,7 @@ tecc_unified_encrypt_string_internal_with_scheduler(
                 if (context->normalized_plaintext == NULL)
                 {
                     TECC_SCHEDULER_ERROR("Failed to allocate normalized buffer");
-                    tecc_free_encrypted_column_metadata(col_meta);
+                    tecc_free_internal_col_meta(col_meta, col_meta_in);
                     if (!context_is_external) pg_free(context);
                     return NULL;
                 }
@@ -1989,7 +3344,7 @@ tecc_unified_encrypt_string_internal_with_scheduler(
                         }
                         pg_free(context->normalized_plaintext);
                         context->normalized_plaintext = NULL;
-                        tecc_free_encrypted_column_metadata(col_meta);
+                        tecc_free_internal_col_meta(col_meta, col_meta_in);
                         if (!context_is_external) pg_free(context);
                         return NULL;
                     }
@@ -2005,9 +3360,11 @@ tecc_unified_encrypt_string_internal_with_scheduler(
                 unsigned char *rnd_binary = NULL;
                 size_t rnd_binary_len = 0;
 
+                /* ReqID:TECC4.0 - 列声明长度内的文本才进密文（Bug 9327 写入侧） */
                 prep_ret = tecc_formatter_prepare_plaintext(
                     context->core.data_type, context->core.type_mod,
-                    plaintext, strlen(plaintext),
+                    plaintext,
+                    (char_typmod_len > 0) ? char_typmod_len : strlen(plaintext),
                     &rnd_binary, &rnd_binary_len);
 
                 if (prep_ret != TECC_FORMATTER_SUCCESS)
@@ -2032,7 +3389,7 @@ tecc_unified_encrypt_string_internal_with_scheduler(
                         tecc_record_error(err_state, TECC_ERR_ENCRYPT,
                                         err_desc, __func__, __LINE__, false);
                     }
-                    tecc_free_encrypted_column_metadata(col_meta);
+                    tecc_free_internal_col_meta(col_meta, col_meta_in);
                     if (!context_is_external) pg_free(context);
                     return NULL;
                 }
@@ -2066,10 +3423,27 @@ tecc_unified_encrypt_string_internal_with_scheduler(
 
     dek_name_to_use = dek_name ? dek_name : context->dek_name;
 
-    ret = tecc_key_manager_adapter_get_dek_key_ext(scheduler->key_adapter,
-                                              dek_name_to_use,
-                                              &dek_key, &dek_key_len,
-                                              &derived_enc_key, &derived_auth_key);
+    /*
+     * ReqID:TECC4.0 - For HE-only columns (he-add / he-mul, no RND/DET/OPE/
+     * SEARCH), encryption uses the HE public key, not the SM4-DEK. Skipping
+     * the DEK key fetch avoids loading the non-asymmetric KEK plaintext
+     * (which would fail). Traditional columns still need the SM4-DEK key.
+     */
+    if (col_meta != NULL &&
+        (col_meta->enable_he_add || col_meta->enable_he_mul) &&
+        !col_meta->enable_det && !col_meta->enable_ope && !col_meta->enable_search)
+    {
+        dek_key = NULL;
+        dek_key_len = 0;
+        derived_enc_key = NULL;
+        derived_auth_key = NULL;
+        ret = TECC_CRYPTO_SUCCESS;
+    }
+    else
+        ret = tecc_key_manager_adapter_get_dek_key_ext(scheduler->key_adapter,
+                                                  dek_name_to_use,
+                                                  &dek_key, &dek_key_len,
+                                                  &derived_enc_key, &derived_auth_key);
     if (ret != TECC_CRYPTO_SUCCESS)
     {
         TECC_SCHEDULER_ERROR("Failed to get DEK key for encryption");
@@ -2156,8 +3530,16 @@ tecc_unified_encrypt_string_internal_with_scheduler(
         return NULL;
     }
 
-    ret = tecc_execute_algo_rnd((TeccCryptoContextExtended *)context,
-                                derived_enc_key, derived_auth_key);
+    /* ReqID:TECC4.0 - HE-only columns skip the RND slot (no SM4-DEK). */
+    if (col_meta != NULL &&
+        (col_meta->enable_he_add || col_meta->enable_he_mul) &&
+        !col_meta->enable_det && !col_meta->enable_ope && !col_meta->enable_search)
+    {
+        ret = TECC_CRYPTO_SUCCESS;
+    }
+    else
+        ret = tecc_execute_algo_rnd((TeccCryptoContextExtended *)context,
+                                    derived_enc_key, derived_auth_key);
     if (ret != TECC_CRYPTO_SUCCESS)
     {
         TECC_SCHEDULER_ERROR("RND algorithm encryption failed");
@@ -2201,7 +3583,11 @@ tecc_unified_encrypt_string_internal_with_scheduler(
             {
                 pg_free((void *)context->plaintext);
                 context->plaintext = (const unsigned char *)plaintext;
-                context->plaintext_len = strlen(plaintext);
+                /* ReqID:TECC4.0 - 比较核心值也按列声明长度取文本（Bug 9327
+                 * 写入侧）：与服务端存储的值一致，超出部分的空格不再参与，
+                 * 否则 bpchar 的补齐分支会看到超出声明长度而不补齐。 */
+                context->plaintext_len = (char_typmod_len > 0) ?
+                    char_typmod_len : strlen(plaintext);
             }
 
             /* ReqID:TECC4.0 - BPCHAR blank-padding: pad to declared length
@@ -2331,7 +3717,7 @@ tecc_unified_encrypt_string_internal_with_scheduler(
                                 if (tecc_state != NULL)
                                     tecc_record_error((TeccState *)tecc_state, TECC_ERR_ENCRYPT,
                                                      err_desc, __func__, __LINE__, false);
-                                tecc_free_encrypted_column_metadata(col_meta);
+                                tecc_free_internal_col_meta(col_meta, col_meta_in);
                                 if (!context_is_external) pg_free(context);
                                 return NULL;
                             }
@@ -2352,7 +3738,7 @@ tecc_unified_encrypt_string_internal_with_scheduler(
             result->error_code = TECC_CRYPTO_ALGO_ERROR;
             snprintf(result->error_msg, sizeof(result->error_msg),
                      "DET encryption failed");
-            tecc_free_encrypted_column_metadata(col_meta);
+            tecc_free_internal_col_meta(col_meta, col_meta_in);
             if (!context_is_external) pg_free(context);
             return NULL;
         }
@@ -2368,7 +3754,7 @@ tecc_unified_encrypt_string_internal_with_scheduler(
             result->error_code = TECC_CRYPTO_ALGO_ERROR;
             snprintf(result->error_msg, sizeof(result->error_msg),
                      "OPE encryption failed");
-            tecc_free_encrypted_column_metadata(col_meta);
+            tecc_free_internal_col_meta(col_meta, col_meta_in);
             if (!context_is_external) pg_free(context);
             return NULL;
         }
@@ -2384,11 +3770,135 @@ tecc_unified_encrypt_string_internal_with_scheduler(
             result->error_code = TECC_CRYPTO_ALGO_ERROR;
             snprintf(result->error_msg, sizeof(result->error_msg),
                      "SEARCH encryption failed");
-            tecc_free_encrypted_column_metadata(col_meta);
+            tecc_free_internal_col_meta(col_meta, col_meta_in);
             if (!context_is_external) pg_free(context);
             return NULL;
         }
     }
+    /* ReqID:TECC4.0 - P0-2 一列多 DEK：解析 he-add/he-mul DEK 名。
+     * 优先用 hg_encrypted_column_args 绑定的 HE DEK（多 DEK），否则用
+     * 列级 DEK（单 DEK，V4.0.0 兼容）。公钥与段内分布式 ID 均按此 DEK 解析。 */
+    {
+        char he_add_dek_name[NAMEDATALEN];
+        char he_mul_dek_name[NAMEDATALEN];
+
+        he_add_dek_name[0] = '\0';
+        he_mul_dek_name[0] = '\0';
+
+        if (tecc_state != NULL && col_meta != NULL && OidIsValid(col_meta->table_oid) &&
+            col_meta->column_attnum > 0)
+        {
+            if (context->core.algo_support.supports_he_add)
+                tecc_load_column_he_dek_name(tecc_state, col_meta->table_oid,
+                                             col_meta->column_attnum, "he_add_dek",
+                                             he_add_dek_name, sizeof(he_add_dek_name));
+            if (context->core.algo_support.supports_he_mul)
+                tecc_load_column_he_dek_name(tecc_state, col_meta->table_oid,
+                                             col_meta->column_attnum, "he_mul_dek",
+                                             he_mul_dek_name, sizeof(he_mul_dek_name));
+        }
+
+        /* ReqID:TECC4.0 - 上一步查不到（列还不存在、没有 hg_encrypted_column_args）
+         * 时用调用方给的同态 DEK 名：CTAS / 视图定义里的 cast / 加密列 DEFAULT
+         * 由 ENCRYPTED WITH 解析后传入。缺了这一步，det+he-add 这类混合列会拿
+         * 对称 DEK 去找 EC 公钥而失败（报 per-DEK EC public key not loaded）。 */
+        if (he_add_dek_name[0] == '\0' && col_meta != NULL &&
+            col_meta->he_add_dek != NULL && col_meta->he_add_dek[0] != '\0')
+            strlcpy(he_add_dek_name, col_meta->he_add_dek, sizeof(he_add_dek_name));
+        if (he_mul_dek_name[0] == '\0' && col_meta != NULL &&
+            col_meta->he_mul_dek != NULL && col_meta->he_mul_dek[0] != '\0')
+            strlcpy(he_mul_dek_name, col_meta->he_mul_dek, sizeof(he_mul_dek_name));
+
+        /* Load HE public keys + resolve per-segment DEK distributed IDs.
+         * ReqID:TECC4.0 - 纯 HE 列（对称 DEK 名为空，但解析出 he_add_dek/he_mul_dek）
+         * 也应执行 HE 加密，条件由"dek_name 非空"放宽为"任一 HE DEK 名非空"。 */
+        if ((context->core.algo_support.supports_he_add ||
+             context->core.algo_support.supports_he_mul) &&
+            tecc_state != NULL &&
+            (context->dek_name[0] != '\0' ||
+             he_add_dek_name[0] != '\0' || he_mul_dek_name[0] != '\0'))
+        {
+            const char *ec_dek_name = (he_add_dek_name[0] != '\0') ?
+                he_add_dek_name : context->dek_name;
+            const char *eg_dek_name = (he_mul_dek_name[0] != '\0') ?
+                he_mul_dek_name : context->dek_name;
+            char *he_pub_hex = NULL;
+            TeccDekCacheItem *dek_item;
+
+            /* Load EC-ElGamal public key (for he-add) */
+            if (context->core.algo_support.supports_he_add &&
+                tecc_he_load_dek_key_hex(tecc_state, ec_dek_name,
+                                         "he_ec_pubkey", &he_pub_hex) == 0 &&
+                he_pub_hex != NULL)
+            {
+                if (context->he_ec_pubkey_hex)
+                    pg_free(context->he_ec_pubkey_hex);
+                context->he_ec_pubkey_hex = he_pub_hex;
+                TECC_SCHEDULER_DEBUG("Loaded EC pubkey for DEK '%s' (len=%zu)",
+                                     ec_dek_name, strlen(he_pub_hex));
+            }
+            else if (he_pub_hex)
+                pg_free(he_pub_hex);
+
+            /* Load FF ElGamal public key (for he-mul) */
+            he_pub_hex = NULL;
+            if (context->core.algo_support.supports_he_mul &&
+                tecc_he_load_dek_key_hex(tecc_state, eg_dek_name,
+                                         "he_eg_pubkey", &he_pub_hex) == 0 &&
+                he_pub_hex != NULL)
+            {
+                if (context->he_eg_pubkey_hex)
+                    pg_free(context->he_eg_pubkey_hex);
+                context->he_eg_pubkey_hex = he_pub_hex;
+                TECC_SCHEDULER_DEBUG("Loaded EG pubkey for DEK '%s' (len=%zu)",
+                                     eg_dek_name, strlen(he_pub_hex));
+            }
+            else if (he_pub_hex)
+                pg_free(he_pub_hex);
+
+            /* Resolve per-segment DEK distributed IDs */
+            dek_item = tecc_cache_get_dek_by_name_search_path(tecc_state, ec_dek_name);
+            if (dek_item != NULL && context->core.algo_support.supports_he_add)
+                context->he_add_dek_id = dek_item->column_key_distributed_id;
+
+            dek_item = tecc_cache_get_dek_by_name_search_path(tecc_state, eg_dek_name);
+            if (dek_item != NULL && context->core.algo_support.supports_he_mul)
+                context->he_mul_dek_id = dek_item->column_key_distributed_id;
+        }
+    }
+
+    /* Begin - ReqID:TECC4.0 - Homomorphic encryption algorithm execution */
+    if (context->core.algo_support.supports_he_add)
+    {
+        ret = tecc_execute_algo_he_add((TeccCryptoContextExtended *)context);
+        if (ret != TECC_CRYPTO_SUCCESS)
+        {
+            TECC_SCHEDULER_ERROR("HE_ADD algorithm encryption failed for column with support_algo=.he-add.: %d", ret);
+            result->error_code = TECC_CRYPTO_ALGO_ERROR;
+            snprintf(result->error_msg, sizeof(result->error_msg),
+                     "HE_ADD encryption failed");
+            tecc_free_internal_col_meta(col_meta, col_meta_in);
+            if (!context_is_external) pg_free(context);
+            return NULL;
+        }
+    }
+
+    if (context->core.algo_support.supports_he_mul)
+    {
+        ret = tecc_execute_algo_he_mul((TeccCryptoContextExtended *)context);
+        if (ret != TECC_CRYPTO_SUCCESS)
+        {
+            TECC_SCHEDULER_ERROR("HE_MUL algorithm encryption failed for column with support_algo=.he-mul.: %d", ret);
+            result->error_code = TECC_CRYPTO_ALGO_ERROR;
+            snprintf(result->error_msg, sizeof(result->error_msg),
+                     "HE_MUL encryption failed");
+            tecc_free_internal_col_meta(col_meta, col_meta_in);
+            if (!context_is_external) pg_free(context);
+            return NULL;
+        }
+    }
+    /* End - ReqID:TECC4.0 */
+
 
     /* ReqID:TECC4.0 - Build CipherDataType via formatter.
      * tecc_formatter_format_cipherdata correctly packs all 4 algorithm
@@ -2464,10 +3974,7 @@ tecc_unified_encrypt_string_internal_with_scheduler(
     if (!context_is_external) pg_free(context);
 
     /* Free metadata if it was allocated from real cache (not caller-supplied) */
-    if (tecc_state != NULL && col_meta != NULL && col_meta_in == NULL)
-    {
-        tecc_free_encrypted_column_metadata(col_meta);
-    }
+    tecc_free_internal_col_meta(col_meta, col_meta_in);
 
     TECC_SCHEDULER_DEBUG("Unified encryption completed successfully");
     return result;
@@ -2899,12 +4406,15 @@ tecc_unified_encrypt_string_with_conn(
                                                               plaintext,
                                                               table_name,
                                                               column_name,
+                                                              NULL, /* schema_name - 未限定，按 search_path 查找 */
                                                               kek_name,
                                                               dek_name,
                                                               0, /* No collation */
                                                               tecc_get_state(conn),
                                                               NULL,
-                                                              NULL);
+                                                              NULL,
+                                                              false,   /* supports_he_add */
+                                                              false);  /* supports_he_mul */
 }
 
 
@@ -2968,11 +4478,14 @@ tecc_validate_cipherdata_integrity(const CipherDataType *cipherdata, size_t ciph
 {
     /* ReqID:TECC4.0 - Fix C90 mixed declaration warning */
     size_t calculated_len;
+    size_t header_len;
 
-    /* Debug: print all CipherDataType fields */
-                            
-    /* Check minimum size */
-    if (cipher_len < sizeof(CipherDataType))
+    /* ReqID:TECC4.0 - pg_upgrade V4.0.0 兼容：v1.0 头部 28 字节（无 EG 字段），
+     * v2.0 头部 36 字节。最小长度先按 v1.0 头部（28）放行，版本判定后再
+     * 精确核对总长；v1.0 密文不得读取 EG 长度字段（位于数据段内）。 */
+
+    /* Check minimum size — enough for version field */
+    if (cipher_len < 28)
     {
                 return false;
     }
@@ -2983,12 +4496,22 @@ tecc_validate_cipherdata_integrity(const CipherDataType *cipherdata, size_t ciph
                 return false;
     }
 
-    /* Check individual data lengths don't exceed total */
-    calculated_len = sizeof(CipherDataType) +
-                           cipherdata->rnd_length +
-                           cipherdata->det_length +
-                           cipherdata->ope_length +
-                           cipherdata->search_length;
+    /* Check individual data lengths don't exceed total.
+     * ReqID:TECC4.0 - v2.0 compact format: only present segments have
+     * length fields; absent segments read as 0 via mask-aware macros. */
+    header_len = CIPHERDATA_HEADER_SIZE(cipherdata->version);
+    if (cipher_len < header_len)
+    {
+                return false;
+    }
+
+    calculated_len = header_len +
+                           CIPHERDATA_DATUM_RND_LEN(cipherdata) +
+                           CIPHERDATA_DATUM_DET_LEN(cipherdata) +
+                           CIPHERDATA_DATUM_OPE_LEN(cipherdata) +
+                           CIPHERDATA_DATUM_SEARCH_LEN(cipherdata) +
+                           CIPHERDATA_DATUM_EG_ADD_LEN(cipherdata) +
+                           CIPHERDATA_DATUM_EG_MUL_LEN(cipherdata);
 
     if (calculated_len != cipher_len)
     {
@@ -3008,8 +4531,7 @@ tecc_validate_cipherdata_integrity(const CipherDataType *cipherdata, size_t ciph
  * Returns true if tampering detected, false otherwise.
  */
 static bool
-tecc_detect_tampering(const CipherDataType *cipherdata, size_t cipher_len,
-                     const unsigned char *dek_key, size_t dek_key_len)
+tecc_detect_tampering(const CipherDataType *cipherdata, size_t cipher_len)
 {
     /* ReqID:TECC4.0 - Fix C90 mixed declaration warning */
     size_t max_safe_len;
@@ -3023,10 +4545,12 @@ tecc_detect_tampering(const CipherDataType *cipherdata, size_t cipher_len,
 
 
     /* Check for unexpected zeros in all data length fields */
-    if (cipherdata->rnd_length == 0 &&
-        cipherdata->det_length == 0 &&
-        cipherdata->ope_length == 0 &&
-        cipherdata->search_length == 0)
+    if (CIPHERDATA_DATUM_RND_LEN(cipherdata) == 0 &&
+        CIPHERDATA_DATUM_DET_LEN(cipherdata) == 0 &&
+        CIPHERDATA_DATUM_OPE_LEN(cipherdata) == 0 &&
+        CIPHERDATA_DATUM_SEARCH_LEN(cipherdata) == 0 &&
+        CIPHERDATA_DATUM_EG_ADD_LEN(cipherdata) == 0 &&
+        CIPHERDATA_DATUM_EG_MUL_LEN(cipherdata) == 0)
     {
         TECC_SCHEDULER_WARNING("All ciphertext lengths are zero - suspicious");
         return true; /* All data lengths are zero - suspicious */
@@ -3034,10 +4558,12 @@ tecc_detect_tampering(const CipherDataType *cipherdata, size_t cipher_len,
 
     /* Check for overflow in total length calculation */
     max_safe_len = SIZE_MAX - sizeof(CipherDataType);
-    if (cipherdata->rnd_length > max_safe_len ||
-        cipherdata->det_length > max_safe_len ||
-        cipherdata->ope_length > max_safe_len ||
-        cipherdata->search_length > max_safe_len)
+    if (CIPHERDATA_DATUM_RND_LEN(cipherdata) > max_safe_len ||
+        CIPHERDATA_DATUM_DET_LEN(cipherdata) > max_safe_len ||
+        CIPHERDATA_DATUM_OPE_LEN(cipherdata) > max_safe_len ||
+        CIPHERDATA_DATUM_SEARCH_LEN(cipherdata) > max_safe_len ||
+        CIPHERDATA_DATUM_EG_ADD_LEN(cipherdata) > max_safe_len ||
+        CIPHERDATA_DATUM_EG_MUL_LEN(cipherdata) > max_safe_len)
     {
         TECC_SCHEDULER_WARNING("Potential overflow detected");
         return true; /* Potential overflow */
@@ -3045,33 +4571,14 @@ tecc_detect_tampering(const CipherDataType *cipherdata, size_t cipher_len,
 
     /* Check for suspicious patterns in data lengths */
     /* All lengths being exactly the same might indicate tampering */
-    if (cipherdata->rnd_length > 0 &&
-        cipherdata->det_length > 0 &&
-        cipherdata->rnd_length == cipherdata->det_length &&
-        cipherdata->det_length == cipherdata->ope_length &&
-        cipherdata->ope_length == cipherdata->search_length)
+    if (CIPHERDATA_DATUM_RND_LEN(cipherdata) > 0 &&
+        CIPHERDATA_DATUM_DET_LEN(cipherdata) > 0 &&
+        CIPHERDATA_DATUM_RND_LEN(cipherdata) == CIPHERDATA_DATUM_DET_LEN(cipherdata) &&
+        CIPHERDATA_DATUM_DET_LEN(cipherdata) == CIPHERDATA_DATUM_OPE_LEN(cipherdata) &&
+        CIPHERDATA_DATUM_OPE_LEN(cipherdata) == CIPHERDATA_DATUM_SEARCH_LEN(cipherdata))
     {
         /* This could be legitimate, but worth logging as suspicious */
         TECC_SCHEDULER_WARNING("All ciphertext lengths are identical - possible tampering");
-    }
-
-    /* HMAC verification when key is available */
-    if (dek_key != NULL && dek_key_len > 0)
-    {
-
-        /* For now, we'll just log that HMAC verification would happen here */
-        /* In a real implementation, we would:
-         * 1. Derive HMAC key from DEK using PBKDF2
-         * 2. Calculate HMAC of cipherdata
-         * 3. Compare with stored HMAC (if available)
-         */
-
-
-        /* TODO: Implement actual HMAC verification */
-        /* For testing purposes, we'll just return false (no tampering) */
-    }
-    else
-    {
     }
 
     return false;
@@ -3089,7 +4596,9 @@ tecc_unified_decrypt_hex_internal_with_scheduler(
     const char *hex_string,
     const char *table_name,
     const char *column_name,
-    TeccCryptoContext *external_context)
+    TeccCryptoContext *external_context,
+    bool supports_he_add,
+    bool supports_he_mul)
 {
     /* Begin - ReqID:TECC4.0 */
     TeccCryptoContextExtended *context = NULL;
@@ -3113,6 +4622,9 @@ tecc_unified_decrypt_hex_internal_with_scheduler(
     TeccAlgorithmType algo_type = TECC_ALGO_RND;
     const unsigned char *ciphertext = NULL;
     size_t ciphertext_len = 0;
+    /* ReqID:TECC4.0 - Bug 9384: 提升到函数作用域 —— HSM 路由判定（下方
+     * tecc_setup_hsm_context 处）需要在取 DEK 的块之外复用该 DEK 名。 */
+    const char *dek_name_to_use = NULL;
 
     /* Validate parameters */
     if (!scheduler || !hex_string || !table_name || !column_name)
@@ -3179,7 +4691,14 @@ tecc_unified_decrypt_hex_internal_with_scheduler(
 
     /* ReqID:TECC4.0 - Check DEK permission before decryption */
     /* ReqID:TECC4.0 - 放宽条件：无论dek_name是否为空，都尝试权限检查 */
-    if (conn != NULL && col_meta != NULL)
+    /* ReqID:TECC4.0 - 纯 HE 列（dek_name 为空，仅 he-add/he-mul 而无对称算法）
+     * 没有对称 DEK，USAGE 权限检查无从谈起；解密由 per-DEK HE 私钥（字段级缓存）
+     * 承载。此处跳过该门禁，与批量解密
+     * tecc_unified_batch_decrypt_hex_internal_with_scheduler 的 HE 语义一致，
+     * 否则 COPY 导出等单值解密路径会把纯 HE 密文当无权限→返回十六进制→\N。 */
+    if (conn != NULL && col_meta != NULL &&
+        !((col_meta->enable_he_add || col_meta->enable_he_mul) &&
+          !col_meta->enable_det && !col_meta->enable_ope && !col_meta->enable_search))
     {
         TeccState *decrypt_state;
         bool has_permission;
@@ -3224,6 +4743,8 @@ tecc_unified_decrypt_hex_internal_with_scheduler(
         context->core.algo_support.supports_det = col_meta->enable_det;
         context->core.algo_support.supports_ope = col_meta->enable_ope;
         context->core.algo_support.supports_search = col_meta->enable_search;
+        context->core.algo_support.supports_he_add = col_meta->enable_he_add;
+        context->core.algo_support.supports_he_mul = col_meta->enable_he_mul;
         context->core.data_type = tecc_map_to_original_type_oid(col_meta->data_type_original_oid);
         context->core.type_mod = col_meta->data_type_original_mod;
         context->core.collation_oid = col_meta->collation_oid;
@@ -3304,6 +4825,71 @@ tecc_unified_decrypt_hex_internal_with_scheduler(
         return NULL;
     }
 
+    /* ReqID:TECC4.0 - 纯 HE 值解密（无 RND 槽，密文在 EG_ADD/EG_MUL 段）。
+     * 镜像批量解密 tecc_unified_batch_decrypt_hex_internal_with_scheduler 的
+     * 串行 HE 回退：先按段内 DEK 分布式 ID 解析 HE DEK（保证一列多 DEK 正确），
+     * 再用该 DEK 的 EC/FF 私钥做 ElGamal 解密，得到十进制文本明文。
+     * COPY 导出（pg_dump 数据段）等在连接忙态下依赖预热好的字段级缓存取私钥，
+     * tecc_he_load_dek_key_hex 命中缓存即不碰主连接。 */
+    if (parsed_data.rnd_data_len == 0 &&
+        (parsed_data.eg_add_data_len > 0 || parsed_data.eg_mul_data_len > 0))
+    {
+        TeccState *hst = NULL;
+        const char *hek = NULL;
+        char *he_plain = NULL;
+        size_t he_plain_len = 0;
+        int he_ret;
+
+        if (conn != NULL)
+            hst = tecc_get_state(conn);
+
+        if (hst != NULL)
+        {
+            Oid seg_dek;
+
+            seg_dek = (parsed_data.eg_add_dek_id != InvalidOid) ?
+                parsed_data.eg_add_dek_id : parsed_data.eg_mul_dek_id;
+            if (OidIsValid(seg_dek))
+                hek = tecc_cache_get_dek_name_by_distributed_id(hst, seg_dek);
+        }
+        if (hek == NULL && col_meta != NULL)
+        {
+            if (parsed_data.eg_add_data_len > 0)
+                hek = col_meta->he_add_dek;
+            if (hek == NULL && parsed_data.eg_mul_data_len > 0)
+                hek = col_meta->he_mul_dek;
+            if (hek == NULL)
+                hek = col_meta->dek_name;
+        }
+
+        he_ret = -1;
+        if (hst != NULL && hek != NULL && hek[0] != '\0')
+            he_ret = tecc_he_decrypt_cipherdata(parsed_data.eg_add_data,
+                                                parsed_data.eg_add_data_len,
+                                                parsed_data.eg_mul_data,
+                                                parsed_data.eg_mul_data_len,
+                                                hek, hst, &he_plain, &he_plain_len);
+
+        if (he_ret == 0 && he_plain != NULL)
+        {
+            /* 与批量解密一致：HE 明文为十进制文本，skipped_decrypt=true 表示
+             * 调用方应直接当作文本使用，勿再做二进制→类型输出。 */
+            result->plaintext = he_plain;
+            result->plain_len = he_plain_len;
+            result->skipped_decrypt = true;
+            result->error_code = TECC_CRYPTO_SUCCESS;
+            result->error_msg[0] = '\0';
+            pg_free(cipher_data);
+            if (!context_is_external) pg_free(context);
+            if (col_meta != NULL)
+                tecc_free_encrypted_column_metadata(col_meta);
+            return result;
+        }
+        if (he_plain != NULL)
+            pg_free(he_plain);
+        /* DEK 解析/私钥加载失败时回落到下方 no-RND 分支，保留原有报错语义。 */
+    }
+
     /* ReqID:TECC4.0 - SELECT decryption always uses RND ciphertext.
      * DET/OPE/SEARCH ciphertexts are used for backend comparison operators,
      * not for decryption. Only RND can reconstruct the original plaintext. */
@@ -3328,8 +4914,6 @@ tecc_unified_decrypt_hex_internal_with_scheduler(
     /* Get DEK key from key manager */
     /* Use actual DEK name from column metadata if available */
     {
-        const char *dek_name_to_use;
-
         dek_name_to_use = NULL;
         if (col_meta != NULL && col_meta->dek_name != NULL && col_meta->dek_name[0] != '\0')
         {
@@ -3421,18 +5005,28 @@ tecc_unified_decrypt_hex_internal_with_scheduler(
     context->dek_key_len = dek_key_len;
 
     /* Set up HSM SM4 decryption if column uses HSM KEK.
-     * If HSM is configured but init failed, abort — no software fallback. */
-    if (col_meta != NULL && conn != NULL)
+     * If HSM is configured but init failed, abort — no software fallback.
+     *
+     * ReqID:TECC4.0 - Bug 9384: 与批量解密路径同源修复——无列元数据（纯加密常量
+     * 表达式）时用密文内解析出的 DEK 名合成最小元数据判定 HSM 路由，否则硬加密的
+     * 裸 [IV][SM4-CBC] 密文会被软件解密按软件包装格式解析而失败。 */
     {
-        TeccState *hsm_state = tecc_get_state(conn);
-        if (hsm_state != NULL)
+        TeccState *hsm_state = (conn != NULL) ? tecc_get_state(conn) : NULL;
+        TeccEncryptedColumnMetadata *hsm_meta = col_meta;
+
+        if (hsm_meta == NULL)
+            hsm_meta = tecc_hsm_meta_synth_from_dek(dek_name_to_use);
+
+        if (hsm_state != NULL && hsm_meta != NULL)
         {
-            if (tecc_setup_hsm_context(context, col_meta, hsm_state) < 0)
+            if (tecc_setup_hsm_context(context, hsm_meta, hsm_state) < 0)
             {
                 TECC_SCHEDULER_ERROR("HSM init failed for KEK, refusing software fallback");
                 result->error_code = TECC_CRYPTO_KEY_ERROR;
                 snprintf(result->error_msg, sizeof(result->error_msg),
                          "HSM hardware required but initialization failed");
+                if (hsm_meta != col_meta)
+                    tecc_free_encrypted_column_metadata(hsm_meta);
                 tecc_key_manager_adapter_release_key(scheduler->key_adapter, dek_key, dek_key_len);
                 pg_free(cipher_data);
                 if (!context_is_external) pg_free(context);
@@ -3440,11 +5034,14 @@ tecc_unified_decrypt_hex_internal_with_scheduler(
                 return NULL;
             }
         }
+
+        if (hsm_meta != NULL && hsm_meta != col_meta)
+            tecc_free_encrypted_column_metadata(hsm_meta);
     }
 
     /* Begin - ReqID:TECC4.0 - Tampering detection */
     /* Check for potential tampering in cipherdata */
-    if (tecc_detect_tampering(cipherdata, cipher_len, dek_key, dek_key_len))
+    if (tecc_detect_tampering(cipherdata, cipher_len))
     {
         TECC_SCHEDULER_ERROR("Potential tampering detected in cipherdata");
         result->error_code = TECC_CRYPTO_DATA_ERROR;
@@ -3715,6 +5312,282 @@ tecc_unified_decrypt_hex_internal_with_scheduler(
  * error_code set but the rest succeed.
  * Caller frees each result[i] via tecc_unified_free_decrypt_result().
  */
+/*
+ * ReqID:TECC4.0 - 硬加密列批量解密（拼接流）
+ *
+ * 背景：硬加密列的 RND 段就是 [16B IV][SM4-CBC 密文]，逐值调用加密机时每值一次
+ * TCP 往返（真机实测约 1.14ms/值），全表返回 1 万行要 18 秒；perf 采样显示 97% 的
+ * 时间在 libswsds 的 SDF_Decrypt/SocketCommunication 里，即纯往返延迟。
+ *
+ * 手法：CBC 解密每块只依赖自己与前一块，故把每个值自己的 IV 当作前置块插进流里
+ * （IV1||CT1||IV2||CT2||...），整段用**一次** SDF_Decrypt 即可让各值独立解对：
+ * 值 i 的明文就是它 CT 长度对应的那几块，IV 块的输出是垃圾、直接丢弃。
+ * 真机探针（1KB~16MB 各档）验证：任意长度一次调用都正确还原，吞吐约 5~10MB/s；
+ * 4096 个值从 4656ms 降到 25ms。
+ *
+ * 与逐值路径的差异：设备不做 PKCS#7（libpq 适配器自己补/剥），所以拼接后中间各值
+ * 自己的 padding 会留在输出里，必须按值剥；SWXA（kms_type=4）的适配器会顺带剥掉
+ * 整段末尾的 padding，故末尾值不再重复剥。
+ *
+ * 开关：TECC_HSM_BATCH=0 关闭拼接（退回逐值，排障/对照用）；
+ *       TECC_HSM_BATCH_BYTES 指定单次调用字节数（默认 256KB）。
+ */
+static bool
+tecc_hsm_batch_decrypt_enabled(void)
+{
+    const char *v = getenv("TECC_HSM_BATCH");
+
+    if (v == NULL || *v == '\0')
+        return true;
+    return !(v[0] == '0' && v[1] == '\0');
+}
+
+static size_t
+tecc_hsm_batch_call_limit(void)
+{
+    const char *v = getenv("TECC_HSM_BATCH_BYTES");
+    long n;
+
+    if (v != NULL && *v != '\0')
+    {
+        n = strtol(v, NULL, 10);
+        if (n >= 4096 && n <= (long) (64 * 1024 * 1024))
+            return (size_t) n;
+    }
+    return (size_t) (256 * 1024);
+}
+
+/* 剥掉一个值的 PKCS#7 padding；校验不通过则保持原长度（与逐值路径行为一致） */
+static size_t
+tecc_hsm_strip_pkcs7(unsigned char *buf, size_t len)
+{
+    unsigned char pad;
+    size_t p;
+
+    if (len == 0)
+        return 0;
+    pad = buf[len - 1];
+    if (pad == 0 || pad > 16 || (size_t) pad > len)
+        return len;
+    for (p = len - pad; p < len; p++)
+    {
+        if (buf[p] != pad)
+            return len;
+    }
+    return len - pad;
+}
+
+/*
+ * 单个硬加密值的解密（逐值兜底路径，语义与改动前完全一致）。
+ * rnd_data 为 [16B IV][SM4-CBC 密文]，长度 rnd_len。
+ */
+static void
+tecc_hsm_decrypt_item(HsmAdapterInterface *hsm, HsmDevice *device,
+                      const unsigned char *key, size_t key_len,
+                      int hsm_kms_type,
+                      const unsigned char *rnd_data, size_t rnd_len,
+                      size_t item_index,
+                      TeccUnifiedDecryptResult **slot)
+{
+    unsigned char sm4_key[TECC_SM4_KEY_SIZE];
+    size_t actual_key_len;
+    size_t iv_len = 16;
+    unsigned char *ct_buf;
+    size_t plain_len;
+    HsmErrorCode hsm_ret;
+
+    if (hsm == NULL || hsm->sm4_decrypt == NULL || device == NULL)
+    {
+        *slot = pg_malloc0(sizeof(TeccUnifiedDecryptResult));
+        if (*slot)
+        {
+            (*slot)->error_code = TECC_CRYPTO_KEY_ERROR;
+            snprintf((*slot)->error_msg, sizeof((*slot)->error_msg),
+                     "Batch decrypt: item %zu HSM not available", item_index);
+        }
+        return;
+    }
+
+    if (rnd_data == NULL || rnd_len <= iv_len)
+    {
+        *slot = pg_malloc0(sizeof(TeccUnifiedDecryptResult));
+        if (*slot)
+        {
+            (*slot)->error_code = TECC_CRYPTO_DATA_ERROR;
+            snprintf((*slot)->error_msg, sizeof((*slot)->error_msg),
+                     "Batch decrypt: item %zu HSM data too short", item_index);
+        }
+        return;
+    }
+
+    plain_len = rnd_len - iv_len;
+    ct_buf = (unsigned char *)pg_malloc(plain_len);
+    if (!ct_buf)
+    {
+        *slot = pg_malloc0(sizeof(TeccUnifiedDecryptResult));
+        if (*slot)
+        {
+            (*slot)->error_code = TECC_CRYPTO_MEMORY_ERROR;
+            snprintf((*slot)->error_msg, sizeof((*slot)->error_msg),
+                     "Batch decrypt: item %zu OOM", item_index);
+        }
+        return;
+    }
+
+    actual_key_len = (key_len >= TECC_SM4_KEY_SIZE) ? TECC_SM4_KEY_SIZE : key_len;
+    memcpy(sm4_key, key, actual_key_len);
+
+    hsm_ret = hsm->sm4_decrypt(device, sm4_key, actual_key_len,
+                               rnd_data,                    /* IV = first 16 bytes */
+                               rnd_data + iv_len,           /* ciphertext after IV */
+                               rnd_len - iv_len,
+                               ct_buf, &plain_len);
+    memset(sm4_key, 0, sizeof(sm4_key));
+
+    if (hsm_ret == HSM_SUCCESS)
+    {
+        /* Strip PKCS#7 padding (except SWXA which does it internally) */
+        if (hsm_kms_type != 4)
+            plain_len = tecc_hsm_strip_pkcs7(ct_buf, plain_len);
+
+        *slot = pg_malloc0(sizeof(TeccUnifiedDecryptResult));
+        if (*slot)
+        {
+            (*slot)->plaintext = (char *)ct_buf;
+            (*slot)->plain_len = plain_len;
+            (*slot)->error_code = TECC_CRYPTO_SUCCESS;
+        }
+        else
+        {
+            pg_free(ct_buf);
+        }
+    }
+    else
+    {
+        pg_free(ct_buf);
+        *slot = pg_malloc0(sizeof(TeccUnifiedDecryptResult));
+        if (*slot)
+        {
+            (*slot)->error_code = TECC_CRYPTO_DATA_ERROR;
+            snprintf((*slot)->error_msg, sizeof((*slot)->error_msg),
+                     "Batch decrypt: item %zu HSM decrypt failed", item_index);
+        }
+    }
+}
+
+/*
+ * 把拼接流一次交给加密机解密，再按值切分回填 results。
+ * offsets[k] 为值在流中的起始偏移（即它的 IV 位置），seg_lens[k] 为该值
+ * [IV][CT] 的总长，pending_idx[k] 为它在 results 中的下标。
+ * 返回 false 表示整批失败，调用方须退回逐值路径。
+ */
+static bool
+tecc_hsm_decrypt_stream(HsmAdapterInterface *hsm, HsmDevice *device,
+                        const unsigned char *key, size_t key_len,
+                        int hsm_kms_type,
+                        const unsigned char *stream, size_t stream_len,
+                        const size_t *offsets, const size_t *seg_lens,
+                        const size_t *pending_idx, size_t npending,
+                        TeccUnifiedDecryptResult **results)
+{
+    unsigned char sm4_key[TECC_SM4_KEY_SIZE];
+    size_t actual_key_len;
+    unsigned char dummy_iv[16];
+    unsigned char *out;
+    size_t out_len;
+    size_t k;
+    HsmErrorCode hsm_ret;
+
+    if (hsm == NULL || hsm->sm4_decrypt == NULL || device == NULL || npending == 0)
+        return false;
+
+    out = (unsigned char *)pg_malloc(stream_len);
+    if (out == NULL)
+        return false;
+
+    actual_key_len = (key_len >= TECC_SM4_KEY_SIZE) ? TECC_SM4_KEY_SIZE : key_len;
+    memcpy(sm4_key, key, actual_key_len);
+    /* 外层 IV 只影响流首块（该块是被丢弃的 IV 块），取值无关 */
+    memset(dummy_iv, 0, sizeof(dummy_iv));
+
+    out_len = stream_len;
+    hsm_ret = hsm->sm4_decrypt(device, sm4_key, actual_key_len, dummy_iv,
+                               stream, stream_len, out, &out_len);
+    memset(sm4_key, 0, sizeof(sm4_key));
+
+    if (hsm_ret != HSM_SUCCESS)
+    {
+        pg_free(out);
+        return false;
+    }
+
+    /* ReqID:TECC4.0 - TECC_HSM_BATCH_DEBUG=1 时打印每个冲刷块的字节数/值个数，
+     * 用于估算设备流量（每值字节数）与调块大小。 */
+    {
+        const char *dbg = getenv("TECC_HSM_BATCH_DEBUG");
+
+        if (dbg != NULL && dbg[0] == '1')
+            fprintf(stderr, "[tecc] HSM 拼接块: %zu 字节 / %zu 个值 (每值 %.1f 字节)\n",
+                    stream_len, npending,
+                    npending > 0 ? (double) stream_len / (double) npending : 0.0);
+    }
+
+    for (k = 0; k < npending; k++)
+    {
+        size_t seg_off = offsets[k] + 16;
+        size_t seg_len;
+        size_t plain_len;
+        unsigned char *buf;
+
+        if (k == npending - 1)
+        {
+            /* 末尾值：SWXA 适配器已剥掉整段末尾的 padding，长度以返回值为准 */
+            if (out_len <= seg_off)
+            {
+                pg_free(out);
+                return false;
+            }
+            seg_len = out_len - seg_off;
+        }
+        else
+        {
+            if (seg_lens[k] <= 16)
+            {
+                pg_free(out);
+                return false;
+            }
+            seg_len = seg_lens[k] - 16;
+        }
+
+        buf = (unsigned char *)pg_malloc(seg_len + 1);
+        if (buf == NULL)
+        {
+            pg_free(out);
+            return false;
+        }
+        memcpy(buf, out + seg_off, seg_len);
+        buf[seg_len] = '\0';
+
+        plain_len = seg_len;
+        if (hsm_kms_type != 4 || k != npending - 1)
+            plain_len = tecc_hsm_strip_pkcs7(buf, seg_len);
+
+        results[pending_idx[k]] = pg_malloc0(sizeof(TeccUnifiedDecryptResult));
+        if (results[pending_idx[k]] == NULL)
+        {
+            pg_free(buf);
+            pg_free(out);
+            return false;
+        }
+        results[pending_idx[k]]->plaintext = (char *)buf;
+        results[pending_idx[k]]->plain_len = plain_len;
+        results[pending_idx[k]]->error_code = TECC_CRYPTO_SUCCESS;
+    }
+
+    pg_free(out);
+    return true;
+}
+
 static TeccUnifiedDecryptResult **
 tecc_unified_batch_decrypt_hex_internal_with_scheduler(
     PGconn *conn,
@@ -3887,6 +5760,45 @@ tecc_unified_batch_decrypt_hex_internal_with_scheduler(
     if (!all_skipped && dek_name_to_use == NULL)
         all_skipped = true;
 
+    /* ReqID:TECC4.0 - HE-only columns (he-add/he-mul, no RND/DET/OPE/SEARCH)
+     * have no SM4-DEK, so skip the symmetric DEK fetch entirely.  Trying it
+     * would fail and emit a spurious ERROR log before the HE decrypt path
+     * below handles the column. */
+    if (!all_skipped && col_meta != NULL &&
+        (col_meta->enable_he_add || col_meta->enable_he_mul) &&
+        !col_meta->enable_det && !col_meta->enable_ope && !col_meta->enable_search)
+        all_skipped = true;
+
+    /* ReqID:TECC4.0 - Bug 9150: 视图聚合结果列（如 sum(col_headd)）在
+     * 后处理阶段无法通过表 OID/attnum 查到 col_meta（视图 OID 不在加密列
+     * 缓存中），HE-only 检查被跳过，导致对纯 HE 密文尝试解密对称 DEK 并
+     * 报错。此处对 col_meta == NULL 的情况，直接解析首条密文的段结构判断
+     * 是否为纯 HE 密文（无 RND/DET/OPE/SEARCH 段），提前跳过对称 DEK 获取。 */
+    if (!all_skipped && col_meta == NULL && dek_name_to_use != NULL &&
+        count > 0 && hex_strings[0] != NULL)
+    {
+        unsigned char *peek_bin = NULL;
+        size_t peek_len = 0;
+
+        if (tecc_formatter_hex_decode(hex_strings[0], &peek_bin, &peek_len) == 0 &&
+            peek_bin != NULL && peek_len >= 24)
+        {
+            CipherDataType *peek_cd = (CipherDataType *)peek_bin;
+
+            /* ReqID:TECC4.0 - mask-aware: absent segments read as 0 */
+            if (CIPHERDATA_DATUM_RND_LEN(peek_cd) == 0 &&
+                CIPHERDATA_DATUM_DET_LEN(peek_cd) == 0 &&
+                CIPHERDATA_DATUM_OPE_LEN(peek_cd) == 0 &&
+                CIPHERDATA_DATUM_SEARCH_LEN(peek_cd) == 0 &&
+                (CIPHERDATA_DATUM_EG_ADD_LEN(peek_cd) > 0 ||
+                 CIPHERDATA_DATUM_EG_MUL_LEN(peek_cd) > 0))
+            {
+                all_skipped = true;
+            }
+            pg_free(peek_bin);
+        }
+    }
+
     /* Get DEK key (once for all items) */
     dek_key = NULL;
     dek_key_len = 0;
@@ -3904,36 +5816,261 @@ tecc_unified_batch_decrypt_hex_internal_with_scheduler(
 
     if (all_skipped)
     {
-        /* Return hex ciphertexts for all items */
-        for (i = 0; i < count; i++)
-        {
-            results[i] = pg_malloc0(sizeof(TeccUnifiedDecryptResult));
-            if (results[i] != NULL)
-            {
-                size_t hex_len;
+        /* ReqID:TECC4.0 - HE 批量解密：惰性缓存段内 DEK 私钥 + 复用 BN_CTX，
+         * 消除每行 SM2 信封解密与 BN_CTX 创建开销。按段内 DEK 名缓存（strcmp），
+         * 多 DEK 列 DEK 变化时重新加载。 */
+        BIGNUM *cached_ec_priv = NULL;
+        BIGNUM *cached_ff_priv = NULL;
+        BN_CTX *cached_ctx = NULL;
+        char    cached_dek_name[NAMEDATALEN];
 
-                hex_len = (hex_strings[i] != NULL) ? strlen(hex_strings[i]) : 0;
-                results[i]->plaintext = (char *)pg_malloc(hex_len + 3);
-                if (results[i]->plaintext != NULL)
+        cached_dek_name[0] = '\0';
+
+#ifndef WIN32
+        /* ReqID:TECC4.0 - HE 并行快速路径：预取第一行段内 DEK 私钥，行数足够大时
+         * 临时创建线程分片并行。预取失败或多 DEK 差异回退下方串行惰性缓存。
+         * fork 安全：worker 为函数内临时线程，函数返回前已全部 join，fork 时
+         * 无活跃线程；he_crypto_init/he_eg_init 用 pthread_once 且初始化后状态
+         * 只读，子进程继承安全。 */
+        {
+            int nthreads = tecc_he_get_thread_count(count);
+
+            if (nthreads > 1 && count >= TECC_HE_PARALLEL_MIN_ROWS && hex_strings[0] != NULL)
+            {
+                TeccState *pst = tecc_get_state(conn);
+
+                if (pst != NULL)
                 {
-                    if (hex_strings[i] != NULL)
+                    unsigned char *first_bin = NULL;
+                    size_t         first_bin_len = 0;
+                    TeccParsedCipherdata first_pd;
+                    BIGNUM *batch_ec_priv = NULL;
+                    BIGNUM *batch_ff_priv = NULL;
+
+                    if (tecc_formatter_hex_decode(hex_strings[0], &first_bin, &first_bin_len) == 0 &&
+                        first_bin != NULL && first_bin_len >= 24 &&
+                        tecc_formatter_parse_cipherdata((CipherDataType *)first_bin,
+                                                        first_bin_len, &first_pd) == 0 &&
+                        first_pd.rnd_data_len == 0 &&
+                        (first_pd.eg_add_data_len > 0 || first_pd.eg_mul_data_len > 0))
                     {
-                        results[i]->plaintext[0] = '\\';
-                        results[i]->plaintext[1] = 'x';
-                        memcpy(results[i]->plaintext + 2, hex_strings[i], hex_len);
-                        results[i]->plaintext[hex_len + 2] = '\0';
-                        results[i]->plain_len = hex_len + 2;
+                        Oid         seg_dek = (first_pd.eg_add_dek_id != InvalidOid) ?
+                            first_pd.eg_add_dek_id : first_pd.eg_mul_dek_id;
+                        const char *nm = NULL;
+
+                        if (OidIsValid(seg_dek))
+                            nm = tecc_cache_get_dek_name_by_distributed_id(pst, seg_dek);
+                        if (nm == NULL)
+                            nm = dek_name_to_use;
+                        if (nm != NULL)
+                        {
+                            if (first_pd.eg_add_data_len > 0)
+                                tecc_he_load_dek_privkey(pst, nm, 1, &batch_ec_priv);
+                            if (first_pd.eg_mul_data_len > 0)
+                                tecc_he_load_dek_privkey(pst, nm, 0, &batch_ff_priv);
+                        }
                     }
-                    else
+                    if (first_bin)
+                        pg_free(first_bin);
+
+                    /* ReqID:TECC4.0 - 预取私钥可能为 NULL（段内 DEK 无 HE 私钥时
+                     * 硬编码 fallback），仍分片并行（worker 内 ex 用硬编码私钥）。 */
                     {
-                        results[i]->plaintext[0] = '\0';
-                        results[i]->plain_len = 0;
+                        pthread_t       *threads;
+                        TeccHeWorkerArg *wargs;
+                        int              wi;
+
+                        threads = pg_malloc0(sizeof(pthread_t) * nthreads);
+                        wargs = pg_malloc0(sizeof(TeccHeWorkerArg) * nthreads);
+                        if (threads != NULL && wargs != NULL)
+                        {
+                            for (wi = 0; wi < nthreads; wi++)
+                            {
+                                wargs[wi].start = (int)((long long)count * wi / nthreads);
+                                wargs[wi].end = (int)((long long)count * (wi + 1) / nthreads);
+                                wargs[wi].hex_strings = (char **)hex_strings;
+                                wargs[wi].ec_priv = batch_ec_priv;
+                                wargs[wi].ff_priv = batch_ff_priv;
+                                wargs[wi].results = results;
+                            }
+                            for (wi = 0; wi < nthreads; wi++)
+                            {
+                                if (pthread_create(&threads[wi], NULL,
+                                                   tecc_he_decrypt_worker, &wargs[wi]) != 0)
+                                {
+                                    TECC_LOG(TECC_LOG_INFO,
+                                             "HE batch: pthread_create failed for thread %d, "
+                                             "items [%d,%d) will be processed serially",
+                                             wi, wargs[wi].start, wargs[wi].end);
+                                    threads[wi] = 0;
+                                }
+                            }
+                            for (wi = 0; wi < nthreads; wi++)
+                            {
+                                if (threads[wi] != 0)
+                                    pthread_join(threads[wi], NULL);
+                            }
+                            pg_free(threads);
+                            pg_free(wargs);
+                        }
+                        else
+                        {
+                            TECC_SCHEDULER_DEBUG("HE batch parallel allocation failed (threads=%p, wargs=%p), falling back to serial",
+                                                 (void *)threads, (void *)wargs);
+                            if (threads)
+                                pg_free(threads);
+                            if (wargs)
+                                pg_free(wargs);
+                        }
                     }
+
+                    if (batch_ec_priv)
+                        BN_free(batch_ec_priv);
+                    if (batch_ff_priv)
+                        BN_free(batch_ff_priv);
                 }
-                results[i]->skipped_decrypt = true;
-                results[i]->error_code = TECC_CRYPTO_SUCCESS;
             }
         }
+#endif /* !WIN32 */
+
+        /* ReqID:TECC4.0 - Try HE decrypt before falling back to hex */
+        for (i = 0; i < count; i++)
+        {
+            bool he_done = false;
+
+            /* ReqID:TECC4.0 - 并行路径已解密该行（results[i] 非 NULL），跳过 */
+            if (results[i] != NULL)
+                continue;
+
+            if (hex_strings[i] != NULL)
+            {
+                unsigned char *bin = NULL;
+                size_t bin_len = 0;
+                TeccParsedCipherdata pd;
+
+                if (tecc_formatter_hex_decode(hex_strings[i], &bin, &bin_len) == 0 &&
+                    bin != NULL && bin_len >= 24 &&
+                    tecc_formatter_parse_cipherdata(
+                        (CipherDataType *)bin, bin_len, &pd) == 0 &&
+                    pd.rnd_data_len == 0 &&
+                    (pd.eg_add_data_len > 0 || pd.eg_mul_data_len > 0))
+                {
+                    char   *he_str = NULL;
+                    size_t  he_str_len = 0;
+                    /* ReqID:TECC4.0 - P2-1: prefer the per-segment DEK
+                     * identity over the column-level DEK name.  This keeps
+                     * decryption correct once a column uses multiple DEKs
+                     * (P0-2); single-DEK columns resolve to the same name. */
+                    const char *dek_to_use = dek_name_to_use;
+                    TeccState *st = tecc_get_state(conn);
+
+                    if (st != NULL &&
+                        (pd.eg_add_dek_id != InvalidOid ||
+                         pd.eg_mul_dek_id != InvalidOid))
+                    {
+                        Oid     seg_dek = (pd.eg_add_dek_id != InvalidOid) ?
+                            pd.eg_add_dek_id : pd.eg_mul_dek_id;
+                        const char *nm =
+                            tecc_cache_get_dek_name_by_distributed_id(st, seg_dek);
+
+                        if (nm != NULL)
+                            dek_to_use = nm;
+                    }
+
+                        /* ReqID:TECC4.0 - 惰性加载段内 DEK 私钥（DEK 变化时重载） */
+                        if (st != NULL &&
+                            (cached_dek_name[0] == '\0' ||
+                             strcmp(cached_dek_name, dek_to_use) != 0))
+                        {
+                            strlcpy(cached_dek_name, dek_to_use, NAMEDATALEN);
+                            if (cached_ec_priv)
+                            { BN_free(cached_ec_priv); cached_ec_priv = NULL; }
+                            if (cached_ff_priv)
+                            { BN_free(cached_ff_priv); cached_ff_priv = NULL; }
+                            if (pd.eg_add_data_len > 0)
+                                tecc_he_load_dek_privkey(st, dek_to_use, 1, &cached_ec_priv);
+                            if (pd.eg_mul_data_len > 0)
+                                tecc_he_load_dek_privkey(st, dek_to_use, 0, &cached_ff_priv);
+                        }
+                        if (cached_ctx == NULL)
+                            cached_ctx = BN_CTX_new();
+
+                        {
+                            const BIGNUM *row_priv = (pd.eg_add_data_len > 0) ?
+                                cached_ec_priv : cached_ff_priv;
+
+                            if (tecc_he_decrypt_cipherdata_ex(
+                                    pd.eg_add_data, pd.eg_add_data_len,
+                                    pd.eg_mul_data, pd.eg_mul_data_len,
+                                    row_priv, cached_ctx,
+                                    &he_str, &he_str_len) == 0 && he_str != NULL)
+                            {
+                                results[i] = pg_malloc0(sizeof(TeccUnifiedDecryptResult));
+                                if (results[i])
+                                {
+                                    results[i]->plaintext = he_str;
+                                    results[i]->plain_len = he_str_len;
+                                    results[i]->skipped_decrypt = true;
+                                    results[i]->error_code = TECC_CRYPTO_SUCCESS;
+                                }
+                                else
+                                {
+                                    pg_free(he_str);
+                                }
+                                he_done = true;
+                                pg_free(bin);
+                            }
+                            else
+                            {
+                                pg_free(bin);
+                            }
+                        }
+                }
+            }
+            else
+            {
+                /* hex_strings[i] is NULL — handled in fallback */
+            }
+
+            if (!he_done)
+            {
+                results[i] = pg_malloc0(sizeof(TeccUnifiedDecryptResult));
+                if (results[i] != NULL)
+                {
+                    size_t hex_len;
+
+                    hex_len = (hex_strings[i] != NULL) ? strlen(hex_strings[i]) : 0;
+                    results[i]->plaintext = (char *)pg_malloc(hex_len + 3);
+                    if (results[i]->plaintext != NULL)
+                    {
+                        if (hex_strings[i] != NULL)
+                        {
+                            results[i]->plaintext[0] = '\\';
+                            results[i]->plaintext[1] = 'x';
+                            memcpy(results[i]->plaintext + 2, hex_strings[i], hex_len);
+                            results[i]->plaintext[hex_len + 2] = '\0';
+                            results[i]->plain_len = hex_len + 2;
+                        }
+                        else
+                        {
+                            results[i]->plaintext[0] = '\0';
+                            results[i]->plain_len = 0;
+                        }
+                    }
+                    results[i]->skipped_decrypt = true;
+                    results[i]->error_code = TECC_CRYPTO_SUCCESS;
+                }
+            }
+        }
+
+        /* ReqID:TECC4.0 - 释放惰性缓存的私钥与复用的 BN_CTX */
+        if (cached_ec_priv)
+            BN_free(cached_ec_priv);
+        if (cached_ff_priv)
+            BN_free(cached_ff_priv);
+        if (cached_ctx)
+            BN_CTX_free(cached_ctx);
+
         if (dek_key)
             tecc_key_manager_adapter_release_key(scheduler->key_adapter,
                                                  dek_key, dek_key_len);
@@ -3953,6 +6090,8 @@ tecc_unified_batch_decrypt_hex_internal_with_scheduler(
         context->core.algo_support.supports_det = col_meta->enable_det;
         context->core.algo_support.supports_ope = col_meta->enable_ope;
         context->core.algo_support.supports_search = col_meta->enable_search;
+        context->core.algo_support.supports_he_add = col_meta->enable_he_add;
+        context->core.algo_support.supports_he_mul = col_meta->enable_he_mul;
         context->core.data_type = tecc_map_to_original_type_oid(col_meta->data_type_original_oid);
         context->core.type_mod = col_meta->data_type_original_mod;
         context->core.collation_oid = col_meta->collation_oid;
@@ -3964,12 +6103,21 @@ tecc_unified_batch_decrypt_hex_internal_with_scheduler(
      * If HSM is configured, the batch software RND decrypt path cannot be used
      * because HSM encrypts data as raw SM4-CBC ([16-byte IV][ciphertext]) without
      * the software Sm4RndDataFormat wrapper (version + auth_tag + IV + ct_len + ct).
-     * We fall through to per-item HSM decrypt below. */
+     * We fall through to per-item HSM decrypt below.
+     *
+     * ReqID:TECC4.0 - Bug 9384: 无列元数据（纯加密常量表达式）时不能就此判定为
+     * 软件路由——用上面按 dek_dist_oid 解析出的 DEK 名合成最小元数据来判定。
+     * 否则 HSM 密文会走软件批量解密，报 "Batch decrypt: item N failed"。 */
     {
         TeccState *local_state = tecc_get_state(conn);
-        if (local_state != NULL && col_meta != NULL)
+        TeccEncryptedColumnMetadata *hsm_meta = col_meta;
+
+        if (hsm_meta == NULL)
+            hsm_meta = tecc_hsm_meta_synth_from_dek(dek_name_to_use);
+
+        if (local_state != NULL && hsm_meta != NULL)
         {
-            if (tecc_setup_hsm_context(context, col_meta, local_state) < 0)
+            if (tecc_setup_hsm_context(context, hsm_meta, local_state) < 0)
             {
                 TECC_SCHEDULER_ERROR("Batch decrypt: HSM init failed for column %s.%s",
                                      table_name, column_name);
@@ -3992,12 +6140,17 @@ tecc_unified_batch_decrypt_hex_internal_with_scheduler(
                 pg_free(binary_lens);
                 pg_free(rnd_ciphertexts);
                 pg_free(rnd_ciphertext_lens);
-                if (col_meta)
-                    tecc_free_encrypted_column_metadata(col_meta);
+                /* hsm_meta 为 col_meta 或本次合成的临时元数据（后者时 col_meta 为 NULL） */
+                if (hsm_meta)
+                    tecc_free_encrypted_column_metadata(hsm_meta);
                 if (!context_is_external) pg_free(context);
                 return results;
             }
         }
+
+        /* 合成的临时元数据仅用于本次 HSM 判定，col_meta 本身仍由下方统一释放 */
+        if (hsm_meta != NULL && hsm_meta != col_meta)
+            tecc_free_encrypted_column_metadata(hsm_meta);
     }
 
     /* Batch hex decode: single allocation for all binary data */
@@ -4072,12 +6225,111 @@ tecc_unified_batch_decrypt_hex_internal_with_scheduler(
 
         if (parsed_data.rnd_data_len == 0)
         {
+            /*
+             * ReqID:TECC4.0 - Handle HE-only results: no RND data but may have
+             * EG_ADD/EG_MUL (homomorphic computation results).  Try HE decrypt
+             * with per-DEK private key before falling back to hex pass-through. */
+            if (parsed_data.eg_add_data_len > 0 || parsed_data.eg_mul_data_len > 0)
+            {
+                char *he_str = NULL;
+                size_t he_str_len = 0;
+                const char *he_dek_name = NULL;
+                void *he_state = NULL;
+
+                /* Try to resolve DEK name from cipherdata.  ReqID:TECC4.0
+                 * P2-1: prefer the per-segment DEK identity (EG_ADD/EG_MUL
+                 * prefix) which reflects the DEK the result was computed
+                 * with; fall back to the header dek_dist_oid for legacy
+                 * single-DEK ciphertexts. */
+                if (conn != NULL)
+                {
+                    TeccState *st = tecc_get_state(conn);
+                    if (st != NULL)
+                    {
+                        Oid     dist_id;
+                        const char *nm;
+
+                        if (parsed_data.eg_add_dek_id != InvalidOid)
+                            dist_id = parsed_data.eg_add_dek_id;
+                        else if (parsed_data.eg_mul_dek_id != InvalidOid)
+                            dist_id = parsed_data.eg_mul_dek_id;
+                        else
+                            dist_id = CIPHERDATA_DEK_DIST_OID(cipherdata);
+
+                        nm = tecc_cache_get_dek_name_by_distributed_id(st, dist_id);
+                        if (nm != NULL)
+                            he_dek_name = nm;
+                        he_state = st;
+                    }
+                }
+
+                if (tecc_he_decrypt_cipherdata(
+                        parsed_data.eg_add_data, parsed_data.eg_add_data_len,
+                        parsed_data.eg_mul_data, parsed_data.eg_mul_data_len,
+                        he_dek_name, he_state,
+                        &he_str, &he_str_len) == 0 && he_str != NULL)
+                {
+                    results[i] = pg_malloc0(sizeof(TeccUnifiedDecryptResult));
+                    if (results[i])
+                    {
+                        results[i]->plaintext = he_str;
+                        results[i]->plain_len = he_str_len;
+                        results[i]->skipped_decrypt = true;
+                        results[i]->error_code = TECC_CRYPTO_SUCCESS;
+                    }
+                    else
+                    {
+                        pg_free(he_str);
+                    }
+                    continue;
+                }
+            }
+            /* Fallback: pass through hex string (only meaningful for HE
+             * results that could not be decrypted client-side; e.g. server
+             * homomorphic results carried as hex).  For a symmetric-only
+             * column with no RND data, there is nothing to decrypt — report
+             * the error rather than silently emitting the raw hex. */
+            if (parsed_data.eg_add_data_len == 0 && parsed_data.eg_mul_data_len == 0)
+            {
+                results[i] = pg_malloc0(sizeof(TeccUnifiedDecryptResult));
+                if (results[i])
+                {
+                    results[i]->error_code = TECC_CRYPTO_FORMAT_ERROR;
+                    snprintf(results[i]->error_msg, sizeof(results[i]->error_msg),
+                             "Batch decrypt: item %zu has no RND data", i);
+                }
+                continue;
+            }
             results[i] = pg_malloc0(sizeof(TeccUnifiedDecryptResult));
             if (results[i])
             {
-                results[i]->error_code = TECC_CRYPTO_FORMAT_ERROR;
-                snprintf(results[i]->error_msg, sizeof(results[i]->error_msg),
-                         "Batch decrypt: item %zu has no RND data", i);
+                size_t hex_len;
+
+                results[i]->skipped_decrypt = true;
+                results[i]->error_code = TECC_CRYPTO_SUCCESS;
+                /* Begin - ReqID:TECC4.0 - Bug 9334 */
+                /* ReqID:TECC4.0 - 未解密的密文必须以 "\x" 前缀回传，与上面
+                 * all_skipped（纯同态列）分支的兜底保持一致：结果处理阶段
+                 * 只把 "\x" 开头的值识别为密文原样输出（tecc_processor.c 的
+                 * is_hex_ct），否则会拿十六进制密文去跑整数范围校验，报出
+                 * 与事实不符的 "HE result out of range for column"，把真正的
+                 * 失败原因（HE 私钥不可用）掩盖掉。plain_len 与其它分支一致
+                 * 计入前缀两字节。 */
+                hex_len = (hex_strings != NULL && hex_strings[i] != NULL) ?
+                    strlen(hex_strings[i]) : 0;
+                if (hex_len > 0)
+                {
+                    results[i]->plaintext = (char *)pg_malloc(hex_len + 3);
+                    if (results[i]->plaintext != NULL)
+                    {
+                        results[i]->plaintext[0] = '\\';
+                        results[i]->plaintext[1] = 'x';
+                        memcpy(results[i]->plaintext + 2, hex_strings[i], hex_len);
+                        results[i]->plaintext[hex_len + 2] = '\0';
+                        results[i]->plain_len = hex_len + 2;
+                    }
+                }
+                /* End - ReqID:TECC4.0 - Bug 9334 */
             }
             continue;
         }
@@ -4096,6 +6348,15 @@ tecc_unified_batch_decrypt_hex_internal_with_scheduler(
         size_t *idx_map;
         size_t valid_count;
         bool batch_ok;
+        /* ReqID:TECC4.0 - 硬加密列拼接流状态（说明见 tecc_hsm_decrypt_stream） */
+        bool hsm_batch;
+        size_t hsm_call_limit;
+        unsigned char *hsm_stream;
+        size_t hsm_stream_len;
+        size_t *hsm_off;
+        size_t *hsm_seg;
+        size_t *hsm_pend;
+        size_t hsm_n;
 
         plaintexts = pg_malloc(sizeof(unsigned char *) * count);
         plaintext_lens = pg_malloc(sizeof(size_t) * count);
@@ -4122,7 +6383,41 @@ tecc_unified_batch_decrypt_hex_internal_with_scheduler(
          * HSM-encrypted RND data uses raw [IV + SM4-CBC ciphertext] format,
          * which is incompatible with the software Sm4RndDataFormat wrapper
          * (version + auth_tag + IV + ct_len + ct) expected by the batch API.
-         * Each HSM item is decrypted individually below. */
+         * HSM items are instead concatenated into one stream and decrypted with
+         * a single device call per chunk (see tecc_hsm_decrypt_stream);
+         * TECC_HSM_BATCH=0 falls back to per-item device calls. */
+        hsm_batch = (context->hsm_kms_type != 0) && tecc_hsm_batch_decrypt_enabled();
+        hsm_call_limit = hsm_batch ? tecc_hsm_batch_call_limit() : 0;
+        hsm_stream = NULL;
+        hsm_stream_len = 0;
+        hsm_off = NULL;
+        hsm_seg = NULL;
+        hsm_pend = NULL;
+        hsm_n = 0;
+
+        if (hsm_batch)
+        {
+            hsm_stream = (unsigned char *)pg_malloc(hsm_call_limit);
+            hsm_off = pg_malloc(sizeof(size_t) * count);
+            hsm_seg = pg_malloc(sizeof(size_t) * count);
+            hsm_pend = pg_malloc(sizeof(size_t) * count);
+            if (hsm_stream == NULL || hsm_off == NULL || hsm_seg == NULL ||
+                hsm_pend == NULL)
+            {
+                /* 内存不足：退回逐值路径（下面分支按 hsm_batch=false 处理） */
+                if (hsm_stream) pg_free(hsm_stream);
+                if (hsm_off) pg_free(hsm_off);
+                if (hsm_seg) pg_free(hsm_seg);
+                if (hsm_pend) pg_free(hsm_pend);
+                hsm_stream = NULL;
+                hsm_off = NULL;
+                hsm_seg = NULL;
+                hsm_pend = NULL;
+                hsm_batch = false;
+                hsm_call_limit = 0;
+            }
+        }
+
         valid_count = 0;
         for (i = 0; i < count; i++)
         {
@@ -4131,121 +6426,64 @@ tecc_unified_batch_decrypt_hex_internal_with_scheduler(
             {
                 if (context->hsm_kms_type != 0)
                 {
-                    /* HSM column: decrypt individually instead of batching.
-                     * The ciphertext layout is [16-byte IV][SM4-CBC ciphertext]. */
+                    /* HSM column: ciphertext layout is [16-byte IV][SM4-CBC ciphertext].
+                     * 拼接流可用时攒进流里，达到块上限再冲刷；否则逐值调用。 */
                     HsmAdapterInterface *hsm = (HsmAdapterInterface *)context->hsm_adapter;
-                    unsigned char sm4_key[TECC_SM4_KEY_SIZE];
-                    size_t actual_key_len;
-                    size_t iv_len = 16;
-                    unsigned char *ct_buf;
-                    HsmErrorCode hsm_ret;
-                    size_t plain_len;
+                    HsmDevice *hsm_dev = (HsmDevice *)context->hsm_device;
+                    bool need_single;
 
-                    if (hsm == NULL || hsm->sm4_decrypt == NULL ||
-                        context->hsm_device == NULL)
+                    need_single = !hsm_batch || hsm == NULL || hsm_dev == NULL ||
+                                  hsm->sm4_decrypt == NULL ||
+                                  rnd_ciphertext_lens[i] <= 16 ||
+                                  rnd_ciphertext_lens[i] > hsm_call_limit;
+
+                    if (need_single)
                     {
-                        results[i] = pg_malloc0(sizeof(TeccUnifiedDecryptResult));
-                        if (results[i])
-                        {
-                            results[i]->error_code = TECC_CRYPTO_KEY_ERROR;
-                            snprintf(results[i]->error_msg,
-                                     sizeof(results[i]->error_msg),
-                                     "Batch decrypt: item %zu HSM not available", i);
-                        }
+                        tecc_hsm_decrypt_item(hsm, hsm_dev, dek_key, dek_key_len,
+                                              context->hsm_kms_type,
+                                              rnd_ciphertexts[i],
+                                              rnd_ciphertext_lens[i],
+                                              i, &results[i]);
                         continue;
                     }
 
-                    if (rnd_ciphertext_lens[i] <= iv_len)
+                    /* 流将满：先冲刷已攒的值（整批失败则退回逐值，行为不退化） */
+                    if (hsm_stream_len > 0 &&
+                        hsm_stream_len + rnd_ciphertext_lens[i] > hsm_call_limit)
                     {
-                        results[i] = pg_malloc0(sizeof(TeccUnifiedDecryptResult));
-                        if (results[i])
+                        size_t flush_k;
+
+                        if (!tecc_hsm_decrypt_stream(hsm, hsm_dev, dek_key, dek_key_len,
+                                                     context->hsm_kms_type,
+                                                     hsm_stream, hsm_stream_len,
+                                                     hsm_off, hsm_seg, hsm_pend,
+                                                     hsm_n, results))
                         {
-                            results[i]->error_code = TECC_CRYPTO_DATA_ERROR;
-                            snprintf(results[i]->error_msg,
-                                     sizeof(results[i]->error_msg),
-                                     "Batch decrypt: item %zu HSM data too short", i);
-                        }
-                        continue;
-                    }
-
-                    /* Copy key for HSM decrypt */
-                    actual_key_len = (dek_key_len >= TECC_SM4_KEY_SIZE) ?
-                                     TECC_SM4_KEY_SIZE : dek_key_len;
-                    memcpy(sm4_key, dek_key, actual_key_len);
-
-                    /* Allocate plaintext buffer */
-                    plain_len = rnd_ciphertext_lens[i] - iv_len;
-                    ct_buf = (unsigned char *)pg_malloc(plain_len);
-                    if (!ct_buf)
-                    {
-                        results[i] = pg_malloc0(sizeof(TeccUnifiedDecryptResult));
-                        if (results[i])
-                        {
-                            results[i]->error_code = TECC_CRYPTO_MEMORY_ERROR;
-                            snprintf(results[i]->error_msg,
-                                     sizeof(results[i]->error_msg),
-                                     "Batch decrypt: item %zu OOM", i);
-                        }
-                        continue;
-                    }
-
-                    hsm_ret = hsm->sm4_decrypt(
-                        (HsmDevice *)context->hsm_device,
-                        sm4_key, actual_key_len,
-                        rnd_ciphertexts[i],              /* IV = first 16 bytes */
-                        rnd_ciphertexts[i] + iv_len,     /* ciphertext after IV */
-                        rnd_ciphertext_lens[i] - iv_len,
-                        ct_buf, &plain_len);
-                    memset(sm4_key, 0, sizeof(sm4_key));
-
-                    if (hsm_ret == HSM_SUCCESS)
-                    {
-                        /* Strip PKCS#7 padding (except SWXA which does it internally) */
-                        if (context->hsm_kms_type != 4 && plain_len > 0)
-                        {
-                            unsigned char pkcs7_pad = ct_buf[plain_len - 1];
-                            if (pkcs7_pad > 0 && pkcs7_pad <= 16 &&
-                                plain_len >= pkcs7_pad)
+                            TECC_SCHEDULER_DEBUG("HSM batch stream failed, "
+                                                 "falling back to per-item decrypt");
+                            for (flush_k = 0; flush_k < hsm_n; flush_k++)
                             {
-                                bool pad_valid = true;
-                                size_t p;
-                                for (p = plain_len - pkcs7_pad; p < plain_len; p++)
-                                {
-                                    if ((unsigned char)ct_buf[p] != pkcs7_pad)
-                                    {
-                                        pad_valid = false;
-                                        break;
-                                    }
-                                }
-                                if (pad_valid)
-                                    plain_len -= pkcs7_pad;
+                                size_t idx = hsm_pend[flush_k];
+
+                                tecc_hsm_decrypt_item(hsm, hsm_dev, dek_key, dek_key_len,
+                                                      context->hsm_kms_type,
+                                                      rnd_ciphertexts[idx],
+                                                      rnd_ciphertext_lens[idx],
+                                                      idx, &results[idx]);
                             }
                         }
+                        hsm_stream_len = 0;
+                        hsm_n = 0;
+                    }
 
-                        results[i] = pg_malloc0(sizeof(TeccUnifiedDecryptResult));
-                        if (results[i])
-                        {
-                            results[i]->plaintext = (char *)ct_buf;
-                            results[i]->plain_len = plain_len;
-                            results[i]->error_code = TECC_CRYPTO_SUCCESS;
-                        }
-                        else
-                        {
-                            pg_free(ct_buf);
-                        }
-                    }
-                    else
-                    {
-                        pg_free(ct_buf);
-                        results[i] = pg_malloc0(sizeof(TeccUnifiedDecryptResult));
-                        if (results[i])
-                        {
-                            results[i]->error_code = TECC_CRYPTO_DATA_ERROR;
-                            snprintf(results[i]->error_msg,
-                                     sizeof(results[i]->error_msg),
-                                     "Batch decrypt: item %zu HSM decrypt failed", i);
-                        }
-                    }
+                    /* 追加本值：[IV][CT] 整段原样进流（IV 必须是未被改写的原值） */
+                    hsm_off[hsm_n] = hsm_stream_len;
+                    hsm_seg[hsm_n] = rnd_ciphertext_lens[i];
+                    hsm_pend[hsm_n] = i;
+                    hsm_n++;
+                    memcpy(hsm_stream + hsm_stream_len, rnd_ciphertexts[i],
+                           rnd_ciphertext_lens[i]);
+                    hsm_stream_len += rnd_ciphertext_lens[i];
                 }
                 else
                 {
@@ -4257,6 +6495,38 @@ tecc_unified_batch_decrypt_hex_internal_with_scheduler(
                 }
             }
         }
+
+        /* 收尾：冲刷剩余拼接流（整批失败同样退回逐值） */
+        if (hsm_n > 0)
+        {
+            HsmAdapterInterface *hsm_tail = (HsmAdapterInterface *)context->hsm_adapter;
+            HsmDevice *hsm_dev_tail = (HsmDevice *)context->hsm_device;
+            size_t flush_k;
+
+            if (!tecc_hsm_decrypt_stream(hsm_tail, hsm_dev_tail, dek_key, dek_key_len,
+                                         context->hsm_kms_type,
+                                         hsm_stream, hsm_stream_len,
+                                         hsm_off, hsm_seg, hsm_pend,
+                                         hsm_n, results))
+            {
+                TECC_SCHEDULER_DEBUG("HSM batch stream failed (tail), "
+                                     "falling back to per-item decrypt");
+                for (flush_k = 0; flush_k < hsm_n; flush_k++)
+                {
+                    size_t idx = hsm_pend[flush_k];
+
+                    tecc_hsm_decrypt_item(hsm_tail, hsm_dev_tail, dek_key, dek_key_len,
+                                          context->hsm_kms_type,
+                                          rnd_ciphertexts[idx],
+                                          rnd_ciphertext_lens[idx],
+                                          idx, &results[idx]);
+                }
+            }
+        }
+        if (hsm_stream) pg_free(hsm_stream);
+        if (hsm_off) pg_free(hsm_off);
+        if (hsm_seg) pg_free(hsm_seg);
+        if (hsm_pend) pg_free(hsm_pend);
 
         if (valid_count > 0)
         {
@@ -4403,12 +6673,15 @@ tecc_unified_encrypt_string_with_collation_and_conn(
                                                               plaintext,
                                                               table_name,
                                                               column_name,
+                                                              NULL, /* schema_name - 未限定，按 search_path 查找 */
                                                               kek_name,
                                                               dek_name,
                                                               collation_oid,
                                                               tecc_get_state(conn),
                                                               NULL,
-                                                              external_context);
+                                                              external_context,
+                                                              false,   /* supports_he_add */
+                                                              false);  /* supports_he_mul */
 }
 
 /* ==================== Batch Processing Implementation ==================== */
@@ -4735,7 +7008,9 @@ tecc_unified_batch_decrypt_hex_strings_internal(
                                                                         hex_string,
                                                                         table_name,
                                                                         column_name,
-                                                                        NULL);
+                                                                        NULL,
+                                                                        false,   /* supports_he_add */
+                                                                        false);  /* supports_he_mul */
 
         if (single_result && single_result->error_code == TECC_CRYPTO_SUCCESS)
         {
@@ -4766,12 +7041,8 @@ tecc_unified_batch_decrypt_hex_strings_internal(
                 if (single_result->plaintext)
                 {
                     /* Securely wipe plaintext data before freeing */
-                    /* Note: plain_len may not be set correctly on decryption failure */
-                    /* Use a safe default or check if plain_len is valid */
-                    if (single_result->plain_len > 0 && single_result->plain_len <= 65536) /* Reasonable upper bound */
+                    if (single_result->plain_len > 0 && single_result->plain_len <= 65536)
                         memset(single_result->plaintext, 0, single_result->plain_len);
-                    else
-                        memset(single_result->plaintext, 0, 256); /* Safe default */
                     pg_free(single_result->plaintext);
                     single_result->plaintext = NULL;
                 }
@@ -5421,16 +7692,17 @@ tecc_stream_encrypt_data(
                 plaintext,
                 context->base_context->table_name,
                 context->base_context->column_name,
+                NULL, /* schema_name - stream 上下文无 schema */
                 context->base_context->kek_name,
                 context->base_context->dek_name,
                 context->collation_oid,
-                NULL, NULL, NULL); /* tecc_state, col_meta_in, external_context not available in stream context */
+                NULL, NULL, NULL, /* tecc_state, col_meta_in, external_context not available in stream context */
+                false, false); /* supports_he_add, supports_he_mul */
             break;
 
         case TECC_ALGO_SEARCH:
-            /* Use operator-based encryption with scheduler */
-            /* Note: Stream context doesn't have connection, pass NULL */
-            result = tecc_unified_encrypt_string_with_operator_internal_with_scheduler(
+            /* SEARCH encryption + RND for storage; stream context has no connection */
+            result = tecc_encrypt_search_with_rnd(
                 NULL,  /* No connection available in stream context */
                 scheduler,
                 plaintext,
@@ -5509,7 +7781,9 @@ tecc_stream_decrypt_data(
         hex_string,
         context->base_context->table_name,
         context->base_context->column_name,
-        NULL);
+        NULL,
+        false,   /* supports_he_add */
+        false);  /* supports_he_mul */
 
     /* End timer and update performance statistics */
     TECC_END_TIMER(start_time, end_time, elapsed_ms);
@@ -6004,7 +8278,7 @@ tecc_stream_destroy_context(
     TeccStreamCryptoContext *context)
 {
     if (!context)
-        return 0;
+        return;
 
     /* Destroy base context */
     if (context->base_context)
@@ -6426,9 +8700,11 @@ tecc_unified_encrypt_for_where(PGconn *conn,
                               const char *plaintext,
                               const char *table_name,
                               const char *column_name,
+                              const char *schema_name,
                               const char *kek_name,
                               const char *dek_name,
                               TeccOperatorType operator_type,
+                              char like_escape_char,
                               TeccCryptoContext *external_context)
 {
     TeccCryptoScheduler *scheduler;
@@ -6498,8 +8774,10 @@ tecc_unified_encrypt_for_where(PGconn *conn,
             const char *db_name = PQdb(conn);
             if (db_name == NULL || db_name[0] == '\0')
                 db_name = "postgres";
+            /* 使用调用方传入的 schema（限定表名如 sch1.t_det），
+             * 原硬编码 "public" 导致非 public 模式表的 WHERE 加密元数据漏检。 */
             cache_item = tecc_cache_get_encrypted_column_by_name(
-                state, db_name, "public", table_name, column_name);
+                state, db_name, schema_name, table_name, column_name);
             if (cache_item != NULL)
                 col_meta = tecc_convert_column_cache_item_to_metadata(state, cache_item);
         }
@@ -6558,6 +8836,8 @@ tecc_unified_encrypt_for_where(PGconn *conn,
             context->core.algo_support.supports_det = col_meta->enable_det;
             context->core.algo_support.supports_ope = col_meta->enable_ope;
             context->core.algo_support.supports_search = col_meta->enable_search;
+        context->core.algo_support.supports_he_add = col_meta->enable_he_add;
+        context->core.algo_support.supports_he_mul = col_meta->enable_he_mul;
 
             /* ReqID:TECC4.0 - Unified text preparation for WHERE encryption:
              * 1. BPCHAR: pad to declared length (PG backend pads bpchar(N) to N bytes)
@@ -6625,6 +8905,7 @@ tecc_unified_encrypt_for_where(PGconn *conn,
                 operator_type == TECC_OP_ILIKE || operator_type == TECC_OP_NOT_ILIKE)
             {
                 context->is_like_pattern = true;
+                context->like_escape_char = like_escape_char;
             }
 
             /* ReqID:TECC4.0 - Set selected algorithms based on operator type. */
@@ -6724,9 +9005,24 @@ tecc_unified_encrypt_for_where(PGconn *conn,
                 return NULL;
             }
 
-            /* Build a minimal CipherDataType with only the needed algorithm's data */
+            /* Build a minimal CipherDataType carrying only the needed
+             * algorithm's segment (v2.0 compact header). */
             {
-                cipherdata_len = sizeof(CipherDataType) + primary_ct_len;
+                uint16 seg_bit;
+                uint16 mask;
+
+                switch (algo_type)
+                {
+                    case TECC_ALGO_RND:    seg_bit = CIPHERDATA_SEG_RND;    break;
+                    case TECC_ALGO_DET:    seg_bit = CIPHERDATA_SEG_DET;    break;
+                    case TECC_ALGO_OPE:    seg_bit = CIPHERDATA_SEG_OPE;    break;
+                    case TECC_ALGO_SEARCH: seg_bit = CIPHERDATA_SEG_SEARCH; break;
+                    default:               seg_bit = 0;                     break;
+                }
+                mask = seg_bit;
+
+                cipherdata_len = CIPHERDATA_TOTAL_SIZE(mask, 0, 0, 0, 0, 0, 0)
+                                 + primary_ct_len;
                 cipherdata = pg_malloc0(cipherdata_len);
                 if (cipherdata == NULL)
                 {
@@ -6740,14 +9036,13 @@ tecc_unified_encrypt_for_where(PGconn *conn,
                     char *cd_ptr;
                     int32 version;
                     Oid dek_dist_oid;
-                    int32 zero_val;
-                    int32 algo_len_val;
 
                     SET_VARSIZE(cipherdata, cipherdata_len);
                     cd_ptr = (char *)cipherdata;
                     cd_ptr += sizeof(int32);       /* skip vl_len_ */
 
-                    version = CIPHERDATA_VERSION_1_0;
+                    /* version packs the major version and the segment mask */
+                    version = CIPHERDATA_MAKE_VERSION(CIPHERDATA_VERSION_2_0, mask);
                     memcpy(cd_ptr, &version, sizeof(int32));
                     cd_ptr += sizeof(int32);
 
@@ -6756,21 +9051,13 @@ tecc_unified_encrypt_for_where(PGconn *conn,
                     memcpy(cd_ptr, &dek_dist_oid, sizeof(Oid));
                     cd_ptr += sizeof(Oid);
 
-                    zero_val = 0;
-                    algo_len_val = (int32)primary_ct_len;
+                    /* Single length field for the selected segment */
+                    {
+                        int32 algo_len_val = (int32)primary_ct_len;
 
-                    /* rnd_length */
-                    memcpy(cd_ptr, (algo_type == TECC_ALGO_RND) ? &algo_len_val : &zero_val, sizeof(int32));
-                    cd_ptr += sizeof(int32);
-                    /* det_length */
-                    memcpy(cd_ptr, (algo_type == TECC_ALGO_DET) ? &algo_len_val : &zero_val, sizeof(int32));
-                    cd_ptr += sizeof(int32);
-                    /* ope_length */
-                    memcpy(cd_ptr, (algo_type == TECC_ALGO_OPE) ? &algo_len_val : &zero_val, sizeof(int32));
-                    cd_ptr += sizeof(int32);
-                    /* search_length */
-                    memcpy(cd_ptr, (algo_type == TECC_ALGO_SEARCH) ? &algo_len_val : &zero_val, sizeof(int32));
-                    cd_ptr += sizeof(int32);
+                        memcpy(cd_ptr, &algo_len_val, sizeof(int32));
+                        cd_ptr += sizeof(int32);
+                    }
 
                     /* Copy ciphertext */
                     memcpy(cd_ptr, primary_ct, primary_ct_len);
@@ -6814,4 +9101,231 @@ tecc_unified_encrypt_for_where(PGconn *conn,
     }
 }
 
+/* Begin - ReqID:TECC4.0 - HE 标量运算常量加密（客户端加密常量 → 服务端全密文同态） */
+/*
+ * tecc_unified_encrypt_he_constant
+ *
+ * Encrypts an integer constant with the column's HE public key and returns a
+ * minimal CipherDataType (hex) carrying ONLY the EG_ADD slot (use_he_add=true,
+ * EC-ElGamal) or the EG_MUL slot (use_he_add=false, finite field ElGamal),
+ * including the per-segment DEK distributed ID prefix.
+ *
+ * The caller rewrites `enc + k` / `enc - k` / `enc * k` into
+ * `enc + 'hex'::intN_enc`, so the server resolves the generic ciphertext×
+ * ciphertext HE operators (he_add_generic / he_sub_generic / he_mul_generic)
+ * and the plaintext constant never leaves the client.  Returns NULL on
+ * failure (column not an HE column, HE DEK unresolvable, encryption error).
+ */
+TeccUnifiedEncryptResult *
+tecc_unified_encrypt_he_constant(PGconn *conn,
+                                 const char *plaintext,
+                                 const char *table_name,
+                                 const char *column_name,
+                                 const char *schema_name,
+                                 bool use_he_add)
+{
+    TeccUnifiedEncryptResult *result = NULL;
+    TeccState *state = NULL;
+    TeccColumnCacheItem *cache_item = NULL;
+    TeccEncryptedColumnMetadata *col_meta = NULL;
+    TeccCryptoContextExtended *context = NULL;
+    CipherDataType *cipherdata = NULL;
+    size_t cipherdata_len = 0;
+    TeccFormatterErrorCode fmt_ret;
+    char he_dek_name[NAMEDATALEN];
+    const char *resolved_dek_name = NULL;
+    char *he_pub_hex = NULL;
+    TeccDekCacheItem *dek_item = NULL;
+    Oid he_dek_dist_id = InvalidOid;
+    int ret;
+    const char *db_name;
+
+    if (conn == NULL || plaintext == NULL || table_name == NULL || column_name == NULL)
+    {
+        TECC_SCHEDULER_ERROR("Invalid parameters to tecc_unified_encrypt_he_constant");
+        return NULL;
+    }
+
+    state = tecc_get_state(conn);
+    if (state == NULL)
+    {
+        TECC_SCHEDULER_ERROR("Failed to get TECC state for HE constant encryption");
+        return NULL;
+    }
+
+    db_name = PQdb(conn);
+    if (db_name == NULL || db_name[0] == '\0')
+        db_name = "postgres";
+
+    cache_item = tecc_cache_get_encrypted_column_by_name(
+        state, db_name, schema_name, table_name, column_name);
+    if (cache_item == NULL)
+    {
+        TECC_SCHEDULER_ERROR("Column %s.%s not found in metadata cache", table_name, column_name);
+        return NULL;
+    }
+    col_meta = tecc_convert_column_cache_item_to_metadata(state, cache_item);
+    if (col_meta == NULL)
+    {
+        TECC_SCHEDULER_ERROR("Failed to convert column metadata for %s.%s", table_name, column_name);
+        return NULL;
+    }
+
+    /* The required HE algorithm must be enabled on the column */
+    if (use_he_add && !col_meta->enable_he_add)
+    {
+        TECC_SCHEDULER_ERROR("Column %s.%s has no he-add support", table_name, column_name);
+        tecc_free_encrypted_column_metadata(col_meta);
+        return NULL;
+    }
+    if (!use_he_add && !col_meta->enable_he_mul)
+    {
+        TECC_SCHEDULER_ERROR("Column %s.%s has no he-mul support", table_name, column_name);
+        tecc_free_encrypted_column_metadata(col_meta);
+        return NULL;
+    }
+
+    /* Resolve HE DEK name: column-level he_add_dek/he_mul_dek binding
+     * (hg_encrypted_column_args, P0-2 multi-DEK) first, fall back to the
+     * column's DEK (single-DEK V4.0.0 compatibility). */
+    he_dek_name[0] = '\0';
+    if (OidIsValid(col_meta->table_oid) && col_meta->column_attnum > 0)
+    {
+        tecc_load_column_he_dek_name(state, col_meta->table_oid, col_meta->column_attnum,
+                                     use_he_add ? "he_add_dek" : "he_mul_dek",
+                                     he_dek_name, sizeof(he_dek_name));
+    }
+    if (he_dek_name[0] != '\0')
+        resolved_dek_name = he_dek_name;
+    else
+        resolved_dek_name = col_meta->dek_name;
+    if (resolved_dek_name == NULL || resolved_dek_name[0] == '\0')
+    {
+        TECC_SCHEDULER_ERROR("HE DEK name unresolvable for column %s.%s", table_name, column_name);
+        tecc_free_encrypted_column_metadata(col_meta);
+        return NULL;
+    }
+
+    /* Build a minimal crypto context with only the required HE algorithm */
+    context = (TeccCryptoContextExtended *)tecc_create_crypto_context(
+        table_name, column_name, NULL, resolved_dek_name);
+    if (context == NULL)
+    {
+        TECC_SCHEDULER_ERROR("Failed to create crypto context for HE constant encryption");
+        tecc_free_encrypted_column_metadata(col_meta);
+        return NULL;
+    }
+
+    context->core.data_type = tecc_map_to_original_type_oid(col_meta->data_type_original_oid);
+    context->core.algo_support.supports_he_add = use_he_add;
+    context->core.algo_support.supports_he_mul = !use_he_add;
+    context->plaintext = (const unsigned char *)plaintext;
+    context->plaintext_len = strlen(plaintext);
+
+    /* Load per-DEK HE public key */
+    if (tecc_he_load_dek_key_hex(state, resolved_dek_name,
+                                 use_he_add ? "he_ec_pubkey" : "he_eg_pubkey",
+                                 &he_pub_hex) != 0 || he_pub_hex == NULL)
+    {
+        TECC_SCHEDULER_ERROR("HE constant encrypt: %s public key not loaded for DEK '%s'",
+                             use_he_add ? "EC" : "EG", resolved_dek_name);
+        if (he_pub_hex)
+            pg_free(he_pub_hex);
+        tecc_destroy_crypto_context((TeccCryptoContext *)context);
+        tecc_free_encrypted_column_metadata(col_meta);
+        return NULL;
+    }
+    if (use_he_add)
+        context->he_ec_pubkey_hex = he_pub_hex;
+    else
+        context->he_eg_pubkey_hex = he_pub_hex;
+
+    /* Resolve per-segment DEK distributed ID (must match the column's
+     * EG_ADD/EG_MUL slot DEK ID for the server-side DEK match check) */
+    dek_item = tecc_cache_get_dek_by_name_search_path(state, resolved_dek_name);
+    if (dek_item != NULL && OidIsValid(dek_item->column_key_distributed_id))
+    {
+        he_dek_dist_id = dek_item->column_key_distributed_id;
+        if (use_he_add)
+            context->he_add_dek_id = he_dek_dist_id;
+        else
+            context->he_mul_dek_id = he_dek_dist_id;
+    }
+
+    /* Execute the HE algorithm */
+    if (use_he_add)
+        ret = tecc_execute_algo_he_add((TeccCryptoContext *)context);
+    else
+        ret = tecc_execute_algo_he_mul((TeccCryptoContext *)context);
+
+    if (ret != TECC_ALGO_SUCCESS ||
+        (use_he_add && (context->he_add_ciphertext == NULL || context->he_add_cipher_len == 0)) ||
+        (!use_he_add && (context->he_mul_ciphertext == NULL || context->he_mul_cipher_len == 0)))
+    {
+        TECC_SCHEDULER_ERROR("HE constant encrypt: %s encryption failed: %d",
+                             use_he_add ? "HE_ADD" : "HE_MUL", ret);
+        tecc_destroy_crypto_context((TeccCryptoContext *)context);
+        tecc_free_encrypted_column_metadata(col_meta);
+        return NULL;
+    }
+
+    /* Format a minimal CipherDataType carrying only the HE slot
+     * (tecc_formatter_format_cipherdata writes the 4B DEK ID prefix) */
+    fmt_ret = tecc_formatter_format_cipherdata(context, &cipherdata, &cipherdata_len);
+    if (fmt_ret != TECC_FORMATTER_SUCCESS || cipherdata == NULL)
+    {
+        TECC_SCHEDULER_ERROR("HE constant encrypt: format cipherdata failed: %d", fmt_ret);
+        if (cipherdata)
+            pg_free(cipherdata);
+        tecc_destroy_crypto_context((TeccCryptoContext *)context);
+        tecc_free_encrypted_column_metadata(col_meta);
+        return NULL;
+    }
+
+    /* ReqID:TECC4.0 - 头部 DEK 分布式 ID：formatter 置 InvalidOid，但后端
+     * cipherdata_validate 要求头部 dek_dist_oid 有效（INSERT 路径在调度器
+     * 中补填），此处同样补填，保证 'hex'::intN_enc 输入合法。 */
+    if (OidIsValid(he_dek_dist_id))
+        cipherdata->dek_dist_oid = he_dek_dist_id;
+
+    result = (TeccUnifiedEncryptResult *)pg_malloc0(sizeof(TeccUnifiedEncryptResult));
+    if (result == NULL)
+    {
+        pg_free(cipherdata);
+        tecc_destroy_crypto_context((TeccCryptoContext *)context);
+        tecc_free_encrypted_column_metadata(col_meta);
+        return NULL;
+    }
+
+    result->error_code = TECC_CRYPTO_SUCCESS;
+    fmt_ret = tecc_formatter_hex_encode((const unsigned char *)cipherdata,
+                                        cipherdata_len, &result->hex_string);
+    if (fmt_ret != TECC_FORMATTER_SUCCESS || result->hex_string == NULL)
+    {
+        TECC_SCHEDULER_ERROR("HE constant encrypt: hex encode failed: %d", fmt_ret);
+        tecc_unified_free_encrypt_result(result);
+        tecc_destroy_crypto_context((TeccCryptoContext *)context);
+        tecc_free_encrypted_column_metadata(col_meta);
+        return NULL;
+    }
+    result->hex_len = strlen(result->hex_string);
+    {
+        TeccCryptoBuffer *cb = (TeccCryptoBuffer *)pg_malloc0(sizeof(TeccCryptoBuffer));
+        if (cb != NULL)
+        {
+            cb->data = cipherdata;
+            cb->size = cipherdata_len;
+            cb->used = cipherdata_len;
+            result->cipherdata_buffer = cb;
+        }
+        else
+            pg_free(cipherdata);
+    }
+
+    tecc_destroy_crypto_context((TeccCryptoContext *)context);
+    tecc_free_encrypted_column_metadata(col_meta);
+
+    return result;
+}
 /* End - ReqID:TECC4.0 */
+

@@ -1,0 +1,12 @@
+DROP KEK
+DROP DEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../innherits_encrypted.sql:15: NOTICE:  key encryption key "inh_kek" does not exist, skipping
+psql:/.../innherits_encrypted.sql:16: NOTICE:  data encryption key "inh_dek" does not exist, skipping
+psql:/.../innherits_encrypted.sql:25: ERROR:  INHERITS of table with encrypted column "c_det" is not supported
+HINT:  Use PARTITION OF instead of INHERITS for table inheritance with encrypted columns

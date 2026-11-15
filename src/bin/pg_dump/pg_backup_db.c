@@ -262,8 +262,8 @@ ConnectDatabaseNative(Archive *AHX,
 	 */
 	do
 	{
-		const char *keywords[8];
-		const char *values[8];
+		const char *keywords[10];
+		const char *values[10];
 		int			i = 0;
 
 		/*
@@ -279,6 +279,22 @@ ConnectDatabaseNative(Archive *AHX,
 		values[i++] = cparams->username;
 		keywords[i] = "password";
 		values[i++] = password;
+		/* Begin - ReqID:TECC4.0 */
+		/*
+		 * 导出/导入工具是"取数据"的客户端，默认不做客户端密态处理。
+		 *
+		 * 理由：客户端密态处理（改写 + 结果解密）如果跑在 pg_dump 里，读加密列
+		 * 时就会被就地解密，dump 里落的是明文 —— 既把明文泄漏到归档，又让归档
+		 * 无法再导回加密列（服务端会把明文当密文解析而报错）。需要密态语义
+		 * （例如归档要自带 CREATE KEK/DEK 绑定、做跨库还原）时，在连接串上显式
+		 * 打开：-d "dbname=... enable_tecc=true"。
+		 *
+		 * 必须放在 dbname 之前：dbname 若是连接串，其条目会覆盖先前列出的值，
+		 * 这样调用方才有机会覆盖这里的默认值。
+		 */
+		keywords[i] = "enable_tecc";
+		values[i++] = "false";
+		/* End - ReqID:TECC4.0 */
 		keywords[i] = "dbname";
 		values[i++] = cparams->dbname;
 		if (cparams->override_dbname)

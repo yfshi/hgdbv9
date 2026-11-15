@@ -36,6 +36,9 @@
 #include "utils/inval.h"
 #include "utils/syscache.h"
 #include "utils/tecc_global_mark.h"
+#include "catalog/hg_kek_d.h"
+#include "catalog/hg_dek_d.h"
+#include "catalog/hg_encrypted_columns_d.h"
 
 /*
  * Per-backend process-local marks indicating TECC metadata has been updated.
@@ -335,14 +338,29 @@ tecc_clear_cache_marks_wrapper(PG_FUNCTION_ARGS)
 /*
  * tecc_update_meta - SQL-callable function to refresh TECC metadata cache
  *
- * Clears all cache marks (KEK, DEK, column) so that connected clients
- * will re-fetch metadata on their next query.
+ * Broadcasts catalog + relcache invalidation for hg_kek / hg_dek /
+ * hg_encrypted_columns. Each backend's syscache callback (registered in
+ * tecc_init_global_mark) sets its local updated-mark upon receiving the
+ * invalidation message, so connected clients re-fetch metadata on their
+ * next query; the relcache callback also invalidates the server-side HE
+ * public key cache.
  *
  * Usage: SELECT update_meta();
  */
 Datum
 tecc_update_meta(PG_FUNCTION_ARGS)
 {
-	tecc_clear_cache_marks(0x01 | 0x02 | 0x04);	/* KEK | DEK | COLUMN */
+	/* ReqID:TECC4.0 - 广播 catcache invalidation，触发各后端 syscache 回调
+	 * 置 updated-mark=true，客户端下次查询检测到 mark 后刷新缓存。 */
+	CacheInvalidateCatalog(HgKekRelationId);
+	CacheInvalidateCatalog(HgDekRelationId);
+	CacheInvalidateCatalog(HgEncryptedColumnsRelationId);
+
+	/* ReqID:TECC4.0 - 广播 relcache invalidation，触发各后端 relcache 回调，
+	 * 使服务端 HE 公钥缓存失效，保证服务端/客户端缓存刷新一致。 */
+	CacheInvalidateRelcacheByRelid(HgKekRelationId);
+	CacheInvalidateRelcacheByRelid(HgDekRelationId);
+	CacheInvalidateRelcacheByRelid(HgEncryptedColumnsRelationId);
+
 	PG_RETURN_VOID();
 }

@@ -196,24 +196,6 @@ extern TeccFormatterErrorCode tecc_formatter_normalize_data(
 );
 
 /*
- * tecc_formatter_build_cipherdata_zero_copy - Build CipherDataType in-place (zero-copy)
- *
- * Builds CipherDataType structure using the provided buffer.
- *
- * @param context Encryption context
- * @param encrypted_data Encrypted data from algorithm module
- * @param encrypted_len Length of encrypted data
- * @param buffer Buffer for output CipherDataType
- * @return Error code
- */
-extern TeccFormatterErrorCode tecc_formatter_build_cipherdata_zero_copy(
-    TeccCryptoContextCore *context,
-    const unsigned char *encrypted_data,
-    size_t encrypted_len,
-    TeccCryptoBuffer *buffer
-);
-
-/*
  * tecc_formatter_calculate_normalized_size - Calculate normalized data size
  *
  * Calculates the size needed for normalized data output.
@@ -226,21 +208,6 @@ extern TeccFormatterErrorCode tecc_formatter_build_cipherdata_zero_copy(
 extern size_t tecc_formatter_calculate_normalized_size(
     TeccCryptoContextCore *context,
     size_t input_len
-);
-
-/*
- * tecc_formatter_calculate_cipherdata_size - Calculate CipherDataType size
- *
- * Calculates the size needed for CipherDataType structure.
- * Used for pre-allocating buffers.
- *
- * @param context Encryption context
- * @param encrypted_len Length of encrypted data
- * @return Required buffer size for CipherDataType
- */
-extern size_t tecc_formatter_calculate_cipherdata_size(
-    TeccCryptoContextCore *context,
-    size_t encrypted_len
 );
 
 /*

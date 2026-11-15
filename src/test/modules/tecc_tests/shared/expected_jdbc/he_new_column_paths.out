@@ -1,0 +1,62 @@
+NOTICE: table "hencp_plain" does not exist, skipping
+DROP TABLE
+NOTICE: table "hencp_ctas" does not exist, skipping
+DROP TABLE
+NOTICE: table "hencp_ctas_pure" does not exist, skipping
+DROP TABLE
+NOTICE: table "hencp_dflt" does not exist, skipping
+DROP TABLE
+NOTICE: table "hencp_dflt_pure" does not exist, skipping
+DROP TABLE
+NOTICE: view "hencp_view" does not exist, skipping
+DROP VIEW
+NOTICE: materialized view "hencp_mview" does not exist, skipping
+DROP MATERIALIZED
+NOTICE: data encryption key "hencp_dek_add" does not exist, skipping
+DROP DEK
+NOTICE: data encryption key "hencp_dek_sym" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "hencp_kek_asym" does not exist, skipping
+DROP KEK
+NOTICE: key encryption key "hencp_kek_sym" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE KEK
+CREATE DEK
+=== 0 对照：普通列 + INSERT ===
+CREATE TABLE
+INSERT 0 1
+5|true|5
+=== 1a CTAS：混合 det,he-add ===
+CREATE TABLE
+5|true|5
+=== 1b CTAS：纯同态（无 DEK=，只有 HE_ADD_DEK）===
+CREATE TABLE
+5
+=== 2a 视图定义（混合）===
+CREATE VIEW
+5
+=== 2b 物化视图定义（混合）===
+NOTICE: could not determine encryption metadata for column "a" in CTAS result table
+CREATE MATERIALIZED
+5|5
+=== 3a DEFAULT：混合 det,he-add ===
+CREATE TABLE
+INSERT 0 1
+5|true|5
+=== 3b DEFAULT：纯同态 ===
+CREATE TABLE
+INSERT 0 1
+7
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP VIEW
+DROP MATERIALIZED
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK

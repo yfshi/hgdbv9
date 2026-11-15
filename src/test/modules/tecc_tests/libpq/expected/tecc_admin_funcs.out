@@ -1,0 +1,50 @@
+SET
+DROP TABLE
+DROP DEK
+DROP KEK
+DROP ROLE
+RESET
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+t|t|t|t|t|t|t|t|t
+hg_tecc.mode is enabled.
+t|t|t
+hg_tecc.mode is disabled.
+hg_tecc.mode is enabled.
+c_int|4|4|124|31.00
+c_txt|20|24|208|8.67
+TOTAL|84459520|390103040|4.80
+t
+t
+t
+CREATE ROLE
+SET
+RESET
+GRANT
+SET
+t
+RESET
+GRANT
+You are now connected to database "postgres" as user "tecc_admin_func_reader".
+hg_tecc.mode is enabled.
+You are now connected to database "postgres" as user "postgres".
+GRANT
+You are now connected to database "postgres" as user "tecc_admin_func_reader".
+hg_tecc.mode is enabled.
+t
+You are now connected to database "postgres" as user "postgres".
+REVOKE
+REVOKE
+REVOKE
+DROP ROLE
+DROP TABLE
+DROP DEK
+DROP KEK
+TECC administrator diagnostic function tests completed
+psql:/.../tecc_admin_funcs.sql:74: TECC query preprocessing failed: tecc_decrypt_raw requires enable hg_tecc_mode
+psql:/.../tecc_admin_funcs.sql:107: ERROR:  permission denied for table tecc_admin_func_table
+psql:/.../tecc_admin_funcs.sql:126: TECC result processing error: permission denied for DEK "tecc_admin_func_dek"
+psql:/.../tecc_admin_funcs.sql:145: TECC query preprocessing failed: tecc_decrypt_raw requires a TECC encrypted value
+psql:/.../tecc_admin_funcs.sql:152: TECC query preprocessing failed: unsupported TECC ciphertext algorithm ""

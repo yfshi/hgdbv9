@@ -156,7 +156,7 @@ INSERT 0 4
 5f_least|3|Charlie|65000
 5f_least|4|Diana|65000
 (4 rows)
-5g_array|\x{"\\xf001000000000100406d97bd480000000000000018000000000000002f6791030868aa974189020e0fc8fce13173f89fb98a629e4407c351830830a929f05449e75d61b903f53ee452060b5b1000000000000000ef875beb7fa9055d94249f2bf29756553c8b1d271787718c7e086dd954c146ab3cbe0e3ea435f7d7","\\xf001000000000100406d97bd4800000000000000180000000000000042a9b1c4f88bd4def8eda549b20442e6092fbf9004fcb3d23b2514a668cf387f5946e8dbcf5eac03c7478d12f5b355c11000000000000000c7a9e7b65b65c840c5b35992d1d8bdd43c8b1d271778af230bb31b1824b6b827cc0eba4c14964473"}
+5g_array|{"\\x被隐藏的HEX输出","\\x被隐藏的HEX输出"}
 (1 row)
 5h_coalesce_where|1|Alice
 5h_coalesce_where|3|Charlie
@@ -275,6 +275,50 @@ INSERT 0 3
 7r_graph|3|Diana
 (3 rows)
 DROP TABLE
+DROP TABLE
+DROP TABLE
+=== 7b UNION/INTERSECT/EXCEPT + Encrypted ===
+(1 row)
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+INSERT 0 4
+7b1_union_all|1|50000|Engineering
+7b1_union_all|3|50000|Engineering
+7b1_union_all|3|50000|Engineering
+(3 rows)
+7b2_union_distinct|1|50000|Engineering
+7b2_union_distinct|3|50000|Engineering
+(2 rows)
+7b3_intersect|3|50000|Engineering
+7b3_intersect|4|70000|Marketing
+(2 rows)
+7b4_except|1|50000|Engineering
+7b4_except|2|60000|Sales
+(2 rows)
+7b5_union_col|4
+(1 row)
+7b6_intersect_where|3|50000|Engineering
+(1 row)
+7b7_except_specific|1|Alice|50000
+7b7_except_specific|2|Bob|60000
+(2 rows)
+7b8_multi_set|5
+(1 row)
+SET
+7b9_union_distinct_off|4
+(1 row)
+7b9_intersect_off|2
+(1 row)
+7b9_except_off|1
+(1 row)
+RESET
+7b9_union_distinct_on|4
+(1 row)
+7b9_intersect_on|2
+(1 row)
+7b9_except_on|1
+(1 row)
 DROP TABLE
 DROP TABLE
 === 8 Enc + Plain Function ===

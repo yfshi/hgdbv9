@@ -1,0 +1,47 @@
+=== 1 准备：角色 + 带标记列与行级规则的分布表 ===
+
+
+
+3
+4
+=== 2 规则②：分发表上显式列出标记列、开关 off -> 协调节点就报错（无 worker CONTEXT）
+=== 3 规则③：分发表未指定列清单、开关 off -> 不导出标记列；行级策略照常过滤
+id,name
+4
+1,2,3
+id,name
+3
+1,2
+=== 4 规则②：分片 COPY TO 上同样拒绝（角色视角，走的是远程分片 COPY）
+=== 5 T5.2：行级策略生效时，分发 COPY FROM 由协调节点直接拒绝（无 worker CONTEXT）
+0
+=== 6 规则④：各节点打开导出开关 + 未指定列清单 -> 导出所有列（含标记列）
+f
+t
+t
+t
+
+t
+id,name,__hg_seclabel_level__,__hg_seclabel_cats__
+4
+id
+1|10|{1,2}
+2|5|{1,2}
+3|15|{}
+=== 7 导入（方案二）：豁免用户（超级用户）经分发 COPY 把标记值导进去 ===
+10|10|{1,2}
+30|5|{1,2}
+=== 8 收尾：各节点把导出开关恢复成 off ===
+t
+t
+t
+
+t
+psql:/.../086_mac_copy_label.sql:65: ERROR:  permission denied to export mandatory access control security labels
+DETAIL:  Column "__hg_seclabel_level__" is a row security label column.
+HINT:  Set hg_sysmac.global_export_label to on, or remove the label columns from the COPY column list.
+psql:/.../086_mac_copy_label.sql:83: ERROR:  permission denied to export mandatory access control security labels
+DETAIL:  Column "__hg_seclabel_level__" is a row security label column.
+HINT:  Set hg_sysmac.global_export_label to on, or remove the label columns from the COPY column list.
+psql:/.../086_mac_copy_label.sql:91: ERROR:  COPY FROM not supported with row-level security
+HINT:  Use INSERT statements instead.

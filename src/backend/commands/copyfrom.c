@@ -34,6 +34,7 @@
 #include "commands/copy.h"
 #include "commands/copyfrom_internal.h"
 #include "commands/progress.h"
+#include "commands/encrypted_column.h"
 #include "commands/trigger.h"
 #include "executor/execPartition.h"
 #include "executor/executor.h"
@@ -1375,7 +1376,13 @@ CopyFrom(CopyFromState cstate)
 					if (resultRelInfo->ri_FdwRoutine == NULL &&
 						resultRelInfo->ri_RelationDesc->rd_att->constr)
 						ExecConstraints(resultRelInfo, myslot, estate);
-
+ 
+					/* ReqID:TECC4.0 - Validate encrypted column slots; runs
+					* unconditionally (ExecConstraints is skipped when the table
+					* has no constraint at all). */
+					if (resultRelInfo->ri_FdwRoutine == NULL)
+						tecc_validate_encrypted_slots(resultRelInfo, myslot);
+	
 					/*
 					 * Also check the tuple against the partition constraint, if
 					 * there is one; except that if we got here via tuple-routing,

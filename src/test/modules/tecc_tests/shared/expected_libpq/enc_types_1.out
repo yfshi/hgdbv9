@@ -105,12 +105,10 @@ DELETE 1
 
 CREATE TABLE
 INSERT 0 1
-INSERT 0 1
  id | val | name 
 ----+-----+------
   1 | 100 | row1
-  1 | 200 | row2
-(2 rows)
+(1 row)
 
 DROP TABLE
           ?column?          
@@ -119,13 +117,9 @@ DROP TABLE
 (1 row)
 
 CREATE TABLE
-INSERT 0 1
-INSERT 0 1
- val |     note     
------+--------------
- 100 | world
- 99  | only_default
-(2 rows)
+ val | note 
+-----+------
+(0 rows)
 
 DROP TABLE
         ?column?        
@@ -318,6 +312,15 @@ DROP TABLE
  === 9 VIEW ===
 (1 row)
 
+CREATE VIEW
+ id | c_int2 | c_int4 
+----+--------+--------
+  1 | 10     | 999
+  2 | 20     | 200
+  3 | 30     | 300
+(3 rows)
+
+DROP VIEW
     ?column?     
 -----------------
  === cleanup ===
@@ -326,70 +329,132 @@ DROP TABLE
 DROP TABLE
 DROP DEK
 DROP KEK
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:6: 注意:  表 "enc_types_t" 不存在
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:7: 注意:  表 "enc_types_def" 不存在
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:8: 注意:  data encryption key "dek_enc_types" does not exist, skipping
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:9: 注意:  key encryption key "kek_enc_types" does not exist, skipping
+             ?column?              
+-----------------------------------
+ === 10 multi-condition parity ===
+(1 row)
+
+CREATE TABLE
+INSERT 0 5
+ id |   txt    | i4  |    vc    |  num   
+----+----------+-----+----------+--------
+  1 | test数据 | 100 | test文本 | 123.45
+(1 row)
+
+ id |    vc    |  i8   |   txt    |   f8   
+----+----------+-------+----------+--------
+  2 | 测试文本 |  2000 | 测试数据 | 56.789
+  3 | 测试test |  3000 | test测试 |  67.89
+  5 | 测试样例 | 20000 | 测试示例 | 89.012
+(3 rows)
+
+ id |                                                   bp                                                   | i2 |    vc    |  f4  
+----+--------------------------------------------------------------------------------------------------------+----+----------+------
+  3 | test测试                                                                                               |  3 | 测试test | 3.45
+(1 row)
+
+ id | i2 | num | f4 | txt 
+----+----+-----+----+-----
+(0 rows)
+
+DROP TABLE
+psql:/.../enc_types.sql:6: NOTICE:  table "enc_types_t" does not exist, skipping
+psql:/.../enc_types.sql:7: NOTICE:  table "enc_types_def" does not exist, skipping
+psql:/.../enc_types.sql:8: NOTICE:  data encryption key "dek_enc_types" does not exist, skipping
+psql:/.../enc_types.sql:9: NOTICE:  key encryption key "kek_enc_types" does not exist, skipping
+psql:/.../enc_types.sql:99: ERROR:  column "val" is of type int4_enc but expression is of type integer
+LINE 1: INSERT INTO enc_types_def (val, name) VALUES (200, 'row2');
+                                                      ^
+HINT:  You will need to rewrite or cast the expression.
+psql:/.../enc_types.sql:108: ERROR:  column "val" is of type int4_enc but expression is of type integer
+LINE 1: INSERT INTO enc_types_def (val, note) VALUES (100, 'world');
+                                                      ^
+HINT:  You will need to rewrite or cast the expression.
+psql:/.../enc_types.sql:109: ERROR:  invalid hex string: "only_default"
+LINE 1: INSERT INTO enc_types_def (note) VALUES ('only_default');
+                                                 ^
+DETAIL:  Hex string must contain only 0-9, a-f, A-F characters and may have \x prefix.
 TECC ERROR: SELECT TypeCast processing failed: -1
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:141: TECC query preprocessing failed: Cannot cast encrypted type text_enc to int2_enc: incompatible encrypted types
+psql:/.../enc_types.sql:141: TECC query preprocessing failed: Cannot cast encrypted type text_enc to int2_enc: incompatible encrypted types
 TECC ERROR: SELECT TypeCast processing failed: -1
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:143: TECC query preprocessing failed: Cannot cast encrypted type text_enc to int4_enc: incompatible encrypted types
+psql:/.../enc_types.sql:143: TECC query preprocessing failed: Cannot cast encrypted type text_enc to int4_enc: incompatible encrypted types
 TECC ERROR: SELECT TypeCast processing failed: -1
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:145: TECC query preprocessing failed: Cannot cast encrypted type text_enc to int8_enc: incompatible encrypted types
+psql:/.../enc_types.sql:145: TECC query preprocessing failed: Cannot cast encrypted type text_enc to int8_enc: incompatible encrypted types
 TECC ERROR: SELECT TypeCast processing failed: -1
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:148: TECC query preprocessing failed: Cannot cast encrypted type varchar_enc to int2_enc: incompatible encrypted types
+psql:/.../enc_types.sql:148: TECC query preprocessing failed: Cannot cast encrypted type varchar_enc to int2_enc: incompatible encrypted types
 TECC ERROR: SELECT TypeCast processing failed: -1
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:150: TECC query preprocessing failed: Cannot cast encrypted type varchar_enc to int4_enc: incompatible encrypted types
+psql:/.../enc_types.sql:150: TECC query preprocessing failed: Cannot cast encrypted type varchar_enc to int4_enc: incompatible encrypted types
 TECC ERROR: SELECT TypeCast processing failed: -1
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:152: TECC query preprocessing failed: Cannot cast encrypted type varchar_enc to int8_enc: incompatible encrypted types
+psql:/.../enc_types.sql:152: TECC query preprocessing failed: Cannot cast encrypted type varchar_enc to int8_enc: incompatible encrypted types
 TECC ERROR: SELECT TypeCast processing failed: -1
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:155: TECC query preprocessing failed: Cannot cast encrypted type bpchar_enc to int2_enc: incompatible encrypted types
+psql:/.../enc_types.sql:155: TECC query preprocessing failed: Cannot cast encrypted type bpchar_enc to int2_enc: incompatible encrypted types
 TECC ERROR: SELECT TypeCast processing failed: -1
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:157: TECC query preprocessing failed: Cannot cast encrypted type bpchar_enc to int4_enc: incompatible encrypted types
+psql:/.../enc_types.sql:157: TECC query preprocessing failed: Cannot cast encrypted type bpchar_enc to int4_enc: incompatible encrypted types
 TECC ERROR: SELECT TypeCast processing failed: -1
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:159: TECC query preprocessing failed: Cannot cast encrypted type bpchar_enc to int8_enc: incompatible encrypted types
+psql:/.../enc_types.sql:159: TECC query preprocessing failed: Cannot cast encrypted type bpchar_enc to int8_enc: incompatible encrypted types
 TECC ERROR: SELECT TypeCast processing failed: -1
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:163: TECC query preprocessing failed: Cannot cast encrypted type text_enc to float4_enc: incompatible encrypted types
+psql:/.../enc_types.sql:163: TECC query preprocessing failed: Cannot cast encrypted type text_enc to float4_enc: incompatible encrypted types
 TECC ERROR: SELECT TypeCast processing failed: -1
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:165: TECC query preprocessing failed: Cannot cast encrypted type text_enc to float8_enc: incompatible encrypted types
+psql:/.../enc_types.sql:165: TECC query preprocessing failed: Cannot cast encrypted type text_enc to float8_enc: incompatible encrypted types
 TECC ERROR: SELECT TypeCast processing failed: -1
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:168: TECC query preprocessing failed: Cannot cast encrypted type varchar_enc to float4_enc: incompatible encrypted types
+psql:/.../enc_types.sql:168: TECC query preprocessing failed: Cannot cast encrypted type varchar_enc to float4_enc: incompatible encrypted types
 TECC ERROR: SELECT TypeCast processing failed: -1
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:170: TECC query preprocessing failed: Cannot cast encrypted type varchar_enc to float8_enc: incompatible encrypted types
+psql:/.../enc_types.sql:170: TECC query preprocessing failed: Cannot cast encrypted type varchar_enc to float8_enc: incompatible encrypted types
 TECC ERROR: SELECT TypeCast processing failed: -1
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:173: TECC query preprocessing failed: Cannot cast encrypted type bpchar_enc to float4_enc: incompatible encrypted types
+psql:/.../enc_types.sql:173: TECC query preprocessing failed: Cannot cast encrypted type bpchar_enc to float4_enc: incompatible encrypted types
 TECC ERROR: SELECT TypeCast processing failed: -1
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:175: TECC query preprocessing failed: Cannot cast encrypted type bpchar_enc to float8_enc: incompatible encrypted types
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:179: 错误:  无法把类型 int2_enc 转换为 smallint
+psql:/.../enc_types.sql:175: TECC query preprocessing failed: Cannot cast encrypted type bpchar_enc to float8_enc: incompatible encrypted types
+psql:/.../enc_types.sql:179: ERROR:  cannot cast type int2_enc to smallint
 LINE 1: ...E'\\x被隐藏的HEX输出'::int2_enc::int2;
                                                                 ^
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:182: 错误:  无法把类型 int4_enc 转换为 integer
+psql:/.../enc_types.sql:182: ERROR:  cannot cast type int4_enc to integer
 LINE 1: ...E'\\x被隐藏的HEX输出'::int4_enc::int4;
                                                                 ^
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:185: 错误:  无法把类型 int8_enc 转换为 bigint
+psql:/.../enc_types.sql:185: ERROR:  cannot cast type int8_enc to bigint
 LINE 1: ...E'\\x被隐藏的HEX输出'::int8_enc::int8;
                                                                 ^
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:188: 错误:  无法把类型 float4_enc 转换为 real
+psql:/.../enc_types.sql:188: ERROR:  cannot cast type float4_enc to real
 LINE 1: ...E'\\x被隐藏的HEX输出'::float4_enc::float4;
                                                               ^
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:191: 错误:  无法把类型 float8_enc 转换为 double precision
+psql:/.../enc_types.sql:191: ERROR:  cannot cast type float8_enc to double precision
 LINE 1: ...E'\\x被隐藏的HEX输出'::float8_enc::float8;
                                                               ^
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:194: 错误:  无法把类型 numeric_enc 转换为 numeric
+psql:/.../enc_types.sql:194: ERROR:  cannot cast type numeric_enc to numeric
 LINE 1: ...E'\\x被隐藏的HEX输出'::numeric_enc::numeric;
                                                              ^
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:197: 错误:  无法把类型 varchar_enc 转换为 character varying
+psql:/.../enc_types.sql:197: ERROR:  cannot cast type varchar_enc to character varying
 LINE 1: ...E'\\x被隐藏的HEX输出'::varchar_enc::varchar;
                                                              ^
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:200: 错误:  无法把类型 bpchar_enc 转换为 character
+psql:/.../enc_types.sql:200: ERROR:  cannot cast type bpchar_enc to character
 LINE 1: ...E'\\x被隐藏的HEX输出'::bpchar_enc::bpchar;
                                                               ^
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:203: 错误:  无法把类型 text_enc 转换为 text
+psql:/.../enc_types.sql:203: ERROR:  cannot cast type text_enc to text
 LINE 1: ...E'\\x被隐藏的HEX输出'::text_enc::text;
                                                                 ^
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:210: 错误:  encrypted data type "int2_enc" requires ENCRYPTED WITH clause
-HINT:  Add ENCRYPTED WITH (dek = dek_name) to the column definition
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:211: 错误:  关系 "enc_types_v" 不存在
-LINE 1: SELECT id, c_int2, c_int4 FROM enc_types_v ORDER BY id;
-                                       ^
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/enc_types.sql:212: 错误:  视图 "enc_types_v" 不存在
+ERROR: key file not found: kek_parity.key
+HINT: Use tecc_ktool generate --key-algo sm4 to create it first
+ERROR: Failed to setup local KEK
+psql:/.../enc_types.sql:229: TECC query preprocessing failed: Processor failed to process query
+[TIMESTAMP] [ERROR] [tecc_key/key_manager.c key_manager_get_kek_info] KEK 'kek_parity' not found in cache and direct database query is not allowed
+TECC ERROR: KEK 'kek_parity' cache miss, cannot encrypt DEK
+psql:/.../enc_types.sql:230: TECC query preprocessing failed: Processor failed to process query
+psql:/.../enc_types.sql:249: ERROR:  DEK "dek_parity" not found, cannot create encrypted column "txt"
+HINT:  Create the DEK first with CREATE DEK in TECC encryption mode (psql -k on).
+psql:/.../enc_types.sql:263: ERROR:  relation "parity_enc" does not exist
+LINE 1: INSERT INTO parity_enc (txt,vc,bp,i2,i4,i8,num,f4,f8) VALUES
+                    ^
+psql:/.../enc_types.sql:267: ERROR:  relation "parity_enc" does not exist
+LINE 1: SELECT id,txt,i4,vc,num FROM parity_enc WHERE txt='test数据'...
+                                     ^
+psql:/.../enc_types.sql:271: ERROR:  relation "parity_enc" does not exist
+LINE 1: SELECT id,vc,i8,txt,f8 FROM parity_enc WHERE i8>=2000 AND i8...
+                                    ^
+psql:/.../enc_types.sql:275: ERROR:  relation "parity_enc" does not exist
+LINE 1: SELECT id,bp,i2,vc,f4 FROM parity_enc WHERE bp LIKE '%test%'...
+                                   ^
+psql:/.../enc_types.sql:279: ERROR:  relation "parity_enc" does not exist
+LINE 1: SELECT id,i2,num,f4,txt FROM parity_enc WHERE i2=1 AND num>=...
+                                     ^
+psql:/.../enc_types.sql:283: ERROR:  table "parity_enc" does not exist
+psql:/.../enc_types.sql:284: ERROR:  data encryption key "dek_parity" does not exist
+psql:/.../enc_types.sql:285: ERROR:  key encryption key "kek_parity" does not exist

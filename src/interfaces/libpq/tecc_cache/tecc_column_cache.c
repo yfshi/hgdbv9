@@ -1,11 +1,11 @@
-﻿/* Begin - ReqID:TECC4.0 */
+/* Begin - ReqID:TECC4.0 */
 /*
  * File: tecc_column_cache.c
  * Abstract:
  *   TECC加密列缓存实现，基于简化设计的两层架构。
  *   提供加密列相关的缓存查询和管理功能。
  *
- * Authored by <Claude Code>, 2026-04-15.
+ * Authored by <wanghaoyan>, 2026-04-15.
  *
  * Copyright:
  *   Copyright (c) 2026, HighGo Software Co.,Ltd. All rights reserved.
@@ -22,35 +22,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef _MSC_VER
-#define TECC_ATTR_UNUSED
-#else
-#define TECC_ATTR_UNUSED __attribute__((unused))
-#endif
-
 /* 内部函数声明 */
-static TeccColumnCacheItem *create_column_cache_item(void) TECC_ATTR_UNUSED;
+static TeccColumnCacheItem *create_column_cache_item(void);
 static void destroy_column_cache_item(TeccColumnCacheItem *item);
 static TeccColumnCacheItem *find_column_in_cache(const TeccState *state, Oid table_oid, int column_attnum);
 static TeccColumnCacheItem *find_column_in_cache_by_name(const TeccState *state, const char *database_name,
                                                          const char *schema_name,
                                                          const char *table_name,
-                                                         const char *column_name) TECC_ATTR_UNUSED;
+                                                         const char *column_name);
 static int insert_column_into_cache(const TeccState *state, TeccColumnCacheItem *item);
-static int load_column_from_database(const TeccState *state, Oid table_oid, int column_attnum, TeccColumnCacheItem **item) TECC_ATTR_UNUSED;
-static int load_column_from_database_by_name(const TeccState *state,
-                                             const char *database_name,
-                                             const char *schema_name,
-                                             const char *table_name,
-                                             const char *column_name,
-                                             TeccColumnCacheItem **item) TECC_ATTR_UNUSED;
-static int load_all_columns_from_database(const TeccState *state, Oid table_oid, TeccColumnCacheItem ***items, int *count);
-static int load_all_columns_from_database_by_name(const TeccState *state,
-                                                  const char *database_name,
-                                                  const char *schema_name,
-                                                  const char *table_name,
-                                                  TeccColumnCacheItem ***items,
-                                                  int *count);
 
 /* 表级负缓存哨兵函数声明 */
 static bool name_sentinel_exists(const TeccState *state,
@@ -368,7 +348,7 @@ tecc_cache_get_encrypted_column_by_name(const TeccState *state,
 
         /* 通过tecc_cache_get_columns_by_table_name批量加载整表 */
         batch_items = tecc_cache_get_columns_by_table_name(
-            state, database_name, schema_name, table_name, &batch_count);
+            (TeccState *)state, database_name, schema_name, table_name, &batch_count);
 
         /* 批量加载已通过内部逻辑插入哨兵，无需额外操作 */
         if (batch_items != NULL) {
@@ -625,12 +605,48 @@ tecc_cache_get_columns_by_table_name(TeccState *state,
     TECC_CACHE_DEBUG("DEBUG LOOP: tecc_fetch_all_columns_for_table_by_name_for_cache returned: ret=%d, items=%p, count=%d",
                     ret, items, count ? *count : -1);
 
-    if (ret != TECC_CACHE_OK || items == NULL || *count == 0) {
-        TECC_CACHE_DEBUG("按名称查询表加密列失败: database=%s, schema=%s, table=%s, error=%d",
-                        database_name, schema_name, table_name, ret);
+    if (ret == TECC_CACHE_ERROR_RELATION_NOT_FOUND) {
+        /* ReqID:TECC4.0 - 关系尚不存在（如 CREATE TABLE 处理 DEFAULT 值时按名
+         * 回溯列元数据，表还没建）。此时绝不能固化 "NOT_ENCRYPTED" 哨兵：
+         * 该哨兵会断言"该表已加载且无加密列"，使本会话后续对该表名的所有
+         * 按名查找都在第 5 步短路返回 NULL，导致该表 DML 不再被改写、
+         * 明文直送服务端（报 int4_enc/type 不匹配或 invalid hex string）。
+         * 不缓存、也不视为错误：本次按名查找就是"查不到"，
+         * 待表真正建好后再次按名查找即可正常加载。 */
+        TECC_CACHE_DEBUG("关系不存在，跳过负缓存哨兵: database=%s, schema=%s, table=%s",
+                        database_name, schema_name, table_name);
+        if (count) {
+            *count = 0;
+        }
+        return NULL;
+    }
+
+    if (ret == TECC_CACHE_ERROR_NOT_FOUND) {
         /* 表确实无加密列，插入名称哨兵 */
+        TECC_CACHE_DEBUG("表无加密列: database=%s, schema=%s, table=%s",
+                        database_name, schema_name, table_name);
         (void)insert_name_sentinel(state, database_name, schema_name, table_name,
                                     TECC_CACHE_STATUS_NOT_ENCRYPTED);
+        if (count) {
+            *count = 0;
+        }
+        return NULL;
+    }
+
+    if (ret != TECC_CACHE_OK || items == NULL || *count == 0) {
+        /* ReqID:TECC4.0 - 查询失败（连接/查询/内存等错误，非"无加密列"）：
+         * 上抛错误而非静默当作无加密列，避免加密表被误判为普通表导致明文泄漏。 */
+        TECC_CACHE_DEBUG("查询加密列元数据失败: database=%s, schema=%s, table=%s, error=%d",
+                        database_name, schema_name, table_name, ret);
+        if (state != NULL) {
+            strncpy(state->last_error.error_msg,
+                    "failed to load encrypted column metadata",
+                    sizeof(state->last_error.error_msg) - 1);
+            state->last_error.error_msg[sizeof(state->last_error.error_msg) - 1] = '\0';
+            state->last_error.error_code = TECC_ERR_DATA_FETCHER;
+            state->last_error.timestamp = time(NULL);
+            state->last_error.recoverable = true;
+        }
         if (count) {
             *count = 0;
         }
@@ -752,6 +768,19 @@ destroy_column_cache_item(TeccColumnCacheItem *item)
     if (item->collation_locale != NULL)
     {
         pg_free(item->collation_locale);
+    }
+    /* ReqID:TECC4.0 - 一列多 DEK：释放 HE 加法/乘法 DEK 名 */
+    if (item->dek_name != NULL)
+    {
+        pg_free(item->dek_name);
+    }
+    if (item->he_add_dek_name != NULL)
+    {
+        pg_free(item->he_add_dek_name);
+    }
+    if (item->he_mul_dek_name != NULL)
+    {
+        pg_free(item->he_mul_dek_name);
     }
 
     /* 释放缓存项本身 */
@@ -887,175 +916,6 @@ find_column_in_cache_by_name(const TeccState *state, const char *database_name,
 
     /* 未找到匹配项 */
     return NULL;
-}
-
-/*
- * load_column_from_database - 从数据库加载加密列信息
- *
- * 参数:
- *   state - TECC状态结构，包含连接和上下文信息
- *   table_oid - 表对象标识符
- *   column_attnum - 列号
- *   item - 返回的加密列缓存项指针
- *
- * 返回:
- *   0表示成功，非0表示错误码
- */
-static int
-load_column_from_database(const TeccState *state, Oid table_oid, int column_attnum, TeccColumnCacheItem **item)
-{
-    TeccCacheQueryParams query;
-    TeccFetcherErrorCode fetcher_error;
-
-    /* 参数检查 */
-    if (state == NULL || item == NULL) {
-        return TECC_CACHE_ERROR_INVALID_PARAM;
-    }
-
-    /* 调用简化的适配器函数加载数据 */
-    memset(&query, 0, sizeof(query));
-    query.flags = TECC_QUERY_BY_OID;
-    query.params.by_oid.oid = table_oid;
-    query.params.by_oid.attnum = column_attnum;
-
-    fetcher_error = tecc_fetch_column_for_cache(state, &query, item, NULL);
-    if (fetcher_error != TECC_FETCHER_OK) {
-        return tecc_cache_convert_error(fetcher_error);
-    }
-
-    return TECC_CACHE_OK;
-}
-
-/*
- * load_column_from_database_by_name - 从数据库按名称加载加密列信息
- *
- * 参数:
- *   state - TECC状态结构，包含连接和上下文信息
- *   database_name - 数据库名称
- *   schema_name - 模式名称
- *   table_name - 表名称
- *   column_name - 列名称
- *   item - 返回的加密列缓存项指针
- *
- * 返回:
- *   0表示成功，非0表示错误码
- */
-static int
-load_column_from_database_by_name(const TeccState *state,
-                                  const char *database_name,
-                                  const char *schema_name,
-                                  const char *table_name,
-                                  const char *column_name,
-                                  TeccColumnCacheItem **item)
-{
-    TeccCacheQueryParams query;
-    TeccFetcherErrorCode fetcher_error;
-
-    /* 参数检查 */
-    if (state == NULL || database_name == NULL || schema_name == NULL ||
-        table_name == NULL || column_name == NULL || item == NULL) {
-        return TECC_CACHE_ERROR_INVALID_PARAM;
-    }
-
-    /* 调用简化的适配器函数按名称加载数据 */
-    /* TeccCacheQueryParams query; 已移到函数开头 */
-    memset(&query, 0, sizeof(query));
-    query.flags = TECC_QUERY_BY_NAME;
-    query.database_name = database_name;
-    query.schema_name = schema_name;
-    query.table_name = table_name;
-    query.column_name = column_name;
-
-    fetcher_error = tecc_fetch_column_for_cache(state, &query, item, NULL);
-    if (fetcher_error != TECC_FETCHER_OK) {
-        return tecc_cache_convert_error(fetcher_error);
-    }
-
-    return TECC_CACHE_OK;
-}
-
-/*
- * load_all_columns_from_database - 从数据库加载表中所有加密列信息
- *
- * 参数:
- *   state - TECC状态结构，包含连接和上下文信息
- *   table_oid - 表对象标识符
- *   items - 返回的加密列缓存项指针数组
- *   count - 返回的加密列数量
- *
- * 返回:
- *   0表示成功，非0表示错误码
- */
-static int TECC_ATTR_UNUSED
-load_all_columns_from_database(const TeccState *state, Oid table_oid, TeccColumnCacheItem ***items, int *count)
-{
-    TeccCacheQueryParams query;
-    TeccFetcherErrorCode fetcher_error;
-
-    /* 参数检查 */
-    if (state == NULL || items == NULL || count == NULL) {
-        return TECC_CACHE_ERROR_INVALID_PARAM;
-    }
-
-    /* 调用简化的适配器函数批量加载数据 */
-    /* TeccCacheQueryParams query; 已移到函数开头 */
-    memset(&query, 0, sizeof(query));
-    query.flags = TECC_QUERY_BATCH | TECC_QUERY_BY_OID;
-    query.params.by_oid.oid = table_oid;
-
-    fetcher_error = tecc_fetch_column_for_cache(state, &query, (TeccColumnCacheItem **)items, count);
-    if (fetcher_error != TECC_FETCHER_OK) {
-        return tecc_cache_convert_error(fetcher_error);
-    }
-
-    return TECC_CACHE_OK;
-}
-
-/*
- * load_all_columns_from_database_by_name - 从数据库按名称加载表中所有加密列信息
- *
- * 参数:
- *   state - TECC状态结构，包含连接和上下文信息
- *   database_name - 数据库名称
- *   schema_name - 模式名称
- *   table_name - 表名称
- *   items - 返回的加密列缓存项指针数组
- *   count - 返回的加密列数量
- *
- * 返回:
- *   0表示成功，非0表示错误码
- */
-static int TECC_ATTR_UNUSED
-load_all_columns_from_database_by_name(const TeccState *state,
-                                       const char *database_name,
-                                       const char *schema_name,
-                                       const char *table_name,
-                                       TeccColumnCacheItem ***items,
-                                       int *count)
-{
-    TeccCacheQueryParams query;
-    TeccFetcherErrorCode fetcher_error;
-
-    /* 参数检查 */
-    if (state == NULL || database_name == NULL || schema_name == NULL ||
-        table_name == NULL || items == NULL || count == NULL) {
-        return TECC_CACHE_ERROR_INVALID_PARAM;
-    }
-
-    /* 调用简化的适配器函数按名称批量加载数据 */
-    /* TeccCacheQueryParams query; 已移到函数开头 */
-    memset(&query, 0, sizeof(query));
-    query.flags = TECC_QUERY_BATCH | TECC_QUERY_BY_NAME;
-    query.database_name = database_name;
-    query.schema_name = schema_name;
-    query.table_name = table_name;
-
-    fetcher_error = tecc_fetch_column_for_cache(state, &query, (TeccColumnCacheItem **)items, count);
-    if (fetcher_error != TECC_FETCHER_OK) {
-        return tecc_cache_convert_error(fetcher_error);
-    }
-
-    return TECC_CACHE_OK;
 }
 
 /*
@@ -1352,6 +1212,47 @@ tecc_cache_remove_pending(TeccState *state, const char *database_name,
 }
 
 /*
+ * ReqID:TECC4.0 - tecc_cache_remove_name_sentinel - Remove any table-level name sentinel
+ *
+ * Removes PENDING, NOT_ENCRYPTED, or TABLE_LOADED sentinels for the given
+ * table. Called by tecc_refresh_table_cache after DDL succeeds to ensure
+ * stale NOT_ENCRYPTED sentinels don't block metadata refresh.
+ */
+int
+tecc_cache_remove_name_sentinel(TeccState *state, const char *database_name,
+                                const char *schema_name, const char *table_name)
+{
+    TeccCacheManager *manager;
+    ColumnNameHashKey name_key;
+    void *entry;
+
+    if (state == NULL || database_name == NULL || schema_name == NULL || table_name == NULL)
+        return TECC_CACHE_ERROR_INVALID_PARAM;
+
+    manager = get_cache_manager(state);
+    if (manager == NULL || manager->column_name_cache == NULL)
+        return TECC_CACHE_ERROR_NOT_INITIALIZED;
+
+    memset(&name_key, 0, sizeof(name_key));
+    strncpy(name_key.database_name, database_name, NAMEDATALEN - 1);
+    strncpy(name_key.schema_name, schema_name, NAMEDATALEN - 1);
+    strncpy(name_key.table_name, table_name, NAMEDATALEN - 1);
+
+    entry = fe_hash_search(manager->column_name_cache, &name_key, HASH_FIND, NULL);
+    if (entry != NULL) {
+        TeccColumnCacheItem *item = *(TeccColumnCacheItem **)entry;
+        if (item != NULL && (item->cache_status == TECC_CACHE_STATUS_PENDING ||
+                             item->cache_status == TECC_CACHE_STATUS_NOT_ENCRYPTED ||
+                             item->cache_status == TECC_CACHE_STATUS_TABLE_LOADED)) {
+            void *removed = fe_hash_search(manager->column_name_cache, &name_key, HASH_REMOVE, NULL);
+            destroy_column_cache_item(item);
+            pg_free(removed);
+        }
+    }
+    return TECC_CACHE_OK;
+}
+
+/*
  * tecc_cache_insert_column_item - Insert a single column cache item into formal cache
  *
  * Public wrapper around insert_column_into_cache for use by tecc_refresh_table_cache.
@@ -1413,9 +1314,19 @@ tecc_convert_column_cache_item_to_metadata(
     metadata->dek_name = NULL;
     metadata->kek_name = NULL;
 
-    /* 获取DEK名称 - 前端只需要名称，不需要OID */
+    /* 获取DEK名称 - 前端只需要名称，不需要OID。
+     * ReqID:TECC4.0 - 纯 HE 列无对称 DEK（dek_name 为 NULL），
+     * 用 HE_ADD_DEK/HE_MUL_DEK 名作为 dek_name 回退，避免转换失败。 */
     if (cache_item->dek_name != NULL && strlen(cache_item->dek_name) > 0) {
         metadata->dek_name = pg_strdup(cache_item->dek_name);
+    } else if (cache_item->he_add_dek_name != NULL && strlen(cache_item->he_add_dek_name) > 0) {
+        metadata->dek_name = pg_strdup(cache_item->he_add_dek_name);
+        if (cache_item->he_mul_dek_name != NULL)
+            metadata->he_mul_dek = pg_strdup(cache_item->he_mul_dek_name);
+    } else if (cache_item->he_mul_dek_name != NULL && strlen(cache_item->he_mul_dek_name) > 0) {
+        metadata->dek_name = pg_strdup(cache_item->he_mul_dek_name);
+        if (cache_item->he_add_dek_name != NULL)
+            metadata->he_add_dek = pg_strdup(cache_item->he_add_dek_name);
     } else {
         /* DEK名称缺失，返回错误 */
         TECC_CACHE_DEBUG("DEK名称缺失，无法创建列元数据");
@@ -1448,6 +1359,8 @@ tecc_convert_column_cache_item_to_metadata(
     metadata->enable_det = (cache_item->encryption_type & 0x01) != 0;
     metadata->enable_ope = (cache_item->encryption_type & 0x02) != 0;  /* HG_ENCRYPTION_TYPE_OPE */
     metadata->enable_search = (cache_item->encryption_type & 0x04) != 0; /* HG_ENCRYPTION_TYPE_SEARCH */
+    metadata->enable_he_add = (cache_item->encryption_type & 0x08) != 0; /* HG_ENCRYPTION_TYPE_HE_ADD */
+    metadata->enable_he_mul = (cache_item->encryption_type & 0x10) != 0; /* HG_ENCRYPTION_TYPE_HE_MUL */
 
     /* 复制排序规则信息 */
     metadata->collation_oid = cache_item->collation_oid;

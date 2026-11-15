@@ -60,42 +60,167 @@ cipherdata_convert_to_4b_header(const CipherDataType *input)
 }
 
 /*
- * cipherdata_alloc - Allocate a CipherDataType structure
+ * cipherdata_seg_mask_from_lengths - Segment mask implied by the lengths
  *
- * Allocates memory for a CipherDataType structure with the specified
- * ciphertext lengths. The structure includes the varlena header.
+ * ReqID:TECC4.0 - Only the compact layout reserves one length field per
+ * non-empty segment, so this is the mask a freshly built compact value uses.
  */
-CipherDataType *
-cipherdata_alloc(int32 rnd_len, int32 det_len, int32 ope_len, int32 search_len, Oid dek_dist_oid)
+static uint16
+cipherdata_seg_mask_from_lengths(int32 rnd_len, int32 det_len, int32 ope_len,
+								 int32 search_len, int32 eg_add_len, int32 eg_mul_len)
+{
+	uint16		mask = 0;
+
+	if (rnd_len > 0)		mask |= CIPHERDATA_SEG_RND;
+	if (det_len > 0)		mask |= CIPHERDATA_SEG_DET;
+	if (ope_len > 0)		mask |= CIPHERDATA_SEG_OPE;
+	if (search_len > 0)		mask |= CIPHERDATA_SEG_SEARCH;
+	if (eg_add_len > 0)		mask |= CIPHERDATA_SEG_EG_ADD;
+	if (eg_mul_len > 0)		mask |= CIPHERDATA_SEG_EG_MUL;
+
+	return mask;
+}
+
+/*
+ * cipherdata_alloc_layout - Allocate a CipherDataType with an explicit layout
+ *
+ * Allocates memory for a CipherDataType structure holding the given segment
+ * lengths, reserving one length field per segment set in `layout_mask` (the
+ * version stored in the structure carries the same mask).  The structure
+ * includes the varlena header.
+ *
+ * ReqID:TECC4.0 - The caller must pass the mask implied by the version it is
+ * going to keep, because every CIPHERDATA_*_PTR macro locates the payload from
+ * that mask.  Reserving fields only for the non-empty segments makes the
+ * payload copies of a value whose version declares more segments run past the
+ * end of the structure.
+ */
+static CipherDataType *
+cipherdata_alloc_layout(int32 rnd_len, int32 det_len, int32 ope_len,
+						int32 search_len, int32 eg_add_len, int32 eg_mul_len,
+						Oid dek_dist_oid, uint16 layout_mask)
 {
 	Size		total_size;
 	CipherDataType *result;
+	int32		version;
+	char	   *hdr_ptr;
+	int64		data_total;
 
-	/* Calculate total size including varlena header */
-	total_size = sizeof(CipherDataType) + rnd_len + det_len + ope_len + search_len;
+	version = (int32)CIPHERDATA_CURRENT_VERSION | (int32)layout_mask;
+
+	/* ReqID:TECC4.0 - Sum in int64: an int32 sum can wrap onto a small value
+	 * and hand a huge segment length to the memcpy that fills the structure. */
+	data_total = (int64) rnd_len + (int64) det_len + (int64) ope_len +
+				 (int64) search_len + (int64) eg_add_len + (int64) eg_mul_len;
+
+	/* Calculate total size including varlena header.  A negative sum (caller
+	 * bug) turns into a huge Size and is refused by palloc. */
+	total_size = (Size)CIPHERDATA_FIELDS_BASE_SIZE +
+				 CIPHERDATA_POPCOUNT16(layout_mask) * sizeof(int32) +
+				 sizeof(int32) +	/* vl_len_ */
+				 (Size) data_total;
 
 	/* Allocate memory */
 	result = (CipherDataType *) palloc(total_size);
 
-	/* Set varlena header - always use 4-byte.
-	 * ReqID:TECC4.0 - CIPHERDATA_DATUM_* macros assume 4-byte
-	 * header offsets.  1-byte short header would shift all
-	 * field reads by 3 bytes. */
+	/* Set varlena header - always use 4-byte */
 	SET_VARSIZE_4B(result, total_size);
 
-	/* Initialize fields */
-	result->version = CIPHERDATA_CURRENT_VERSION;
+	/* Write base header */
+	result->version = version;
 	result->dek_dist_oid = dek_dist_oid;
-	result->rnd_length = rnd_len;
-	result->det_length = det_len;
-	result->ope_length = ope_len;
-	result->search_length = search_len;
+
+	/* Write length fields at mask-computed offsets */
+	hdr_ptr = (char *) VARDATA_ANY(result) + CIPHERDATA_FIELDS_BASE_SIZE;
+	if (layout_mask & CIPHERDATA_SEG_RND)	{ *(int32 *)hdr_ptr = rnd_len;	hdr_ptr += sizeof(int32); }
+	if (layout_mask & CIPHERDATA_SEG_DET)	{ *(int32 *)hdr_ptr = det_len;	hdr_ptr += sizeof(int32); }
+	if (layout_mask & CIPHERDATA_SEG_OPE)	{ *(int32 *)hdr_ptr = ope_len;	hdr_ptr += sizeof(int32); }
+	if (layout_mask & CIPHERDATA_SEG_SEARCH) { *(int32 *)hdr_ptr = search_len; hdr_ptr += sizeof(int32); }
+	if (layout_mask & CIPHERDATA_SEG_EG_ADD) { *(int32 *)hdr_ptr = eg_add_len; hdr_ptr += sizeof(int32); }
+	if (layout_mask & CIPHERDATA_SEG_EG_MUL) { *(int32 *)hdr_ptr = eg_mul_len; hdr_ptr += sizeof(int32); }
 
 	/* Zero out the data area */
-	if (total_size > sizeof(CipherDataType))
-		memset(result->data, 0, rnd_len + det_len + ope_len + search_len);
+	if (data_total > 0)
+		memset(hdr_ptr, 0, (Size) data_total);
 
 	return result;
+}
+
+/*
+ * cipherdata_alloc - Allocate a CipherDataType structure (v2.0 compact format)
+ *
+ * Allocates memory for a CipherDataType structure with the specified
+ * ciphertext lengths.  Only length fields for non-zero segments are stored
+ * (mask-based compact header).  The structure includes the varlena header.
+ */
+CipherDataType *
+cipherdata_alloc(int32 rnd_len, int32 det_len, int32 ope_len, int32 search_len, int32 eg_add_len, int32 eg_mul_len, Oid dek_dist_oid)
+{
+	return cipherdata_alloc_layout(rnd_len, det_len, ope_len, search_len,
+								   eg_add_len, eg_mul_len, dek_dist_oid,
+								   cipherdata_seg_mask_from_lengths(rnd_len,
+																	det_len,
+																	ope_len,
+																	search_len,
+																	eg_add_len,
+																	eg_mul_len));
+}
+
+/*
+ * cipherdata_alloc_for_version - Allocate for a value that keeps `version`
+ *
+ * ReqID:TECC4.0 - Reserves exactly the length fields the kept version implies:
+ * v1.0 keeps its fixed 28-byte header (RND/DET/OPE/SEARCH length fields are
+ * always present, even when a segment is empty), legacy fixed V2 is re-packed
+ * as compact by the callers, and a compact value carries the mask it declares.
+ */
+CipherDataType *
+cipherdata_alloc_for_version(int32 rnd_len, int32 det_len, int32 ope_len,
+							 int32 search_len, int32 eg_add_len, int32 eg_mul_len,
+							 Oid dek_dist_oid, int32 version)
+{
+	uint16		layout_mask;
+
+	if (CIPHERDATA_MAJOR_VERSION(version) == CIPHERDATA_VERSION_1_0)
+		layout_mask = CIPHERDATA_SEG_RND | CIPHERDATA_SEG_DET |
+					  CIPHERDATA_SEG_OPE | CIPHERDATA_SEG_SEARCH;
+	else if (CIPHERDATA_IS_LEGACY_FIXED_V2(version))
+		layout_mask = cipherdata_seg_mask_from_lengths(rnd_len, det_len, ope_len,
+													   search_len, eg_add_len,
+													   eg_mul_len);
+	else
+		layout_mask = CIPHERDATA_SEG_MASK(version);
+
+	return cipherdata_alloc_layout(rnd_len, det_len, ope_len, search_len,
+								   eg_add_len, eg_mul_len, dek_dist_oid,
+								   layout_mask);
+}
+
+/*
+ * cipherdata_parsed_layout_ok - Segment mask agrees with the parsed lengths
+ *
+ * ReqID:TECC4.0 - A parsed segment header is only safe to materialise when the
+ * mask packed in its version selects the same length fields that the parsed
+ * lengths produce.  The payload offsets come from the mask while the payload
+ * copies consume the lengths, so a disagreement shifts one against the other
+ * and the copies run past the end of the structure.  cipherdata_validate()
+ * rejects such a value as well, but only after the copies have happened.
+ *
+ * v1.0 and legacy fixed V2 always carry a fixed set of length fields, so any
+ * (non-negative) lengths are consistent with their layout.
+ */
+bool
+cipherdata_parsed_layout_ok(int32 version, int32 rnd_len, int32 det_len,
+							int32 ope_len, int32 search_len,
+							int32 eg_add_len, int32 eg_mul_len)
+{
+	if (CIPHERDATA_MAJOR_VERSION(version) == CIPHERDATA_VERSION_1_0 ||
+		CIPHERDATA_IS_LEGACY_FIXED_V2(version))
+		return true;
+
+	return CIPHERDATA_SEG_MASK(version) ==
+		cipherdata_seg_mask_from_lengths(rnd_len, det_len, ope_len,
+										 search_len, eg_add_len, eg_mul_len);
 }
 
 /*
@@ -117,11 +242,15 @@ cipherdata_validate(const CipherDataType *cipherdata)
 {
 	Size		expected_size;
 	Size		vlen;
+	int32		raw_version;
 	int32		version;
 	int32		rnd_len;
 	int32		det_len;
 	int32		ope_len;
 	int32		search_len;
+	/* ReqID:TECC4.0 */
+	int32		eg_add_len;
+	int32		eg_mul_len;
 
 	if (cipherdata == NULL)
 		return false;
@@ -132,34 +261,56 @@ cipherdata_validate(const CipherDataType *cipherdata)
 	else
 		vlen = VARSIZE_4B(cipherdata);
 
-	/* Minimum: must be at least the fixed-size header */
-	if (vlen < sizeof(CipherDataType))
+	/* Minimum: vl_len_ + version + dek_dist_oid */
+	if (vlen < CIPHERDATA_MIN_SIZE)
 		return false;
 
-	/* Use unified VARDATA_ANY-safe macros from cipherdatatype.h */
-	version    = CIPHERDATA_DATUM_VERSION(cipherdata);
+	/* Use unified field-area macros from cipherdatatype.h */
+	raw_version = CIPHERDATA_DATUM_RAW_VERSION(cipherdata);
+	version    = CIPHERDATA_MAJOR_VERSION(raw_version);
+
+	/* Reject unknown segment bits so a corrupt mask cannot be trusted */
+	if ((CIPHERDATA_SEG_MASK(raw_version) & ~CIPHERDATA_SEG_ALL) != 0)
+		return false;
+
+	/* Validate the complete version-specific header before reading any
+	 * mask-dependent length field. */
+	if (!CIPHERDATA_VERSION_VALID(raw_version) ||
+		vlen < CIPHERDATA_HEADER_SIZE(raw_version))
+		return false;
+
 	rnd_len    = CIPHERDATA_DATUM_RND_LEN(cipherdata);
 	det_len    = CIPHERDATA_DATUM_DET_LEN(cipherdata);
 	ope_len    = CIPHERDATA_DATUM_OPE_LEN(cipherdata);
 	search_len = CIPHERDATA_DATUM_SEARCH_LEN(cipherdata);
+	/* ReqID:TECC4.0 - Read EG lengths (mask-aware, returns 0 for v1.0) */
+	eg_add_len = CIPHERDATA_DATUM_EG_ADD_LEN(cipherdata);
+	eg_mul_len = CIPHERDATA_DATUM_EG_MUL_LEN(cipherdata);
 
-	/* Check version */
-	if (!CIPHERDATA_VERSION_VALID(version))
-		return false;
-
-	/* ReqID:TECC4.0 - Validate DEK distributed ID */
-	if (!OidIsValid(CIPHERDATA_DATUM_DEK_DIST_OID(cipherdata)))
+	/* Check version (major only — low 16 bits hold the segment mask) */
+	/* ReqID:TECC4.0 - Validate DEK distributed ID.
+	 * Float sentinels (Infinity/-Infinity partition boundaries) use InvalidOid
+	 * since they are not encrypted by any DEK. */
+	if (version != CIPHERDATA_VERSION_FLOAT_SENTINEL &&
+		!OidIsValid(CIPHERDATA_DATUM_DEK_DIST_OID(cipherdata)))
 		return false;
 
 	/* ReqID:TECC4.0 - Reject negative lengths (prevent unsigned overflow in size calc) */
-	if (rnd_len < 0 || det_len < 0 || ope_len < 0 || search_len < 0)
+	if (rnd_len < 0 || det_len < 0 || ope_len < 0 || search_len < 0 ||
+		eg_add_len < 0 || eg_mul_len < 0)
 		return false;
 
-	/* Calculate expected size — use CIPHERDATA_FIXED_SIZE minus varlena header */
+	/* Expected size: varlena header + version-aware cipherdata header + data.
+	 * The header size already accounts for the mask-dependent number of
+	 * length fields; subtract the 4-byte vl_len_ it assumes and add the real
+	 * one, which may be 1 byte for a short-header Datum. */
 	{
-		Size hdr_sz = VARATT_IS_1B(cipherdata) ? 1 : sizeof(int32);
-		expected_size = hdr_sz + (CIPHERDATA_FIXED_SIZE - sizeof(int32)) +
-				rnd_len + det_len + ope_len + search_len;
+		Size		hdr_sz = VARATT_IS_1B(cipherdata) ? 1 : sizeof(int32);
+		Size		cd_hdr = CIPHERDATA_HEADER_SIZE(raw_version);
+
+		expected_size = hdr_sz + (cd_hdr - sizeof(int32)) +
+				rnd_len + det_len + ope_len + search_len +
+				eg_add_len + eg_mul_len;
 	}
 
 	/* Check total size */
@@ -278,7 +429,93 @@ cipherdata_in(PG_FUNCTION_ARGS, Oid type_oid)
 	int32		det_len;
 	int32		ope_len;
 	int32		search_len;
+	/* ReqID:TECC4.0 */
+	int32		version;
+	int32		eg_add_len;
+	int32		eg_mul_len;
+	/* End - ReqID:TECC4.0 */
 	unsigned char *ptr;
+
+	/*
+	 * ReqID:TECC4.0 - Handle IEEE 754 Infinity/-Infinity sentinel values
+	 * for float4_enc and float8_enc types.
+	 *
+	 * These are used as RANGE partition boundary sentinels and are not
+	 * hex-encoded.  The client-side tecc_encrypt_boundary_value() skips
+	 * encryption for these values (patch 0014), sending them as plain
+	 * text.  We construct a CipherDataType that wraps the raw IEEE 754
+	 * float bytes so the value compares correctly against real encrypted
+	 * data: -Infinity < any encrypted value < +Infinity.
+	 */
+	if (type_oid == FLOAT4_ENCOID || type_oid == FLOAT8_ENCOID)
+	{
+		const char *val = input_str;
+		bool	is_negative;
+		bool	is_sentinel = false;
+
+		/* Strip single quotes if present (parser may leave them).
+		 * We use a small stack buffer — Infinity strings are short. */
+		if (val[0] == '\'')
+		{
+			size_t vlen = strlen(val);
+			if (vlen > 2 && val[vlen - 1] == '\'')
+			{
+				char *stripped = (char *) palloc(vlen - 1);
+				memcpy(stripped, val + 1, vlen - 2);
+				stripped[vlen - 2] = '\0';
+				val = stripped;
+			}
+		}
+
+		if (strcmp(val, "Infinity") == 0 || strcmp(val, "+Infinity") == 0)
+		{
+			is_negative = false;
+			is_sentinel = true;
+		}
+		else if (strcmp(val, "-Infinity") == 0)
+		{
+			is_negative = true;
+			is_sentinel = true;
+		}
+
+		if (is_sentinel)
+		{
+			int32		ope_len;
+			union { float f; uint32 i; } f4;
+			union { double d; uint64 i; } f8;
+
+			ope_len = (type_oid == FLOAT4_ENCOID) ? sizeof(float) : sizeof(double);
+
+			result = cipherdata_alloc(0, 0, ope_len, 0, 0, 0, InvalidOid);
+			/* ReqID:TECC4.0 - Keep the segment mask (OPE) while switching to
+			 * the sentinel major version; otherwise the raw IEEE bytes stored
+			 * in the OPE slot would be unreachable. */
+			result->version = CIPHERDATA_MAKE_VERSION(CIPHERDATA_VERSION_FLOAT_SENTINEL,
+													  CIPHERDATA_SEG_OPE);
+
+			/* Store IEEE 754 Infinity bytes in the OPE data area.
+			 * float4 -Infinity = 0xFF800000, +Infinity = 0x7F800000
+			 * float8 -Infinity = 0xFFF0000000000000, +Infinity = 0x7FF0000000000000 */
+			if (type_oid == FLOAT4_ENCOID)
+			{
+				f4.i = is_negative ? 0xFF800000UL : 0x7F800000UL;
+				memcpy(CIPHERDATA_OPE_PTR(result), &f4.f, sizeof(float));
+			}
+			else
+			{
+				f8.i = is_negative ? 0xFFF0000000000000ULL : 0x7FF0000000000000ULL;
+				memcpy(CIPHERDATA_OPE_PTR(result), &f8.d, sizeof(double));
+			}
+
+			if (val != input_str)
+				pfree((void *) val);
+
+			PG_RETURN_POINTER(result);
+		}
+
+		if (val != input_str)
+			pfree((void *) val);
+	}
 
 	/* Validate hex string format */
 	if (!is_valid_hex_string(input_str))
@@ -294,35 +531,113 @@ cipherdata_in(PG_FUNCTION_ARGS, Oid type_oid)
 				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
 				 errmsg("invalid hex data for encrypted type")));
 
-	/* Check minimum size (CIPHERDATA_FIXED_SIZE = 28 bytes, includes vl_len_) */
-	if (decoded_len < CIPHERDATA_FIXED_SIZE)
+	/* Check minimum size: vl_len_ + version + dek_dist_oid */
+	if (decoded_len < CIPHERDATA_MIN_SIZE)
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
 				 errmsg("invalid encrypted data: too short")));
 
-	/* Parse header (now includes vl_len_ at offset 0) */
+	/* Parse base header (decoded_data includes vl_len_ at offset 0) */
 	ptr = decoded_data;
 	ptr += sizeof(int32);	/* skip vl_len_ */
-	ptr += sizeof(int32);	/* skip version, validated in cipherdata_validate */
+	version = *(int32 *) ptr;	/* packed: major|mask */
+	ptr += sizeof(int32);
 	dek_dist_oid = *(Oid *) ptr;
 	ptr += sizeof(Oid);
-	rnd_len = *(int32 *) ptr;
-	ptr += sizeof(int32);
-	det_len = *(int32 *) ptr;
-	ptr += sizeof(int32);
-	ope_len = *(int32 *) ptr;
-	ptr += sizeof(int32);
-	search_len = *(int32 *) ptr;
-	ptr += sizeof(int32);
 
-	/* Validate total size (pre-allocation sanity check) */
-	if (decoded_len != CIPHERDATA_FIXED_SIZE + rnd_len + det_len + ope_len + search_len)
+	/* ReqID:TECC4.0 - The length fields live in the header the version
+	 * describes, so the buffer must be able to hold that header before we read
+	 * them; the minimum-size test above only covers version + DEK id. */
+	if (decoded_len < CIPHERDATA_HEADER_SIZE(version))
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				 errmsg("invalid encrypted data: size mismatch")));
+				 errmsg("invalid encrypted data: truncated header")));
 
-	/* Allocate CipherDataType */
-	result = cipherdata_alloc(rnd_len, det_len, ope_len, search_len, dek_dist_oid);
+	/* ReqID:TECC4.0 - Read length fields.
+	 * v1.0: always four base lengths, never EG.
+	 * Legacy fixed v2.0: all six lengths, with no segment mask.
+	 * Compact v2.0: one length per segment whose mask bit is set. */
+	if (CIPHERDATA_MAJOR_VERSION(version) == CIPHERDATA_VERSION_1_0)
+	{
+		rnd_len = *(int32 *) ptr;	ptr += sizeof(int32);
+		det_len = *(int32 *) ptr;	ptr += sizeof(int32);
+		ope_len = *(int32 *) ptr;	ptr += sizeof(int32);
+		search_len = *(int32 *) ptr;	ptr += sizeof(int32);
+		eg_add_len = 0;
+		eg_mul_len = 0;
+	}
+	else if (CIPHERDATA_IS_LEGACY_FIXED_V2(version))
+	{
+		if (decoded_len < CIPHERDATA_HEADER_SIZE_V2_FIXED)
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+					 errmsg("invalid encrypted data: legacy V2 header is truncated")));
+		rnd_len = *(int32 *) ptr;	ptr += sizeof(int32);
+		det_len = *(int32 *) ptr;	ptr += sizeof(int32);
+		ope_len = *(int32 *) ptr;	ptr += sizeof(int32);
+		search_len = *(int32 *) ptr;	ptr += sizeof(int32);
+		eg_add_len = *(int32 *) ptr;	ptr += sizeof(int32);
+		eg_mul_len = *(int32 *) ptr;	ptr += sizeof(int32);
+	}
+	else
+	{
+		uint16	mask = CIPHERDATA_SEG_MASK(version);
+
+		rnd_len = (mask & CIPHERDATA_SEG_RND) ? *(int32 *) ptr : 0;
+		if (mask & CIPHERDATA_SEG_RND)		ptr += sizeof(int32);
+		det_len = (mask & CIPHERDATA_SEG_DET) ? *(int32 *) ptr : 0;
+		if (mask & CIPHERDATA_SEG_DET)		ptr += sizeof(int32);
+		ope_len = (mask & CIPHERDATA_SEG_OPE) ? *(int32 *) ptr : 0;
+		if (mask & CIPHERDATA_SEG_OPE)		ptr += sizeof(int32);
+		search_len = (mask & CIPHERDATA_SEG_SEARCH) ? *(int32 *) ptr : 0;
+		if (mask & CIPHERDATA_SEG_SEARCH)	ptr += sizeof(int32);
+		eg_add_len = (mask & CIPHERDATA_SEG_EG_ADD) ? *(int32 *) ptr : 0;
+		if (mask & CIPHERDATA_SEG_EG_ADD)	ptr += sizeof(int32);
+		eg_mul_len = (mask & CIPHERDATA_SEG_EG_MUL) ? *(int32 *) ptr : 0;
+		if (mask & CIPHERDATA_SEG_EG_MUL)	ptr += sizeof(int32);
+	}
+
+	/* ReqID:TECC4.0 - Reject negative segment lengths: they drive both the
+	 * allocation size and the payload offsets, so a negative value would shift
+	 * every later segment out of the structure. */
+	if (rnd_len < 0 || det_len < 0 || ope_len < 0 || search_len < 0 ||
+		eg_add_len < 0 || eg_mul_len < 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				 errmsg("invalid encrypted data: negative segment length")));
+
+	/* Validate total size (pre-allocation sanity check).  ReqID:TECC4.0 - The
+	 * sum is computed in int64: in int32 an overflowing sum wraps onto the
+	 * buffer length and lets an absurd segment length reach the copies. */
+	{
+		int64		expected = (int64) CIPHERDATA_HEADER_SIZE(version) +
+			(int64) rnd_len + (int64) det_len + (int64) ope_len +
+			(int64) search_len + (int64) eg_add_len + (int64) eg_mul_len;
+
+		if ((int64) decoded_len != expected)
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+					 errmsg("invalid encrypted data: size mismatch")));
+	}
+
+	/* ReqID:TECC4.0 - A mask that disagrees with the lengths actually parsed
+	 * would send the copies below past the end of the structure. */
+	if (!cipherdata_parsed_layout_ok(version, rnd_len, det_len, ope_len,
+									 search_len, eg_add_len, eg_mul_len))
+		ereport(ERROR,
+				(errcode(ERRCODE_TECC_CIPHERDATA_INVALID),
+				 errmsg("invalid CipherDataType structure")));
+
+	/* Allocate CipherDataType.  ReqID:TECC4.0 - Reserve the length fields the
+	 * kept version implies, not only those of the non-empty segments. */
+	result = cipherdata_alloc_for_version(rnd_len, det_len, ope_len, search_len,
+										  eg_add_len, eg_mul_len,
+										  dek_dist_oid, version);
+	/* Modify - ReqID:TECC4.0 - cipherdata_alloc() normalizes legacy fixed V2
+	 * input to compact V2.  Restoring its zero-mask version here would make
+	 * the pointer macros treat the compact allocation as a 36-byte header. */
+	if (!CIPHERDATA_IS_LEGACY_FIXED_V2(version))
+		result->version = version;
 
 	/* Copy ciphertexts */
 	if (rnd_len > 0)
@@ -339,6 +654,15 @@ cipherdata_in(PG_FUNCTION_ARGS, Oid type_oid)
 
 	if (search_len > 0)
 		memcpy(CIPHERDATA_SEARCH_PTR(result), ptr, search_len);
+
+	/* Begin - ReqID:TECC4.0 - Copy EG ciphertexts (v2.0 slots) */
+	ptr += search_len;
+	if (eg_add_len > 0)
+		memcpy(CIPHERDATA_EG_ADD_PTR(result), ptr, eg_add_len);
+	ptr += eg_add_len;
+	if (eg_mul_len > 0)
+		memcpy(CIPHERDATA_EG_MUL_PTR(result), ptr, eg_mul_len);
+	/* End - ReqID:TECC4.0 */
 
 	/* Free decoded data */
 	pfree(decoded_data);
@@ -374,54 +698,123 @@ cipherdata_out(PG_FUNCTION_ARGS)
 				(errcode(ERRCODE_INVALID_BINARY_REPRESENTATION),
 				 errmsg("invalid CipherDataType structure")));
 
-	/* ReqID:TECC4.0 - Output all ciphertexts (RND+DET+OPE+SEARCH) for
-	 * export/import data consistency.  Previously only RND was output. */
+	/*
+	 * ReqID:TECC4.0 - Float sentinels output plain Infinity text, not hex.
+	 * Round-trip: cipherdata_in("Infinity") → sentinel → cipherdata_out() → "Infinity"
+	 */
+	if (CIPHERDATA_VERSION(cipherdata) == CIPHERDATA_VERSION_FLOAT_SENTINEL)
 	{
-		int32 rnd_len32 = CIPHERDATA_RND_LENGTH(cipherdata);
-		int32 det_len32 = CIPHERDATA_DET_LENGTH(cipherdata);
-		int32 ope_len32 = CIPHERDATA_OPE_LENGTH(cipherdata);
-		int32 search_len32 = CIPHERDATA_SEARCH_LENGTH(cipherdata);
-		unsigned char *buf;		/* ReqID:TECC4.0 - fix ptr arithmetic bug */
+		bool is_negative = CIPHERDATA_SENTINEL_IS_NEGATIVE(cipherdata);
 
-		total_size = CIPHERDATA_FIXED_SIZE + rnd_len32 + det_len32 + ope_len32 + search_len32;
+		if (need_free)
+			pfree(cipherdata);
+		PG_RETURN_CSTRING(pstrdup(is_negative ? "-Infinity" : "Infinity"));
+	}
+
+	/*
+	 * ReqID:TECC4.0 - pg_upgrade V4.0.0 兼容：v1.0 密文原样输出。
+	 * 下面的重建路径按 v2.0 紧凑布局（mask 决定长度字段个数）重建，会把
+	 * v1.0（28 字节固定头）密文重排、破坏字节流——升级后旧密文经前端解
+	 * 十六进制后头部长度校验失败（integrity check failed）。
+	 * v1.0 直接输出原始 varlena 字节，与 V4.0.0 输出格式一致。
+	 */
+	if (CIPHERDATA_VERSION(cipherdata) == CIPHERDATA_VERSION_1_0)
+	{
+		Size		vlen = (VARATT_IS_1B(cipherdata)) ?
+			VARSIZE_1B(cipherdata) : VARSIZE_4B(cipherdata);
+
+		result_str = binary_to_hex((const unsigned char *) cipherdata, vlen);
+		if (need_free)
+			pfree(cipherdata);
+		if (result_str == NULL)
+			ereport(ERROR,
+					(errcode(ERRCODE_OUT_OF_MEMORY),
+					 errmsg("out of memory")));
+		PG_RETURN_CSTRING(result_str);
+	}
+
+	/* ReqID:TECC4.0 - v2.0 compact format output: only write present segments */
+	{
+		int32 rnd_len32 = CIPHERDATA_DATUM_RND_LEN(cipherdata);
+		int32 det_len32 = CIPHERDATA_DATUM_DET_LEN(cipherdata);
+		int32 ope_len32 = CIPHERDATA_DATUM_OPE_LEN(cipherdata);
+		int32 search_len32 = CIPHERDATA_DATUM_SEARCH_LEN(cipherdata);
+		int32 eg_add_len32 = CIPHERDATA_DATUM_EG_ADD_LEN(cipherdata);
+		int32 eg_mul_len32 = CIPHERDATA_DATUM_EG_MUL_LEN(cipherdata);
+		uint16 mask;
+		unsigned char *buf;
+		char *hdr_ptr;
+
+		/* Compute mask from actual lengths */
+		mask = 0;
+		if (rnd_len32 > 0)		mask |= CIPHERDATA_SEG_RND;
+		if (det_len32 > 0)		mask |= CIPHERDATA_SEG_DET;
+		if (ope_len32 > 0)		mask |= CIPHERDATA_SEG_OPE;
+		if (search_len32 > 0)	mask |= CIPHERDATA_SEG_SEARCH;
+		if (eg_add_len32 > 0)	mask |= CIPHERDATA_SEG_EG_ADD;
+		if (eg_mul_len32 > 0)	mask |= CIPHERDATA_SEG_EG_MUL;
+
+		/* Calculate total size with compact header */
+		total_size = sizeof(int32) + CIPHERDATA_FIELDS_BASE_SIZE +
+					 CIPHERDATA_POPCOUNT16(mask) * (Size)sizeof(int32) +
+					 rnd_len32 + det_len32 + ope_len32 + search_len32 +
+					 eg_add_len32 + eg_mul_len32;
 
 		buf = (unsigned char *) palloc(total_size);
 		ptr = buf;
 
+		/* Write varlena header */
 		SET_VARSIZE(ptr, total_size);
 		ptr += sizeof(int32);
-		*(int32 *) ptr = CIPHERDATA_VERSION_1_0;
-		ptr += sizeof(int32);
-		*(Oid *) ptr = CIPHERDATA_DEK_DIST_OID(cipherdata);
-		ptr += sizeof(Oid);
-		*(int32 *) ptr = rnd_len32;
-		ptr += sizeof(int32);
-		*(int32 *) ptr = det_len32;
-		ptr += sizeof(int32);
-		*(int32 *) ptr = ope_len32;
-		ptr += sizeof(int32);
-		*(int32 *) ptr = search_len32;
+
+		/* Write version with mask in low 16 bits */
+		*(int32 *) ptr = CIPHERDATA_DATUM_VERSION(cipherdata) | (int32)mask;
 		ptr += sizeof(int32);
 
+		/* Write dek_dist_oid */
+		*(Oid *) ptr = CIPHERDATA_DATUM_DEK_DIST_OID(cipherdata);
+		ptr += sizeof(Oid);
+
+		/* Write length fields only for present segments */
+		hdr_ptr = (char *) ptr;
+		if (mask & CIPHERDATA_SEG_RND)		{ *(int32 *)hdr_ptr = rnd_len32;	hdr_ptr += sizeof(int32); }
+		if (mask & CIPHERDATA_SEG_DET)		{ *(int32 *)hdr_ptr = det_len32;	hdr_ptr += sizeof(int32); }
+		if (mask & CIPHERDATA_SEG_OPE)		{ *(int32 *)hdr_ptr = ope_len32;	hdr_ptr += sizeof(int32); }
+		if (mask & CIPHERDATA_SEG_SEARCH)	{ *(int32 *)hdr_ptr = search_len32; hdr_ptr += sizeof(int32); }
+		if (mask & CIPHERDATA_SEG_EG_ADD)	{ *(int32 *)hdr_ptr = eg_add_len32; hdr_ptr += sizeof(int32); }
+		if (mask & CIPHERDATA_SEG_EG_MUL)	{ *(int32 *)hdr_ptr = eg_mul_len32; hdr_ptr += sizeof(int32); }
+		ptr = (unsigned char *) hdr_ptr;
+
+		/* Write ciphertext data */
 		if (rnd_len32 > 0)
 		{
-			memcpy(ptr, CIPHERDATA_RND_PTR(cipherdata), rnd_len32);
+			memcpy(ptr, CIPHERDATA_DATUM_RND_PTR(cipherdata), rnd_len32);
 			ptr += rnd_len32;
 		}
 		if (det_len32 > 0)
 		{
-			memcpy(ptr, CIPHERDATA_DET_PTR(cipherdata), det_len32);
+			memcpy(ptr, CIPHERDATA_DATUM_DET_PTR(cipherdata), det_len32);
 			ptr += det_len32;
 		}
 		if (ope_len32 > 0)
 		{
-			memcpy(ptr, CIPHERDATA_OPE_PTR(cipherdata), ope_len32);
+			memcpy(ptr, CIPHERDATA_DATUM_OPE_PTR(cipherdata), ope_len32);
 			ptr += ope_len32;
 		}
 		if (search_len32 > 0)
 		{
-			memcpy(ptr, CIPHERDATA_SEARCH_PTR(cipherdata), search_len32);
+			memcpy(ptr, CIPHERDATA_DATUM_SEARCH_PTR(cipherdata), search_len32);
 			ptr += search_len32;
+		}
+		if (eg_add_len32 > 0)
+		{
+			memcpy(ptr, CIPHERDATA_DATUM_EG_ADD_PTR(cipherdata), eg_add_len32);
+			ptr += eg_add_len32;
+		}
+		if (eg_mul_len32 > 0)
+		{
+			memcpy(ptr, CIPHERDATA_DATUM_EG_MUL_PTR(cipherdata), eg_mul_len32);
+			ptr += eg_mul_len32;
 		}
 
 		ptr = buf;
@@ -429,14 +822,15 @@ cipherdata_out(PG_FUNCTION_ARGS)
 
 	/* Convert to hex string */
 	result_str = binary_to_hex(ptr, total_size);
+	pfree(ptr);				/* 释放临时密文二进制缓冲区 buf */
+	if (need_free)
+		pfree(cipherdata);	/* 释放 1-byte header 转换副本 */
 
 	if (result_str == NULL)
 		ereport(ERROR,
 				(errcode(ERRCODE_OUT_OF_MEMORY),
 				 errmsg("out of memory")));
 	PG_RETURN_CSTRING(result_str);
-	if (need_free)
-		pfree(cipherdata);
 }
 
 /*
@@ -452,17 +846,83 @@ cipherdata_recv(PG_FUNCTION_ARGS, Oid type_oid)
 	int32		det_len;
 	int32		ope_len;
 	int32		search_len;
+	/* ReqID:TECC4.0 */
+	int32		eg_add_len;
+	int32		eg_mul_len;
+	/* End - ReqID:TECC4.0 */
+	int32		version;
+	int32		major;
+	uint16		mask;
 
-	/* Read header from binary stream */
-	(void) pq_getmsgint(buf, sizeof(int32));	/* skip version, validated below */
+	/* Read base header from binary stream */
+	version = pq_getmsgint(buf, sizeof(int32));	/* packed: major|mask */
+	major = CIPHERDATA_MAJOR_VERSION(version);
+	mask = CIPHERDATA_SEG_MASK(version);
 	dek_dist_oid = pq_getmsgint(buf, sizeof(Oid));
-	rnd_len = pq_getmsgint(buf, sizeof(int32));
-	det_len = pq_getmsgint(buf, sizeof(int32));
-	ope_len = pq_getmsgint(buf, sizeof(int32));
-	search_len = pq_getmsgint(buf, sizeof(int32));
 
-	/* Allocate CipherDataType (version/DEK validated in cipherdata_validate below) */
-	result = cipherdata_alloc(rnd_len, det_len, ope_len, search_len, dek_dist_oid);
+	/* ReqID:TECC4.0 - Read length fields.
+	 * v1.0 always carries four base lengths, legacy fixed V2 carries all six,
+	 * and compact V2 carries only lengths selected by the mask. */
+	if (major == CIPHERDATA_VERSION_1_0)
+	{
+		rnd_len = pq_getmsgint(buf, sizeof(int32));
+		det_len = pq_getmsgint(buf, sizeof(int32));
+		ope_len = pq_getmsgint(buf, sizeof(int32));
+		search_len = pq_getmsgint(buf, sizeof(int32));
+		eg_add_len = 0;
+		eg_mul_len = 0;
+	}
+	else if (CIPHERDATA_IS_LEGACY_FIXED_V2(version))
+	{
+		rnd_len = pq_getmsgint(buf, sizeof(int32));
+		det_len = pq_getmsgint(buf, sizeof(int32));
+		ope_len = pq_getmsgint(buf, sizeof(int32));
+		search_len = pq_getmsgint(buf, sizeof(int32));
+		eg_add_len = pq_getmsgint(buf, sizeof(int32));
+		eg_mul_len = pq_getmsgint(buf, sizeof(int32));
+	}
+	else
+	{
+		rnd_len = (mask & CIPHERDATA_SEG_RND) ? pq_getmsgint(buf, sizeof(int32)) : 0;
+		det_len = (mask & CIPHERDATA_SEG_DET) ? pq_getmsgint(buf, sizeof(int32)) : 0;
+		ope_len = (mask & CIPHERDATA_SEG_OPE) ? pq_getmsgint(buf, sizeof(int32)) : 0;
+		search_len = (mask & CIPHERDATA_SEG_SEARCH) ? pq_getmsgint(buf, sizeof(int32)) : 0;
+		eg_add_len = (mask & CIPHERDATA_SEG_EG_ADD) ? pq_getmsgint(buf, sizeof(int32)) : 0;
+		eg_mul_len = (mask & CIPHERDATA_SEG_EG_MUL) ? pq_getmsgint(buf, sizeof(int32)) : 0;
+	}
+
+	/* ReqID:TECC4.0 - Same guards as the text input path: a malformed segment
+	 * header must not be able to steer the payload copies (nor the allocation)
+	 * outside the structure. */
+	if (rnd_len < 0 || det_len < 0 || ope_len < 0 || search_len < 0 ||
+		eg_add_len < 0 || eg_mul_len < 0 ||
+		!cipherdata_parsed_layout_ok(version, rnd_len, det_len, ope_len,
+									 search_len, eg_add_len, eg_mul_len))
+		ereport(ERROR,
+				(errcode(ERRCODE_TECC_CIPHERDATA_INVALID),
+				 errmsg("invalid CipherDataType structure")));
+
+	/* ReqID:TECC4.0 - The header has been consumed by the reads above, so the
+	 * bytes left in the message must cover the payload the lengths promise. */
+	{
+		int64		payload = (int64) rnd_len + (int64) det_len + (int64) ope_len +
+			(int64) search_len + (int64) eg_add_len + (int64) eg_mul_len;
+
+		if ((int64) (buf->len - buf->cursor) < payload)
+			ereport(ERROR,
+					(errcode(ERRCODE_TECC_CIPHERDATA_INVALID),
+					 errmsg("insufficient data left in message")));
+	}
+
+	/* Allocate CipherDataType (version/DEK validated in cipherdata_validate below).
+	 * ReqID:TECC4.0 - The reserved length fields follow the kept version. */
+	result = cipherdata_alloc_for_version(rnd_len, det_len, ope_len, search_len,
+										  eg_add_len, eg_mul_len,
+										  dek_dist_oid, version);
+	/* Preserve ordinary packed versions and float sentinels.  Legacy fixed V2
+	 * is normalized by the allocator so its pointer layout stays valid. */
+	if (!CIPHERDATA_IS_LEGACY_FIXED_V2(version))
+		result->version = version;
 
 	/* Read ciphertexts */
 	if (rnd_len > 0)
@@ -473,6 +933,12 @@ cipherdata_recv(PG_FUNCTION_ARGS, Oid type_oid)
 		pq_copymsgbytes(buf, CIPHERDATA_OPE_PTR(result), ope_len);
 	if (search_len > 0)
 		pq_copymsgbytes(buf, CIPHERDATA_SEARCH_PTR(result), search_len);
+
+	/* ReqID:TECC4.0 - Read EG ciphertexts */
+	if (eg_add_len > 0)
+		pq_copymsgbytes(buf, CIPHERDATA_EG_ADD_PTR(result), eg_add_len);
+	if (eg_mul_len > 0)
+		pq_copymsgbytes(buf, CIPHERDATA_EG_MUL_PTR(result), eg_mul_len);
 
 	/* ReqID:TECC4.0 - Unified validation (version, DEK identity, size) */
 	if (!cipherdata_validate(result))
@@ -493,6 +959,8 @@ cipherdata_send(PG_FUNCTION_ARGS)
 	CipherDataType *cipherdata = cipherdata_convert_to_4b_header(orig);
 	bool		need_free = (cipherdata != orig);
 	StringInfoData buf;
+	int32		send_version;
+	uint16		send_mask;
 
 	/* Validate input */
 	if (!cipherdata_validate(cipherdata))
@@ -503,31 +971,87 @@ cipherdata_send(PG_FUNCTION_ARGS)
 	/* Initialize buffer */
 	pq_begintypsend(&buf);
 
-	/* Write header */
-	pq_sendint32(&buf, cipherdata->version);
-	pq_sendint32(&buf, CIPHERDATA_DEK_DIST_OID(cipherdata));
-	pq_sendint32(&buf, CIPHERDATA_RND_LENGTH(cipherdata));
-	pq_sendint32(&buf, CIPHERDATA_DET_LENGTH(cipherdata));
-	pq_sendint32(&buf, CIPHERDATA_OPE_LENGTH(cipherdata));
-	pq_sendint32(&buf, CIPHERDATA_SEARCH_LENGTH(cipherdata));
+	/* Modify - ReqID:TECC4.0 - Normalize legacy fixed V2 to compact V2 on
+	 * output so receivers can determine which length fields follow. */
+	send_version = CIPHERDATA_RAW_VERSION(cipherdata);
+	send_mask = CIPHERDATA_DATUM_SEG_MASK(cipherdata);
+	if (CIPHERDATA_IS_LEGACY_FIXED_V2(send_version))
+	{
+		send_mask = 0;
+		if (CIPHERDATA_DATUM_RND_LEN(cipherdata) > 0)
+			send_mask |= CIPHERDATA_SEG_RND;
+		if (CIPHERDATA_DATUM_DET_LEN(cipherdata) > 0)
+			send_mask |= CIPHERDATA_SEG_DET;
+		if (CIPHERDATA_DATUM_OPE_LEN(cipherdata) > 0)
+			send_mask |= CIPHERDATA_SEG_OPE;
+		if (CIPHERDATA_DATUM_SEARCH_LEN(cipherdata) > 0)
+			send_mask |= CIPHERDATA_SEG_SEARCH;
+		if (CIPHERDATA_DATUM_EG_ADD_LEN(cipherdata) > 0)
+			send_mask |= CIPHERDATA_SEG_EG_ADD;
+		if (CIPHERDATA_DATUM_EG_MUL_LEN(cipherdata) > 0)
+			send_mask |= CIPHERDATA_SEG_EG_MUL;
+		send_version = CIPHERDATA_MAKE_VERSION(CIPHERDATA_VERSION_2_0,
+										   send_mask);
+	}
+
+	/* Write base header (version carries the segment mask) */
+	pq_sendint32(&buf, send_version);
+	pq_sendint32(&buf, CIPHERDATA_DATUM_DEK_DIST_OID(cipherdata));
+
+	/* ReqID:TECC4.0 - Write length fields.
+	 * v1.0 carries the four base lengths unconditionally and has no EG slots.
+	 * v2.0 writes a length only for segments present in the mask — matching
+	 * cipherdata_recv exactly (the old code always wrote two extra zero EG
+	 * lengths for v1.0, which desynchronised the read). */
+	if (CIPHERDATA_VERSION(cipherdata) == CIPHERDATA_VERSION_1_0)
+	{
+		pq_sendint32(&buf, CIPHERDATA_DATUM_RND_LEN(cipherdata));
+		pq_sendint32(&buf, CIPHERDATA_DATUM_DET_LEN(cipherdata));
+		pq_sendint32(&buf, CIPHERDATA_DATUM_OPE_LEN(cipherdata));
+		pq_sendint32(&buf, CIPHERDATA_DATUM_SEARCH_LEN(cipherdata));
+	}
+	else
+	{
+		if (send_mask & CIPHERDATA_SEG_RND)
+			pq_sendint32(&buf, CIPHERDATA_DATUM_RND_LEN(cipherdata));
+		if (send_mask & CIPHERDATA_SEG_DET)
+			pq_sendint32(&buf, CIPHERDATA_DATUM_DET_LEN(cipherdata));
+		if (send_mask & CIPHERDATA_SEG_OPE)
+			pq_sendint32(&buf, CIPHERDATA_DATUM_OPE_LEN(cipherdata));
+		if (send_mask & CIPHERDATA_SEG_SEARCH)
+			pq_sendint32(&buf, CIPHERDATA_DATUM_SEARCH_LEN(cipherdata));
+		if (send_mask & CIPHERDATA_SEG_EG_ADD)
+			pq_sendint32(&buf, CIPHERDATA_DATUM_EG_ADD_LEN(cipherdata));
+		if (send_mask & CIPHERDATA_SEG_EG_MUL)
+			pq_sendint32(&buf, CIPHERDATA_DATUM_EG_MUL_LEN(cipherdata));
+	}
 
 	/* Write ciphertexts */
-	if (CIPHERDATA_RND_LENGTH(cipherdata) > 0)
-		pq_sendbytes(&buf, CIPHERDATA_RND_PTR(cipherdata),
-					 CIPHERDATA_RND_LENGTH(cipherdata));
-	if (CIPHERDATA_DET_LENGTH(cipherdata) > 0)
-		pq_sendbytes(&buf, CIPHERDATA_DET_PTR(cipherdata),
-					 CIPHERDATA_DET_LENGTH(cipherdata));
-	if (CIPHERDATA_OPE_LENGTH(cipherdata) > 0)
-		pq_sendbytes(&buf, CIPHERDATA_OPE_PTR(cipherdata),
-					 CIPHERDATA_OPE_LENGTH(cipherdata));
-	if (CIPHERDATA_SEARCH_LENGTH(cipherdata) > 0)
-		pq_sendbytes(&buf, CIPHERDATA_SEARCH_PTR(cipherdata),
-					 CIPHERDATA_SEARCH_LENGTH(cipherdata));
+	if (CIPHERDATA_DATUM_RND_LEN(cipherdata) > 0)
+		pq_sendbytes(&buf, CIPHERDATA_DATUM_RND_PTR(cipherdata),
+					 CIPHERDATA_DATUM_RND_LEN(cipherdata));
+	if (CIPHERDATA_DATUM_DET_LEN(cipherdata) > 0)
+		pq_sendbytes(&buf, CIPHERDATA_DATUM_DET_PTR(cipherdata),
+					 CIPHERDATA_DATUM_DET_LEN(cipherdata));
+	if (CIPHERDATA_DATUM_OPE_LEN(cipherdata) > 0)
+		pq_sendbytes(&buf, CIPHERDATA_DATUM_OPE_PTR(cipherdata),
+					 CIPHERDATA_DATUM_OPE_LEN(cipherdata));
+	if (CIPHERDATA_DATUM_SEARCH_LEN(cipherdata) > 0)
+		pq_sendbytes(&buf, CIPHERDATA_DATUM_SEARCH_PTR(cipherdata),
+					 CIPHERDATA_DATUM_SEARCH_LEN(cipherdata));
+	/* ReqID:TECC4.0 - Write EG ciphertexts (v1.0 has no EG slots; its
+	 * EG length macros already return 0 / NULL) */
+	if (CIPHERDATA_DATUM_EG_ADD_LEN(cipherdata) > 0)
+		pq_sendbytes(&buf, CIPHERDATA_DATUM_EG_ADD_PTR(cipherdata),
+					 CIPHERDATA_DATUM_EG_ADD_LEN(cipherdata));
+	if (CIPHERDATA_DATUM_EG_MUL_LEN(cipherdata) > 0)
+		pq_sendbytes(&buf, CIPHERDATA_DATUM_EG_MUL_PTR(cipherdata),
+					 CIPHERDATA_DATUM_EG_MUL_LEN(cipherdata));
+
+	if (need_free)
+		pfree(cipherdata);	/* 释放 1-byte header 转换副本 */
 
 	PG_RETURN_BYTEA_P(pq_endtypsend(&buf));
-	if (need_free)
-		pfree(cipherdata);
 }
 
 /*

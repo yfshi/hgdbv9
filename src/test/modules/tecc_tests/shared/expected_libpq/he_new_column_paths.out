@@ -1,0 +1,119 @@
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP VIEW
+DROP MATERIALIZED VIEW
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE KEK
+CREATE DEK
+              stage              
+---------------------------------
+ === 0 对照：普通列 + INSERT ===
+(1 row)
+
+CREATE TABLE
+INSERT 0 1
+ a | eq | sum 
+---+----+-----
+ 5 | t  | 5
+(1 row)
+
+              stage               
+----------------------------------
+ === 1a CTAS：混合 det,he-add ===
+(1 row)
+
+SELECT 1
+ a | eq | sum 
+---+----+-----
+ 5 | t  | 5
+(1 row)
+
+                       stage                        
+----------------------------------------------------
+ === 1b CTAS：纯同态（无 DEK=，只有 HE_ADD_DEK）===
+(1 row)
+
+SELECT 1
+ sum 
+-----
+ 5
+(1 row)
+
+           stage            
+----------------------------
+ === 2a 视图定义（混合）===
+(1 row)
+
+CREATE VIEW
+ a 
+---
+ 5
+(1 row)
+
+             stage              
+--------------------------------
+ === 2b 物化视图定义（混合）===
+(1 row)
+
+SELECT 1
+ a | sum 
+---+-----
+ 5 | 5
+(1 row)
+
+                stage                
+-------------------------------------
+ === 3a DEFAULT：混合 det,he-add ===
+(1 row)
+
+CREATE TABLE
+INSERT 0 1
+ a | eq | sum 
+---+----+-----
+ 5 | t  | 5
+(1 row)
+
+           stage            
+----------------------------
+ === 3b DEFAULT：纯同态 ===
+(1 row)
+
+CREATE TABLE
+INSERT 0 1
+ sum 
+-----
+ 7
+(1 row)
+
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP VIEW
+DROP MATERIALIZED VIEW
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+psql:/.../he_new_column_paths.sql:25: NOTICE:  table "hencp_plain" does not exist, skipping
+psql:/.../he_new_column_paths.sql:26: NOTICE:  table "hencp_ctas" does not exist, skipping
+psql:/.../he_new_column_paths.sql:27: NOTICE:  table "hencp_ctas_pure" does not exist, skipping
+psql:/.../he_new_column_paths.sql:28: NOTICE:  table "hencp_dflt" does not exist, skipping
+psql:/.../he_new_column_paths.sql:29: NOTICE:  table "hencp_dflt_pure" does not exist, skipping
+psql:/.../he_new_column_paths.sql:30: NOTICE:  view "hencp_view" does not exist, skipping
+psql:/.../he_new_column_paths.sql:31: NOTICE:  materialized view "hencp_mview" does not exist, skipping
+psql:/.../he_new_column_paths.sql:32: NOTICE:  data encryption key "hencp_dek_add" does not exist, skipping
+psql:/.../he_new_column_paths.sql:33: NOTICE:  data encryption key "hencp_dek_sym" does not exist, skipping
+psql:/.../he_new_column_paths.sql:34: NOTICE:  key encryption key "hencp_kek_asym" does not exist, skipping
+psql:/.../he_new_column_paths.sql:35: NOTICE:  key encryption key "hencp_kek_sym" does not exist, skipping
+psql:/.../he_new_column_paths.sql:88: WARNING:  could not determine encryption metadata for column "a" in CTAS result table
+DETAIL:  The column will have encrypted type but no encryption metadata. Consider creating the table with an explicit ENCRYPTED WITH clause.

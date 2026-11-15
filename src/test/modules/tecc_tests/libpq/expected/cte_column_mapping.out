@@ -1,0 +1,28 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 3
+1_baseline|1|alpha|10
+1_baseline|2|beta|20
+1_baseline|3|gamma|30
+2_single_cte|1
+3_single_cte_star|2
+4_second_of_two_cte|1
+5_first_of_two_cte|3
+6_two_level_chain|1
+7_three_level_chain|2
+8_four_level_chain|3
+9_reference_middle|1
+10_chain_star|2
+11_chain_ope|2
+13_derived|1
+14_nested_derived|2
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../cte_column_mapping.sql:13: NOTICE:  table "test_cte_map" does not exist, skipping
+psql:/.../cte_column_mapping.sql:14: NOTICE:  data encryption key "dek_cte_map" does not exist, skipping
+psql:/.../cte_column_mapping.sql:15: NOTICE:  key encryption key "kek_cte_map" does not exist, skipping

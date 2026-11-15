@@ -1,0 +1,3 @@
+# 探针编译产物（本地按需 gcc 生成，不入库）
+/probe_sdf_batch
+/probe_sdf_conc

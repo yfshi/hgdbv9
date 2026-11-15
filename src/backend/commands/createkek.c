@@ -50,6 +50,8 @@
 
 #include "catalog/hg_kek.h"
 #include "catalog/hg_kek_args.h"
+#include "catalog/hg_dek.h"
+#include "catalog/hg_dek_args.h"
 #include "utils/hg_key_utils.h"
 #include "commands/keycmd.h"
 #include "utils/bytea.h"
@@ -57,6 +59,17 @@
 #include "access/relation.h"
 #include "common/tecc_algorithm/tecc_sm3_internal.h"
 #include "common/tecc_algorithm/tecc_sm4_internal.h"
+
+/* tecc_key functions linked via libpgcommon */
+extern int security_encrypt_dek_with_hmac(const unsigned char *plain, size_t plain_len,
+                                          const unsigned char *kek, size_t kek_len,
+                                          unsigned char **encrypted, size_t *encrypted_len);
+extern int security_decrypt_dek_with_hmac(const unsigned char *encrypted, size_t encrypted_len,
+                                          const unsigned char *kek, size_t kek_len,
+                                          unsigned char **plain, size_t *plain_len);
+extern void security_secure_erase(unsigned char *buf, size_t len);
+extern int tecc_decrypt_kek_from_buffer(const unsigned char *buf, size_t len,
+                                         unsigned char **plain, size_t *plain_len);
 
 
 /* Begin - ReqID:TECC4.0 */
@@ -116,6 +129,224 @@ create_kek_args(Oid kekId, const char *function_name, const char *key, const byt
     table_close(rel, RowExclusiveLock);
 }
 
+/* ReqID:TECC4.0 - Result of the KEK key_path dedup check */
+typedef enum
+{
+	TECC_KEK_PATH_OK = 0,
+	TECC_KEK_PATH_SAME_FULLPATH_OTHER,	/* identical path used by another KEK (same store) */
+	TECC_KEK_PATH_SAME_FULLPATH_SELF,	/* identical path belongs to the excluded KEK itself */
+	TECC_KEK_PATH_SAME_BASENAME	/* same file name used by another KEK (other dir) */
+} TeccKekPathConflict;
+
+/* Return a pointer to the trailing file-name component of a path. */
+static const char *
+tecc_key_path_basename(const char *path)
+{
+	const char *p = path + strlen(path);
+
+	while (p > path && *(p - 1) != '/' && *(p - 1) != '\\')
+		p--;
+	return p;
+}
+
+/*
+ * tecc_get_kek_key_store - return the KEY_STORE of the given KEK from
+ * hg_kek_args (palloc'd in the caller's memory context), or NULL if absent.
+ */
+static char *
+tecc_get_kek_key_store(Oid kek_id)
+{
+	Relation	rel;
+	SysScanDesc scan;
+	HeapTuple	tuple;
+	char	   *store = NULL;
+
+	rel = table_open(HgKekArgsRelationId, AccessShareLock);
+	scan = systable_beginscan(rel, HgKekArgsKekIdIndexId, true, NULL, 0, NULL);
+	while ((tuple = systable_getnext(scan)) != NULL)
+	{
+		Form_hg_kek_args args = (Form_hg_kek_args) GETSTRUCT(tuple);
+
+		if (args->kek_id == kek_id &&
+			strcmp(NameStr(args->function_name), "kek_config") == 0 &&
+			strcmp(NameStr(args->key), "KEY_STORE") == 0)
+		{
+			bool		is_null;
+			Datum		val;
+
+			val = heap_getattr(tuple, Anum_hg_kek_args_value,
+							   RelationGetDescr(rel), &is_null);
+			if (!is_null)
+			{
+				bytea	   *vb = DatumGetByteaP(val);
+				int			vlen = VARSIZE_ANY_EXHDR(vb);
+				char	   *vs = (char *) palloc(vlen + 1);
+
+				memcpy(vs, VARDATA_ANY(vb), vlen);
+				vs[vlen] = '\0';
+				store = vs;
+			}
+			break;
+		}
+	}
+	systable_endscan(scan);
+	table_close(rel, AccessShareLock);
+
+	return store;
+}
+
+/*
+ * tecc_kek_key_path_check - reject another KEK using the same key file.
+ *
+ * Scans hg_kek_args for existing KEY_PATH rows and reports the first
+ * conflict:
+ *   - TECC_KEK_PATH_SAME_FULLPATH_OTHER: another KEK (same key_store)
+ *     already uses the identical full path;
+ *   - TECC_KEK_PATH_SAME_FULLPATH_SELF: the identical path belongs to
+ *     exclude_kek_id itself (a same-path ALTER KEK);
+ *   - TECC_KEK_PATH_SAME_BASENAME: another KEK uses the same file name
+ *     even in a different directory.
+ * A store-mismatch full-path row is skipped (different hardware may share
+ * a slot string).  If not NULL, *conflict_path_out is set to the existing
+ * KEK's key path (palloc'd) for the basename error message.
+ */
+static TeccKekPathConflict
+tecc_kek_key_path_check(const char *key_path_val, const char *key_store,
+						Oid exclude_kek_id, const char **conflict_path_out)
+{
+	Relation	kek_args_rel;
+	SysScanDesc args_scan;
+	HeapTuple	args_tuple;
+	const char *new_basename;
+	TeccKekPathConflict result = TECC_KEK_PATH_OK;
+
+	if (key_path_val == NULL)
+		return TECC_KEK_PATH_OK;
+
+	if (conflict_path_out != NULL)
+		*conflict_path_out = NULL;
+
+	/* Extract basename of the new KEK's key_path */
+	new_basename = tecc_key_path_basename(key_path_val);
+
+	kek_args_rel = table_open(HgKekArgsRelationId, AccessShareLock);
+	args_scan = systable_beginscan(kek_args_rel, HgKekArgsKekIdIndexId, true,
+								   NULL, 0, NULL);
+	while ((args_tuple = systable_getnext(args_scan)) != NULL)
+	{
+		Form_hg_kek_args args_form = (Form_hg_kek_args) GETSTRUCT(args_tuple);
+
+		if (strcmp(NameStr(args_form->function_name), "kek_config") == 0 &&
+			strcmp(NameStr(args_form->key), "KEY_PATH") == 0)
+		{
+			bool		is_null;
+			Datum		val_datum;
+			bytea	   *val_bytea;
+			int			val_len;
+			char	   *val_str;
+
+			val_datum = heap_getattr(args_tuple, Anum_hg_kek_args_value,
+									 RelationGetDescr(kek_args_rel), &is_null);
+			if (is_null)
+				continue;
+			val_bytea = DatumGetByteaP(val_datum);
+			val_len = VARSIZE_ANY_EXHDR(val_bytea);
+			val_str = (char *) palloc(val_len + 1);
+			memcpy(val_str, VARDATA_ANY(val_bytea), val_len);
+			val_str[val_len] = '\0';
+
+			/* Check 1: exact same full path */
+			if (strcmp(val_str, key_path_val) == 0)
+			{
+				/*
+				 * Different KEY_STORE types (e.g. hsmkms vs swxakms) talk to
+				 * different hardware — the same KEY_PATH (slot number) is
+				 * valid for each.  Only reject when the key_store matches.
+				 */
+				bool		same_store = true;
+
+				if (key_store != NULL)
+				{
+					Oid			existing_kek_id = args_form->kek_id;
+					bool		ks_is_null;
+					SysScanDesc ks_scan;
+					HeapTuple	ks_tuple;
+					bool		store_mismatch = false;
+
+					ks_scan = systable_beginscan(kek_args_rel,
+												 HgKekArgsKekIdIndexId, true,
+												 NULL, 0, NULL);
+					while ((ks_tuple = systable_getnext(ks_scan)) != NULL)
+					{
+						Form_hg_kek_args ks_form = (Form_hg_kek_args) GETSTRUCT(ks_tuple);
+
+						if (ks_form->kek_id == existing_kek_id &&
+							strcmp(NameStr(ks_form->function_name), "kek_config") == 0 &&
+							strcmp(NameStr(ks_form->key), "KEY_STORE") == 0)
+						{
+							Datum		ks_datum;
+
+							ks_datum = heap_getattr(ks_tuple,
+													Anum_hg_kek_args_value,
+													RelationGetDescr(kek_args_rel),
+													&ks_is_null);
+							if (!ks_is_null)
+							{
+								bytea	   *ks_bytea = DatumGetByteaP(ks_datum);
+								int			ks_len = VARSIZE_ANY_EXHDR(ks_bytea);
+								char	   *ks_str = (char *) palloc(ks_len + 1);
+
+								memcpy(ks_str, VARDATA_ANY(ks_bytea), ks_len);
+								ks_str[ks_len] = '\0';
+
+								if (strcmp(ks_str, key_store) != 0)
+									store_mismatch = true;
+								pfree(ks_str);
+							}
+							break;
+						}
+					}
+					systable_endscan(ks_scan);
+
+					if (store_mismatch)
+						same_store = false;
+				}
+
+				if (same_store)
+				{
+					if (args_form->kek_id == exclude_kek_id)
+						result = TECC_KEK_PATH_SAME_FULLPATH_SELF;
+					else
+						result = TECC_KEK_PATH_SAME_FULLPATH_OTHER;
+					if (conflict_path_out != NULL)
+						*conflict_path_out = val_str;
+					break;
+				}
+
+				/* Different key store, same KEY_PATH is OK */
+				pfree(val_str);
+				continue;
+			}
+
+			/* Check 2: same filename (basename) in a different directory */
+			if (strcmp(tecc_key_path_basename(val_str), new_basename) == 0 &&
+				args_form->kek_id != exclude_kek_id)
+			{
+				result = TECC_KEK_PATH_SAME_BASENAME;
+				if (conflict_path_out != NULL)
+					*conflict_path_out = val_str;
+				break;
+			}
+
+			pfree(val_str);
+		}
+	}
+	systable_endscan(args_scan);
+	table_close(kek_args_rel, AccessShareLock);
+
+	return result;
+}
+
 /*
  * CreateKek
  *    Main entry point for CREATE KEK command
@@ -171,6 +402,27 @@ CreateKek(CreateKekStmt *stmt)
 	{
 		/* Use current active creation namespace */
 		namespaceId = GetActiveCreationNamespace();
+
+		/*
+		 * ReqID:TECC4.0 - Bug 9332: 与 PG 的 RangeVarGetCreationNamespace
+		 * （catalog/namespace.c:497）保持一致。
+		 *
+		 * GetActiveCreationNamespace() 只是把 recomputeNamespacePath() 算出的
+		 * activeCreationNamespace 原样返回：当 search_path 里没有任何**存在**
+		 * 的模式时它就是 InvalidOid（例如 SET search_path = sch1 之后 DROP
+		 * SCHEMA sch1 —— PG 会把不存在的模式从有效路径里剔除，所以
+		 * current_schema() 为 NULL，而 GUC 文本仍是 sch1）。此时若不拦住，
+		 * KEY 会被建成 key_namespace = 0 的孤儿行：任何查找/授权/DROP 都按
+		 * 命名空间解析，谁也不会再看它一眼（DROP KEK 报 "does not exist"），
+		 * 而 tecc_kek_key_path_check 又不按命名空间隔离，这个 KEY_PATH
+		 * 会被永久占用，用户既删不掉也换不了。
+		 *
+		 * 报错文案与 CREATE TABLE 等 PG 对象保持一致，便于用户理解。
+		 */
+		if (!OidIsValid(namespaceId))
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_SCHEMA),
+					 errmsg("no schema has been selected to create in")));
 	}
 	elog(DEBUG1, "CreateKek: using namespace OID %u for KEK '%s'", namespaceId, kek_name);
 
@@ -219,6 +471,14 @@ CreateKek(CreateKekStmt *stmt)
         {
             key_path_val = value;
         }
+        else if (strcmp(defname, "key_algo") == 0)
+        {
+            /* KEY_ALGO. Canonical values sm4/sm2. */
+            if (strcmp(value, "sm4") != 0 && strcmp(value, "sm2") != 0)
+                ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                        errmsg("key_algo must be 'sm4' or 'sm2'")));
+            /* value stored in hg_kek_args via general store path below */
+        }
         else if (strcmp(defname, "algorithm") == 0)
         {
             /* Accept algorithm option */
@@ -226,6 +486,10 @@ CreateKek(CreateKekStmt *stmt)
         else if (strcmp(defname, "key_length") == 0)
         {
             /* Accept key_length option */
+        }
+        else if (strcmp(defname, "public_key") == 0)
+        {
+            /* PUBLIC_KEY from pg_dump -- stored in hg_kek_args below */
         }
         else if (strcmp(defname, "_tecc_processed") == 0)
         {
@@ -286,141 +550,34 @@ CreateKek(CreateKekStmt *stmt)
      * with the same name exist in different directories — it also avoids
      * collisions when a cross-platform KEK directory (TECC_KEK_PATH) is
      * in use.
-     *
-     * Scan hg_kek_args for existing rows with function_name='kek_config'
-     * and key='KEY_PATH'.
      */
     if (key_path_val != NULL)
     {
-        Relation kek_args_rel;
-        SysScanDesc args_scan;
-        HeapTuple args_tuple;
-        const char *new_basename;
+        const char *conflict_path = NULL;
+        TeccKekPathConflict conflict =
+            tecc_kek_key_path_check(key_path_val, key_store, InvalidOid,
+                                    &conflict_path);
 
-        /* Extract basename of the new KEK's key_path */
+        if (conflict == TECC_KEK_PATH_SAME_FULLPATH_OTHER)
         {
-            const char *p = key_path_val + strlen(key_path_val);
-            while (p > key_path_val && *(p - 1) != '/' && *(p - 1) != '\\')
-                p--;
-            new_basename = p;
+            ereport(ERROR,
+                    (errcode(ERRCODE_DUPLICATE_OBJECT),
+                     errmsg("KEY_PATH \"%s\" is already used by another KEK",
+                            key_path_val),
+                     errdetail("Each KEK must use a unique key file.")));
         }
-
-        kek_args_rel = table_open(HgKekArgsRelationId, AccessShareLock);
-        args_scan = systable_beginscan(kek_args_rel, HgKekArgsKekIdIndexId, true,
-                                       NULL, 0, NULL);
-        while ((args_tuple = systable_getnext(args_scan)) != NULL)
+        else if (conflict == TECC_KEK_PATH_SAME_BASENAME)
         {
-            Form_hg_kek_args args_form = (Form_hg_kek_args) GETSTRUCT(args_tuple);
-
-            if (strcmp(NameStr(args_form->function_name), "kek_config") == 0 &&
-                strcmp(NameStr(args_form->key), "KEY_PATH") == 0)
-            {
-                bool is_null;
-                Datum val_datum = heap_getattr(args_tuple, Anum_hg_kek_args_value,
-                                               RelationGetDescr(kek_args_rel), &is_null);
-                if (!is_null)
-                {
-                    bytea *val_bytea = DatumGetByteaP(val_datum);
-                    int val_len = VARSIZE_ANY_EXHDR(val_bytea);
-                    char *val_str = (char *) palloc(val_len + 1);
-                    memcpy(val_str, VARDATA_ANY(val_bytea), val_len);
-                    val_str[val_len] = '\0';
-
-                    /* Check 1: exact same full path */
-                    if (strcmp(val_str, key_path_val) == 0)
-                    {
-                        /*
-                         * Different KEY_STORE types (e.g. hsmkms vs swxakms)
-                         * talk to different hardware — the same KEY_PATH
-                         * (slot number) is valid for each.  Only reject when
-                         * the key_store also matches.
-                         */
-                        if (key_store != NULL)
-                        {
-                            /* Look up the existing KEK's KEY_STORE */
-                            Oid existing_kek_id = args_form->kek_id;
-                            bool ks_is_null;
-                            Datum ks_datum;
-                            SysScanDesc ks_scan;
-                            HeapTuple ks_tuple;
-                            bool store_mismatch = false;
-
-                            ks_scan = systable_beginscan(kek_args_rel,
-                                                         HgKekArgsKekIdIndexId, true,
-                                                         NULL, 0, NULL);
-                            while ((ks_tuple = systable_getnext(ks_scan)) != NULL)
-                            {
-                                Form_hg_kek_args ks_form = (Form_hg_kek_args) GETSTRUCT(ks_tuple);
-                                if (ks_form->kek_id == existing_kek_id &&
-                                    strcmp(NameStr(ks_form->function_name), "kek_config") == 0 &&
-                                    strcmp(NameStr(ks_form->key), "KEY_STORE") == 0)
-                                {
-                                    ks_datum = heap_getattr(ks_tuple,
-                                                             Anum_hg_kek_args_value,
-                                                             RelationGetDescr(kek_args_rel),
-                                                             &ks_is_null);
-                                    if (!ks_is_null)
-                                    {
-                                        bytea *ks_bytea = DatumGetByteaP(ks_datum);
-                                        int ks_len = VARSIZE_ANY_EXHDR(ks_bytea);
-                                        char *ks_str = (char *) palloc(ks_len + 1);
-                                        memcpy(ks_str, VARDATA_ANY(ks_bytea), ks_len);
-                                        ks_str[ks_len] = '\0';
-
-                                        if (strcmp(ks_str, key_store) != 0)
-                                            store_mismatch = true;
-                                        pfree(ks_str);
-                                    }
-                                    break;
-                                }
-                            }
-                            systable_endscan(ks_scan);
-
-                            if (store_mismatch)
-                            {
-                                /* Different key store, same KEY_PATH is OK */
-                                pfree(val_str);
-                                continue;
-                            }
-                        }
-
-                        systable_endscan(args_scan);
-                        table_close(kek_args_rel, AccessShareLock);
-                        ereport(ERROR,
-                                (errcode(ERRCODE_DUPLICATE_OBJECT),
-                                 errmsg("KEY_PATH \"%s\" is already used by another KEK",
-                                        key_path_val),
-                                 errdetail("Each KEK must use a unique key file.")));
-                    }
-
-                    /* Check 2: same filename (basename) in a different directory */
-                    {
-                        const char *existing_basename;
-                        const char *ep = val_str + strlen(val_str);
-                        while (ep > val_str && *(ep - 1) != '/' && *(ep - 1) != '\\')
-                            ep--;
-                        existing_basename = ep;
-
-                        if (strcmp(existing_basename, new_basename) == 0)
-                        {
-                            systable_endscan(args_scan);
-                            table_close(kek_args_rel, AccessShareLock);
-                            ereport(ERROR,
-                                    (errcode(ERRCODE_DUPLICATE_OBJECT),
-                                     errmsg("key file name \"%s\" is already used by another KEK at \"%s\"",
-                                            new_basename, val_str),
-                                     errdetail("Each KEK must have a unique file name, even across different directories. "
-                                               "Use a different file name, or set the TECC_KEK_PATH environment variable "
-                                               "for cross-platform support.")));
-                        }
-                    }
-
-                    pfree(val_str);
-                }
-            }
+            ereport(ERROR,
+                    (errcode(ERRCODE_DUPLICATE_OBJECT),
+                     errmsg("key file name \"%s\" is already used by another KEK at \"%s\"",
+                            tecc_key_path_basename(key_path_val),
+                            conflict_path != NULL ? conflict_path : ""),
+                     errdetail("Each KEK must have a unique file name, even across different directories. "
+                               "Use a different file name, or set the TECC_KEK_PATH environment variable "
+                               "for cross-platform support.")));
         }
-        systable_endscan(args_scan);
-        table_close(kek_args_rel, AccessShareLock);
+        /* TECC_KEK_PATH_SAME_FULLPATH_SELF cannot occur for CREATE KEK */
     }
 
     /* Open hg_kek relation */
@@ -484,6 +641,22 @@ CreateKek(CreateKekStmt *stmt)
     foreach(opt_lc, kek_options)
     {
         opt = (KekOption *) lfirst(opt_lc);  /* ReqID:TECC4.0 - Fix C90 mixed declaration warning */
+        if (strcmp(opt->defname, "public_key") == 0)
+        {
+            /* ReqID:TECC4.0 - public_key 是 65 字节未压缩点的 hex 字符串（前端
+             * 注入），直接 byteain("\x<hex>") 得 65 字节二进制；不能用通用路径
+             * 的 hex_encode（会双重编码），也不能用 strlen 截断二进制 0 字节。 */
+            size_t slen = strlen(opt->value);
+            char *hexbuf = palloc(slen + 3);
+            hexbuf[0] = '\\';
+            hexbuf[1] = 'x';
+            memcpy(hexbuf + 2, opt->value, slen);
+            hexbuf[slen + 2] = '\0';
+            arg_value = (bytea *) DatumGetPointer(
+                DirectFunctionCall1(byteain, CStringGetDatum(hexbuf)));
+            pfree(hexbuf);
+        }
+        else
         {
             /* String values (like file paths) contain backslashes that byteain
              * would misinterpret.  Hex-encode the raw string bytes so byteain
@@ -512,6 +685,14 @@ CreateKek(CreateKekStmt *stmt)
         pfree(opt);
     }
     list_free(kek_options);
+
+    /*
+     * ReqID:TECC4.0 - 非对称 KEK 的公钥不再由后端读 .pub 文件（key_path 是
+     * 客户端路径，后端读文件依赖"客户端服务端同机"）。改为前端 libpq 在
+     * CREATE KEK 时获取公钥（localkms 读 .pub / HSM export_public_key），
+     * 通过 public_key 参数传递，后端走上面 kek_options 的 public_key 分支
+     * 存储到 PUBLIC_KEY。
+     */
 
     /*
      * ReqID:TECC4.0 - Encrypt KEK metadata as _KEK_META.
@@ -589,6 +770,207 @@ CreateKek(CreateKekStmt *stmt)
     /* Return object address */
     elog(DEBUG1, "CreateKek: returning object address {classId=%u, objectId=%u}",
          address.classId, address.objectId);
+    return address;
+}
+
+/* End - ReqID:TECC4.0 */
+/*
+ * AlterKekCmd -- ALTER KEK statement handler
+ *
+ * Updates KEK key_path in hg_kek_args.
+ */
+ObjectAddress
+AlterKekCmd(AlterKekStmt *stmt)
+{
+    char       *kek_name = NULL;
+    char       *schema_name = NULL;
+    Oid         namespaceId;
+    Oid         kekId;
+    char       *key_path_val = NULL;
+    bool        tecc_processed = false;
+    ObjectAddress address;
+    ListCell   *opt_lc;
+
+    DeconstructQualifiedName(stmt->names, &schema_name, &kek_name);
+
+    if (schema_name != NULL)
+        namespaceId = LookupExplicitNamespace(schema_name, false);
+    else
+        namespaceId = GetActiveCreationNamespace();
+
+    kekId = get_kek_oid_ext(kek_name, namespaceId, false);
+    if (!OidIsValid(kekId))
+        ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT),
+                        errmsg("KEK \"%s\" does not exist", kek_name)));
+
+    /*
+     * ReqID:TECC4.0 - Bug 9255: KEK 只有 USAGE 一种可授予权限
+     * （ACL_ALL_RIGHTS_KEK == ACL_USAGE，acldefault(OBJECT_KEK) 给属主的也只有
+     * USAGE），ACL_UPDATE 不是合法权限类型 —— GRANT UPDATE ON KEK 会直接报
+     * "invalid privilege type UPDATE for key encryption key"，因此按 ACL_UPDATE
+     * 检查会对任何主体恒为假，导致属主本人和已 GRANT USAGE 的用户都无法轮换。
+     * 与 CREATE DEK 的检查（createdek.c 的 hg_kek_aclmask(..., ACL_USAGE, ...)）、
+     * 客户端 KEK 缓存视图 hg_kek_info 的 has_kek_privilege(k.oid, 'USAGE')
+     * 统一为 USAGE。
+     */
+    {
+        AclResult aclresult = hg_kek_aclcheck(kekId, GetUserId(), ACL_USAGE);
+        if (aclresult != ACLCHECK_OK)
+            aclcheck_error(aclresult, OBJECT_KEK, kek_name);
+    }
+
+    foreach(opt_lc, stmt->options)
+    {
+        DefElem    *def = (DefElem *) lfirst(opt_lc);
+        const char *defname = def->defname;
+        char       *value = defGetString(def);
+
+        if (strcmp(defname, "key_path") == 0)
+            key_path_val = value;
+        else if (strcmp(defname, "_tecc_processed") == 0)
+            tecc_processed = true;
+        else if (strcmp(defname, "algorithm") == 0 ||
+                 strcmp(defname, "key_store") == 0 ||
+                 strcmp(defname, "key_length") == 0 ||
+                 strcmp(defname, "key_algo") == 0)
+            ;
+        else
+            ereport(ERROR, (errcode(ERRCODE_SYNTAX_ERROR),
+                            errmsg("unrecognized KEK option \"%s\"", defname)));
+    }
+
+    if (!tecc_processed)
+        ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+                        errmsg("ALTER KEK requires TECC encryption mode")));
+
+    if (key_path_val == NULL)
+        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                        errmsg("KEY_PATH is required for ALTER KEK")));
+
+    /*
+     * ReqID:TECC4.0 - Same-path and cross-KEK dedup checks.
+     *
+     * - A new KEY_PATH identical to the current one is a no-op "rotation"
+     *   (DEKs would be re-encrypted with the very same key material).
+     *   Reject it so the caller is not misled into believing the KEK
+     *   actually changed.
+     * - A new KEY_PATH already used by another KEK of the same key_store
+     *   would make two logical KEKs share one key file (or one HSM slot);
+     *   reject it exactly like CREATE KEK does.
+     */
+    {
+        const char *own_store;
+        const char *conflict_path = NULL;
+        TeccKekPathConflict conflict;
+
+        own_store = tecc_get_kek_key_store(kekId);
+        conflict = tecc_kek_key_path_check(key_path_val, own_store, kekId,
+                                           &conflict_path);
+
+        if (conflict == TECC_KEK_PATH_SAME_FULLPATH_SELF)
+        {
+            ereport(ERROR,
+                    (errcode(ERRCODE_DUPLICATE_OBJECT),
+                     errmsg("KEY_PATH \"%s\" is identical to the current key path",
+                            key_path_val),
+                     errdetail("Specify a different KEY_PATH to rotate the KEK.")));
+        }
+        else if (conflict == TECC_KEK_PATH_SAME_FULLPATH_OTHER)
+        {
+            ereport(ERROR,
+                    (errcode(ERRCODE_DUPLICATE_OBJECT),
+                     errmsg("KEY_PATH \"%s\" is already used by another KEK",
+                            key_path_val),
+                     errdetail("Each KEK must use a unique key file.")));
+        }
+        else if (conflict == TECC_KEK_PATH_SAME_BASENAME)
+        {
+            ereport(ERROR,
+                    (errcode(ERRCODE_DUPLICATE_OBJECT),
+                     errmsg("key file name \"%s\" is already used by another KEK at \"%s\"",
+                            tecc_key_path_basename(key_path_val),
+                            conflict_path != NULL ? conflict_path : ""),
+                     errdetail("Each KEK must have a unique file name, even across different directories.")));
+        }
+    }
+
+    /* Update KEY_PATH in hg_kek_args */
+    {
+        Relation    rel = table_open(HgKekArgsRelationId, RowExclusiveLock);
+        SysScanDesc scan;
+        HeapTuple   tuple;
+        bool        found = false;
+
+        scan = systable_beginscan(rel, HgKekArgsKekIdIndexId, true, NULL, 0, NULL);
+        while ((tuple = systable_getnext(scan)) != NULL)
+        {
+            Form_hg_kek_args args = (Form_hg_kek_args) GETSTRUCT(tuple);
+
+            if (args->kek_id == kekId &&
+                strcmp(NameStr(args->function_name), "kek_config") == 0 &&
+                strcmp(NameStr(args->key), "KEY_PATH") == 0)
+            {
+                size_t  slen = strlen(key_path_val);
+                size_t  hexlen = slen * 2 + 3;
+                char   *hexbuf = palloc(hexlen);
+                bytea  *new_val;
+
+                hexbuf[0] = '\\';
+                hexbuf[1] = 'x';
+                hex_encode(key_path_val, slen, hexbuf + 2);
+                hexbuf[hexlen - 1] = '\0';
+
+                new_val = (bytea *) DatumGetPointer(
+                    DirectFunctionCall1(byteain, CStringGetDatum(hexbuf)));
+                pfree(hexbuf);
+
+                {
+                    Datum   values[Natts_hg_kek_args];
+                    bool    nulls[Natts_hg_kek_args];
+                    bool    replaces[Natts_hg_kek_args];
+
+                    memset(values, 0, sizeof(values));
+                    memset(nulls, false, sizeof(nulls));
+                    memset(replaces, false, sizeof(replaces));
+
+                    values[Anum_hg_kek_args_value - 1] = PointerGetDatum(new_val);
+                    replaces[Anum_hg_kek_args_value - 1] = true;
+
+                    tuple = heap_modify_tuple(tuple, RelationGetDescr(rel),
+                                              values, nulls, replaces);
+                    CatalogTupleUpdate(rel, &tuple->t_self, tuple);
+                }
+                found = true;
+                break;
+            }
+        }
+        systable_endscan(scan);
+
+        if (!found)
+        {
+            size_t  slen = strlen(key_path_val);
+            size_t  hexlen = slen * 2 + 3;
+            char   *hexbuf = palloc(hexlen);
+            bytea  *new_val;
+
+            hexbuf[0] = '\\';
+            hexbuf[1] = 'x';
+            hex_encode(key_path_val, slen, hexbuf + 2);
+            hexbuf[hexlen - 1] = '\0';
+
+            new_val = (bytea *) DatumGetPointer(
+                DirectFunctionCall1(byteain, CStringGetDatum(hexbuf)));
+            pfree(hexbuf);
+
+            create_kek_args(kekId, "kek_config", "KEY_PATH", new_val);
+        }
+
+        table_close(rel, RowExclusiveLock);
+    }
+
+    CacheInvalidateRelcacheByRelid(HgKekRelationId);
+
+    ObjectAddressSet(address, HgKekRelationId, kekId);
     return address;
 }
 

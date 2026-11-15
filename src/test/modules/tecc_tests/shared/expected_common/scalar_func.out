@@ -1,0 +1,409 @@
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+DROP DEK
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+CREATE FUNCTION
+CREATE FUNCTION
+========== COALESCE ==========
+COALESCE(c_int4,0)-OPE|9999
+COALESCE(c_int4,0)-OPE|-1000
+COALESCE(c_int4,0)-OPE|0
+COALESCE(c_int4,0)-OPE|0
+COALESCE(c_int4,0)-OPE|8888
+(5 rows)
+COALESCE(c_text,'def')-OPE|Hello World
+COALESCE(c_text,'def')-OPE|中文字符串🎉
+COALESCE(c_text,'def')-OPE|
+COALESCE(c_text,'def')-OPE|仅部分列为NULL
+COALESCE(c_text,'def')-OPE|Special: !@#$%^&*()_+-=[]{}|;:''",.<>?/~`
+(5 rows)
+COALESCE(c_numeric,0)-OPE|123.456
+COALESCE(c_numeric,0)-OPE|-500.0
+COALESCE(c_numeric,0)-OPE|0.0
+COALESCE(c_numeric,0)-OPE|0
+COALESCE(c_numeric,0)-OPE|99999.9999
+(5 rows)
+COALESCE(c_int4,0)-DET|9999
+COALESCE(c_int4,0)-DET|-1000
+COALESCE(c_int4,0)-DET|0
+COALESCE(c_int4,0)-DET|0
+COALESCE(c_int4,0)-DET|8888
+(5 rows)
+COALESCE(c_text,'def')-DET|Hello World
+COALESCE(c_text,'def')-DET|中文字符串🎉
+COALESCE(c_text,'def')-DET|
+COALESCE(c_text,'def')-DET|仅部分列为NULL
+COALESCE(c_text,'def')-DET|Special: !@#$%^&*()_+-=[]{}|;:''",.<>?/~`
+(5 rows)
+COALESCE(c_numeric,0)-DET|123.456
+COALESCE(c_numeric,0)-DET|-500.0
+COALESCE(c_numeric,0)-DET|0.0
+COALESCE(c_numeric,0)-DET|0
+COALESCE(c_numeric,0)-DET|99999.9999
+(5 rows)
+COALESCE(n_int4,0)-OPE-plain|9999
+COALESCE(n_int4,0)-OPE-plain|-1000
+COALESCE(n_int4,0)-OPE-plain|0
+COALESCE(n_int4,0)-OPE-plain|0
+COALESCE(n_int4,0)-OPE-plain|8888
+(5 rows)
+COALESCE(n_text,'def')-DET-plain|Hello World
+COALESCE(n_text,'def')-DET-plain|中文字符串🎉
+COALESCE(n_text,'def')-DET-plain|
+COALESCE(n_text,'def')-DET-plain|仅部分列为NULL
+COALESCE(n_text,'def')-DET-plain|Special: !@#$%^&*()_+-=[]{}|;:'",.<>?/~`
+(5 rows)
+========== NULLIF ==========
+NULLIF(c_int4,0)-OPE|9999
+NULLIF(c_int4,0)-OPE|-1000
+NULLIF(c_int4,0)-OPE|
+NULLIF(c_int4,0)-OPE|
+NULLIF(c_int4,0)-OPE|8888
+(5 rows)
+NULLIF(c_text,'')-OPE|Hello World
+NULLIF(c_text,'')-OPE|中文字符串🎉
+NULLIF(c_text,'')-OPE|
+NULLIF(c_text,'')-OPE|仅部分列为NULL
+NULLIF(c_text,'')-OPE|Special: !@#$%^&*()_+-=[]{}|;:''",.<>?/~`
+(5 rows)
+NULLIF(c_int4,0)-DET|9999
+NULLIF(c_int4,0)-DET|-1000
+NULLIF(c_int4,0)-DET|
+NULLIF(c_int4,0)-DET|
+NULLIF(c_int4,0)-DET|8888
+(5 rows)
+NULLIF(c_text,'')-DET|Hello World
+NULLIF(c_text,'')-DET|中文字符串🎉
+NULLIF(c_text,'')-DET|
+NULLIF(c_text,'')-DET|仅部分列为NULL
+NULLIF(c_text,'')-DET|Special: !@#$%^&*()_+-=[]{}|;:''",.<>?/~`
+(5 rows)
+NULLIF(n_int4,0)-OPE-plain|9999
+NULLIF(n_int4,0)-OPE-plain|-1000
+NULLIF(n_int4,0)-OPE-plain|
+NULLIF(n_int4,0)-OPE-plain|
+NULLIF(n_int4,0)-OPE-plain|8888
+(5 rows)
+NULLIF(n_text,'')-DET-plain|Hello World
+NULLIF(n_text,'')-DET-plain|中文字符串🎉
+NULLIF(n_text,'')-DET-plain|
+NULLIF(n_text,'')-DET-plain|仅部分列为NULL
+NULLIF(n_text,'')-DET-plain|Special: !@#$%^&*()_+-=[]{}|;:'",.<>?/~`
+(5 rows)
+========== GREATEST — OPE (should succeed) ==========
+GREATEST(c_int4,0)-OPE|9999
+GREATEST(c_int4,0)-OPE|0
+GREATEST(c_int4,0)-OPE|0
+GREATEST(c_int4,0)-OPE|0
+GREATEST(c_int4,0)-OPE|8888
+(5 rows)
+GREATEST(c_int8,100)-OPE|1234567890123
+GREATEST(c_int8,100)-OPE|100
+GREATEST(c_int8,100)-OPE|100
+GREATEST(c_int8,100)-OPE|500
+GREATEST(c_int8,100)-OPE|999999999999
+(5 rows)
+GREATEST(c_numeric,0)-OPE|123.456
+GREATEST(c_numeric,0)-OPE|0
+GREATEST(c_numeric,0)-OPE|0.0
+GREATEST(c_numeric,0)-OPE|0
+GREATEST(c_numeric,0)-OPE|99999.9999
+(5 rows)
+GREATEST(n_int4,0)-OPE-plain|9999
+GREATEST(n_int4,0)-OPE-plain|0
+GREATEST(n_int4,0)-OPE-plain|0
+GREATEST(n_int4,0)-OPE-plain|0
+GREATEST(n_int4,0)-OPE-plain|8888
+(5 rows)
+GREATEST(n_numeric,0)-OPE-plain|123.456
+GREATEST(n_numeric,0)-OPE-plain|0
+GREATEST(n_numeric,0)-OPE-plain|0.0
+GREATEST(n_numeric,0)-OPE-plain|0
+GREATEST(n_numeric,0)-OPE-plain|99999.9999
+(5 rows)
+========== GREATEST — DET (should error: needs OPE) ==========
+GREATEST(n_int4,0)-DET-plain|9999
+GREATEST(n_int4,0)-DET-plain|0
+GREATEST(n_int4,0)-DET-plain|0
+GREATEST(n_int4,0)-DET-plain|0
+GREATEST(n_int4,0)-DET-plain|8888
+(5 rows)
+========== LEAST — OPE (should succeed) ==========
+LEAST(c_int4,9999)-OPE|9999
+LEAST(c_int4,9999)-OPE|-1000
+LEAST(c_int4,9999)-OPE|0
+LEAST(c_int4,9999)-OPE|9999
+LEAST(c_int4,9999)-OPE|8888
+(5 rows)
+LEAST(c_int8,0)-OPE|0
+LEAST(c_int8,0)-OPE|-999999999
+LEAST(c_int8,0)-OPE|0
+LEAST(c_int8,0)-OPE|0
+LEAST(c_int8,0)-OPE|0
+(5 rows)
+LEAST(c_numeric,99999)-OPE|123.456
+LEAST(c_numeric,99999)-OPE|-500.0
+LEAST(c_numeric,99999)-OPE|0.0
+LEAST(c_numeric,99999)-OPE|99999
+LEAST(c_numeric,99999)-OPE|99999
+(5 rows)
+LEAST(n_int4,9999)-OPE-plain|9999
+LEAST(n_int4,9999)-OPE-plain|-1000
+LEAST(n_int4,9999)-OPE-plain|0
+LEAST(n_int4,9999)-OPE-plain|9999
+LEAST(n_int4,9999)-OPE-plain|8888
+(5 rows)
+LEAST(n_numeric,99999)-OPE-plain|123.456
+LEAST(n_numeric,99999)-OPE-plain|-500.0
+LEAST(n_numeric,99999)-OPE-plain|0.0
+LEAST(n_numeric,99999)-OPE-plain|99999
+LEAST(n_numeric,99999)-OPE-plain|99999
+(5 rows)
+========== LEAST — DET (should error: needs OPE) ==========
+LEAST(n_int4,9999)-DET-plain|9999
+LEAST(n_int4,9999)-DET-plain|-1000
+LEAST(n_int4,9999)-DET-plain|0
+LEAST(n_int4,9999)-DET-plain|9999
+LEAST(n_int4,9999)-DET-plain|8888
+(5 rows)
+========== CASE ==========
+CASE-WHEN-OPE|positive
+CASE-WHEN-OPE|non-positive
+CASE-WHEN-OPE|non-positive
+CASE-WHEN-OPE|non-positive
+CASE-WHEN-OPE|positive
+(5 rows)
+CASE-text-OPE|match
+CASE-text-OPE|no
+CASE-text-OPE|no
+CASE-text-OPE|no
+CASE-text-OPE|no
+(5 rows)
+CASE-eq-DET|max
+CASE-eq-DET|other
+CASE-eq-DET|other
+CASE-eq-DET|other
+CASE-eq-DET|other
+(5 rows)
+CASE-text-DET|match
+CASE-text-DET|no
+CASE-text-DET|no
+CASE-text-DET|no
+CASE-text-DET|no
+(5 rows)
+CASE-plain-OPE|positive
+CASE-plain-OPE|non-positive
+CASE-plain-OPE|non-positive
+CASE-plain-OPE|non-positive
+CASE-plain-OPE|positive
+(5 rows)
+CASE-plain-DET|match
+CASE-plain-DET|no
+CASE-plain-DET|no
+CASE-plain-DET|no
+CASE-plain-DET|no
+(5 rows)
+========== DECODE ==========
+decode(c_int4)-OPE|max
+decode(c_int4)-OPE|min
+decode(c_int4)-OPE|other
+decode(c_int4)-OPE|other
+decode(c_int4)-OPE|other
+(5 rows)
+decode(c_int4)-DET|max
+decode(c_int4)-DET|min
+decode(c_int4)-DET|other
+decode(c_int4)-DET|other
+decode(c_int4)-DET|other
+(5 rows)
+========== POWER — OPE (should error: unsupported scalar) ==========
+========== POWER — DET (should error: unsupported scalar) ==========
+power(n_int4,2)-OPE-plain|99980001
+power(n_int4,2)-OPE-plain|1000000
+power(n_int4,2)-OPE-plain|0
+power(n_int4,2)-OPE-plain|
+power(n_int4,2)-OPE-plain|78996544
+(5 rows)
+power(n_int4,2)-DET-plain|99980001
+power(n_int4,2)-DET-plain|1000000
+power(n_int4,2)-DET-plain|0
+power(n_int4,2)-DET-plain|
+power(n_int4,2)-DET-plain|78996544
+(5 rows)
+power(n_numeric,2)-OPE-plain|15241.3839360000000000
+power(n_numeric,2)-OPE-plain|250000.0000000000000000
+power(n_numeric,2)-OPE-plain|0.0000000000000000
+power(n_numeric,2)-OPE-plain|
+power(n_numeric,2)-OPE-plain|9999999980.0000000100000000
+(5 rows)
+========== Expression + Scalar ==========
+GREATEST-in-WHERE-OPE|9999|Hello World
+GREATEST-in-WHERE-OPE|8888|Special: !@#$%^&*()_+-=[]{}|;:''",.<>?/~`
+(2 rows)
+CASE-in-WHERE-OPE|9999
+CASE-in-WHERE-OPE|8888
+(2 rows)
+CASE-in-WHERE-DET|9999
+(1 row)
+========== COALESCE — HE (should succeed) ==========
+COALESCE(c_int4,0)-he-add|100
+COALESCE(c_int4,0)-he-add|-50
+COALESCE(c_int4,0)-he-add|0
+COALESCE(c_int4,0)-he-add|700
+COALESCE(c_int4,0)-he-add|0
+(5 rows)
+COALESCE(m_int4,0)-he-mul|3
+COALESCE(m_int4,0)-he-mul|-3
+COALESCE(m_int4,0)-he-mul|0
+COALESCE(m_int4,0)-he-mul|5
+COALESCE(m_int4,0)-he-mul|0
+(5 rows)
+COALESCE(c_int2,0)-he-add|10
+COALESCE(c_int2,0)-he-add|-5
+COALESCE(c_int2,0)-he-add|0
+COALESCE(c_int2,0)-he-add|7
+COALESCE(c_int2,0)-he-add|0
+(5 rows)
+COALESCE(m_int8,0)-he-mul|4
+COALESCE(m_int8,0)-he-mul|-4
+COALESCE(m_int8,0)-he-mul|0
+COALESCE(m_int8,0)-he-mul|6
+COALESCE(m_int8,0)-he-mul|0
+(5 rows)
+COALESCE(n_int4,0)-HE-plain|100
+COALESCE(n_int4,0)-HE-plain|-50
+COALESCE(n_int4,0)-HE-plain|0
+COALESCE(n_int4,0)-HE-plain|700
+COALESCE(n_int4,0)-HE-plain|0
+(5 rows)
+========== POWER — he-mul (should succeed) ==========
+power(m_int2,3)-he-mul|8
+power(m_int2,3)-he-mul|-8
+power(m_int2,3)-he-mul|0
+power(m_int2,3)-he-mul|27
+power(m_int2,3)-he-mul|
+(5 rows)
+power(m_int4,3)-he-mul|27
+power(m_int4,3)-he-mul|-27
+power(m_int4,3)-he-mul|0
+power(m_int4,3)-he-mul|125
+power(m_int4,3)-he-mul|
+(5 rows)
+power(m_int8,3)-he-mul|64
+power(m_int8,3)-he-mul|-64
+power(m_int8,3)-he-mul|0
+power(m_int8,3)-he-mul|216
+power(m_int8,3)-he-mul|
+(5 rows)
+========== POWER — he-add (should error: unsupported) ==========
+power(n_int4,2)-HE-plain|10000
+power(n_int4,2)-HE-plain|2500
+power(n_int4,2)-HE-plain|0
+power(n_int4,2)-HE-plain|490000
+power(n_int4,2)-HE-plain|
+(5 rows)
+========== Bug 9259 — power error message regression ==========
+Bug9259-pwr-he-mul-i4-ok|9
+Bug9259-pwr-he-mul-i4-ok|9
+Bug9259-pwr-he-mul-i4-ok|0
+Bug9259-pwr-he-mul-i4-ok|25
+Bug9259-pwr-he-mul-i4-ok|
+(5 rows)
+Bug9259-pwr-he-mul-i2-ok|8
+Bug9259-pwr-he-mul-i2-ok|-8
+Bug9259-pwr-he-mul-i2-ok|0
+Bug9259-pwr-he-mul-i2-ok|27
+Bug9259-pwr-he-mul-i2-ok|
+(5 rows)
+Bug9259-pwr-he-mul-i8-ok|16
+Bug9259-pwr-he-mul-i8-ok|16
+Bug9259-pwr-he-mul-i8-ok|0
+Bug9259-pwr-he-mul-i8-ok|36
+Bug9259-pwr-he-mul-i8-ok|
+(5 rows)
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP FUNCTION
+DROP FUNCTION
+DROP DEK
+DROP KEK
+DROP DEK
+DROP DEK
+DROP KEK
+NOTICE: table "enc_pgfunc_test_det" does not exist, skipping
+NOTICE: table "enc_pgfunc_test_ope" does not exist, skipping
+NOTICE: data encryption key "enc_pgfunc_dek" does not exist, skipping
+NOTICE: key encryption key "enc_pgfunc_kek" does not exist, skipping
+NOTICE: data encryption key "enc_pgfunc_he_mul_dek" does not exist, skipping
+NOTICE: data encryption key "enc_pgfunc_he_add_dek" does not exist, skipping
+NOTICE: key encryption key "enc_pgfunc_he_kek" does not exist, skipping
+psql:/.../scalar_func.sql:270: TECC query preprocessing failed: function "GREATEST" requires OPE encryption, but column "c_int4" is not configured with OPE
+psql:/.../scalar_func.sql:273: TECC query preprocessing failed: function "GREATEST" requires OPE encryption, but column "c_int8" is not configured with OPE
+psql:/.../scalar_func.sql:276: TECC query preprocessing failed: function "GREATEST" requires OPE encryption, but column "c_numeric" is not configured with OPE
+psql:/.../scalar_func.sql:304: TECC query preprocessing failed: function "LEAST" requires OPE encryption, but column "c_int4" is not configured with OPE
+psql:/.../scalar_func.sql:307: TECC query preprocessing failed: function "LEAST" requires OPE encryption, but column "c_int8" is not configured with OPE
+psql:/.../scalar_func.sql:310: TECC query preprocessing failed: function "LEAST" requires OPE encryption, but column "c_numeric" is not configured with OPE
+psql:/.../scalar_func.sql:330: TECC query preprocessing failed: case does not support this argument combination: the switch form (CASE expression WHEN constant) is not supported; use the CASE WHEN condition form instead
+psql:/.../scalar_func.sql:350: TECC query preprocessing failed: case does not support this argument combination: the switch form (CASE expression WHEN constant) is not supported; use the CASE WHEN condition form instead
+ERROR: function decode(text_enc, text_enc, text_enc, text_enc) does not exist
+LINE 2:     decode(c_text, 'HEX_STR...
+^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ERROR: function decode(text_enc, text_enc, text_enc, text_enc) does not exist
+LINE 2:     decode(c_text, 'HEX_STR...
+^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ERROR: function decode(integer, integer, unknown, integer, unknown, unknown) does not exist
+LINE 2:     decode(n_int4, 9999, 'max', -1000, 'min', 'other') AS re...
+^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ERROR: function decode(text, unknown, unknown, unknown) does not exist
+LINE 2:     decode(n_text, 'Hello World', 'matched', 'not found') AS...
+^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+psql:/.../scalar_func.sql:403: TECC query preprocessing failed: function "power" is not supported on encrypted column "c_int4": power requires he-mul encryption on int2/int4/int8 columns
+psql:/.../scalar_func.sql:406: TECC query preprocessing failed: function "power" is not supported on encrypted column "c_int8": power requires he-mul encryption on int2/int4/int8 columns
+psql:/.../scalar_func.sql:409: TECC query preprocessing failed: function "power" is not supported on encrypted column "c_float8": power requires he-mul encryption on int2/int4/int8 columns
+psql:/.../scalar_func.sql:414: TECC query preprocessing failed: function "power" is not supported on encrypted column "c_int4": power requires he-mul encryption on int2/int4/int8 columns
+psql:/.../scalar_func.sql:417: TECC query preprocessing failed: function "power" is not supported on encrypted column "c_int8": power requires he-mul encryption on int2/int4/int8 columns
+psql:/.../scalar_func.sql:420: TECC query preprocessing failed: function "power" is not supported on encrypted column "c_float8": power requires he-mul encryption on int2/int4/int8 columns
+ERROR: cannot perform homomorphic scalar addition: operand lacks EG_ADD ciphertext
+HINT:  Ensure the column has support_algo='he-add' set.
+ERROR: cannot perform homomorphic scalar addition: operand lacks EG_ADD ciphertext
+HINT:  Ensure the column has support_algo='he-add' set.
+psql:/.../scalar_func.sql:446: TECC query preprocessing failed: function "LEAST" requires OPE encryption, but column "c_int4" is not configured with OPE
+psql:/.../scalar_func.sql:451: TECC query preprocessing failed: function "power" is not supported on encrypted column "c_int4": power requires he-mul encryption on int2/int4/int8 columns
+psql:/.../scalar_func.sql:504: TECC query preprocessing failed: function "power" is not supported on encrypted column "c_int2": power requires he-mul encryption on int2/int4/int8 columns
+psql:/.../scalar_func.sql:507: TECC query preprocessing failed: function "power" is not supported on encrypted column "c_int4": power requires he-mul encryption on int2/int4/int8 columns
+psql:/.../scalar_func.sql:510: TECC query preprocessing failed: function "power" is not supported on encrypted column "c_int8": power requires he-mul encryption on int2/int4/int8 columns
+psql:/.../scalar_func.sql:521: TECC query preprocessing failed: function "power" is not supported on encrypted column "c_int2": power requires he-mul encryption on int2/int4/int8 columns
+psql:/.../scalar_func.sql:524: TECC query preprocessing failed: function "power" is not supported on encrypted column "c_int4": power requires he-mul encryption on int2/int4/int8 columns
+psql:/.../scalar_func.sql:527: TECC query preprocessing failed: function "power" is not supported on encrypted column "c_int8": power requires he-mul encryption on int2/int4/int8 columns
+psql:/.../scalar_func.sql:530: TECC query preprocessing failed: function "power" is not supported on encrypted column "c_int4": power requires he-mul encryption on int2/int4/int8 columns

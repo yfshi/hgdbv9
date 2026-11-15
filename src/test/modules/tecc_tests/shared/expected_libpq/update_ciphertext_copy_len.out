@@ -1,0 +1,153 @@
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 2
+                                   stage                                   
+---------------------------------------------------------------------------
+ === UCCOPY-1 源声明 20 > 目标 5（值超长）-> 拒绝、值不变（libpq 14.1）===
+(1 row)
+
+  v5   | eq5 | eq10 
+-------+-----+------
+ abcde | t   | f
+(1 row)
+
+                                   stage                                    
+----------------------------------------------------------------------------
+ === UCCOPY-2 已知代价：源声明更宽、值其实放得下也一并拒绝（libpq 14.3）===
+(1 row)
+
+  v5   
+-------
+ abcde
+(1 row)
+
+                         stage                          
+--------------------------------------------------------
+ === UCCOPY-3 源声明不超过目标 -> 放行（libpq 14.2）===
+(1 row)
+
+CREATE TABLE
+INSERT 0 1
+UPDATE 1
+  v5   | eq 
+-------+----
+ vwxyz | t
+(1 row)
+
+                                      stage                                       
+----------------------------------------------------------------------------------
+ === UCCOPY-4 同表整列拷贝、源更宽 -> 拒绝（无限定名 / 目标表名 / 目标表别名）===
+(1 row)
+
+CREATE TABLE
+INSERT 0 1
+ narrow 
+--------
+ abcde
+(1 row)
+
+ narrow 
+--------
+ abcde
+(1 row)
+
+ narrow 
+--------
+ abcde
+(1 row)
+
+                     stage                     
+-----------------------------------------------
+ === UCCOPY-5 同表整列拷贝、源更窄 -> 放行 ===
+(1 row)
+
+UPDATE 1
+ wide  | eq 
+-------+----
+ abcde | t
+(1 row)
+
+                           stage                           
+-----------------------------------------------------------
+ === UCCOPY-6 源为 text_enc（未声明长度）-> 不判、放行 ===
+(1 row)
+
+CREATE TABLE
+INSERT 0 1
+UPDATE 1
+     v5     | eq10 
+------------+------
+ abcdefghij | t
+(1 row)
+
+                                  stage                                   
+--------------------------------------------------------------------------
+ === UCCOPY-7 右值为 cast 包裹的列引用 -> 保持原行为（libpq 同样不判）===
+(1 row)
+
+UPDATE 1
+ v5  | eq3 
+-----+-----
+ abc | t
+(1 row)
+
+                                   stage                                    
+----------------------------------------------------------------------------
+ === UCCOPY-8 原生对照：按值判断，放得下的放行、超长的拒绝（libpq 14.4）===
+(1 row)
+
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 2
+   a   
+-------
+ abcde
+(1 row)
+
+UPDATE 1
+ a 
+---
+(0 rows)
+
+          stage          
+-------------------------
+ === UCCOPY-END 清理 ===
+(1 row)
+
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../update_ciphertext_copy_len.sql:26: NOTICE:  table "uccopy_t" does not exist, skipping
+psql:/.../update_ciphertext_copy_len.sql:27: NOTICE:  table "uccopy_wide" does not exist, skipping
+psql:/.../update_ciphertext_copy_len.sql:28: NOTICE:  table "uccopy_same" does not exist, skipping
+psql:/.../update_ciphertext_copy_len.sql:29: NOTICE:  table "uccopy_self" does not exist, skipping
+psql:/.../update_ciphertext_copy_len.sql:30: NOTICE:  table "uccopy_text" does not exist, skipping
+psql:/.../update_ciphertext_copy_len.sql:31: NOTICE:  table "uccopy_np5" does not exist, skipping
+psql:/.../update_ciphertext_copy_len.sql:32: NOTICE:  table "uccopy_np20" does not exist, skipping
+psql:/.../update_ciphertext_copy_len.sql:33: NOTICE:  data encryption key "uccopy_dek" does not exist, skipping
+psql:/.../update_ciphertext_copy_len.sql:34: NOTICE:  key encryption key "uccopy_kek" does not exist, skipping
+psql:/.../update_ciphertext_copy_len.sql:56: TECC query preprocessing failed: value too long for type character varying(5) (copying from column "w20" declared character varying(20); a ciphertext copy cannot verify the value's actual length)
+psql:/.../update_ciphertext_copy_len.sql:61: TECC query preprocessing failed: value too long for type character varying(5) (copying from column "w20" declared character varying(20); a ciphertext copy cannot verify the value's actual length)
+psql:/.../update_ciphertext_copy_len.sql:82: TECC query preprocessing failed: value too long for type character varying(5) (copying from column "wide" declared character varying(20); a ciphertext copy cannot verify the value's actual length)
+psql:/.../update_ciphertext_copy_len.sql:84: TECC query preprocessing failed: value too long for type character varying(5) (copying from column "wide" declared character varying(20); a ciphertext copy cannot verify the value's actual length)
+psql:/.../update_ciphertext_copy_len.sql:86: TECC query preprocessing failed: value too long for type character varying(5) (copying from column "wide" declared character varying(20); a ciphertext copy cannot verify the value's actual length)
+psql:/.../update_ciphertext_copy_len.sql:115: ERROR:  value too long for type character varying(5)

@@ -25,16 +25,16 @@
 #include "utils/tecc/tecc_typeicu.h"
 
 /*
- * Varlena-header-independent field accessors for CipherDataType.
+ * Field accessors for CipherDataType.
  *
- * See cipherdata_operators.c for the full set of CD_* macros.
- * Here we only need OPE-related ones for collation comparison.
+ * Use the canonical mask-aware macros from utils/cipherdatatype.h.  The
+ * predecessors here hardcoded byte offsets from a layout predating the
+ * dek_dist_oid field (ope_length at +12), which silently read the wrong
+ * slot; they are therefore not re-declared locally.
  */
-#define CD_OPE_LEN(ptr)     (*(int32 *)(VARDATA_ANY(ptr) + 12))
-#define CD_OPE_PTR(ptr)     (VARDATA_ANY(ptr) + 20 + \
-                             *(int32 *)(VARDATA_ANY(ptr) + 4) + \
-                             *(int32 *)(VARDATA_ANY(ptr) + 8))
-#define CD_VERSION(ptr)     (*(int32 *)(VARDATA_ANY(ptr)))
+#define CD_OPE_LEN(ptr)     CIPHERDATA_DATUM_OPE_LEN(ptr)
+#define CD_OPE_PTR(ptr)     CIPHERDATA_DATUM_OPE_PTR(ptr)
+#define CD_VERSION(ptr)     CIPHERDATA_DATUM_RAW_VERSION(ptr)
 
 #ifdef USE_ICU
 #include <unicode/uversion.h>
@@ -57,7 +57,7 @@ check_icu_version_compatibility(const char *collname)
 #ifdef USE_ICU
 	/* Get ICU version information */
 	char icu_version[U_MAX_VERSION_STRING_LENGTH];
-	u_getVersion(icu_version);
+	u_getVersion((uint8_t *)icu_version);
 
 	/* Check for known incompatible versions */
 	/* ICU 50-52 had bugs in ucol_strcollUTF8() */

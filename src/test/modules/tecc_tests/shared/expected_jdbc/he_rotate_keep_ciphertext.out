@@ -1,0 +1,39 @@
+NOTICE: table "bug9263_t" does not exist, skipping
+DROP TABLE
+NOTICE: key encryption key "bug9263_k" does not exist, skipping
+DROP KEK
+=== 1 建 KEK/DEK/表 + 写入 ===
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+1|1|10
+2|2|20
+=== 2 轮换前的 HE 运算（同时把旧信封灌进会话缓存） ===
+he-add before|7
+he-mul before|40
+NOTICE: table "bug9263_meta" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+=== 3 ALTER KEK 轮换（换另一对密钥文件） ===
+ALTER KEK
+=== 4 轮换后：私钥信封被重封，公钥保持不变 ===
+true
+true
+=== 5 轮换后：同一会话对【轮换前写入的密文】做 HE 运算 ===
+he-mul after|40
+he-add after|7
+=== 6 轮换后：新写入的数据也正常 ===
+INSERT 0 1
+he-mul new row|90
+=== 7 重连后读取（进程级缓存不随连接走） ===
+\C POSTGRES
+he-mul reconnected|40
+=== 99 CLEANUP ===
+DROP TABLE
+DROP TABLE
+NOTICE: drop cascades to 3 other objects
+DROP KEK

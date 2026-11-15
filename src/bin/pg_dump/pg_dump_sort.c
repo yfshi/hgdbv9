@@ -138,6 +138,8 @@ static const int dbObjectTypePriority[] =
 	PRIO_OPFAMILY,				/* DO_OPCLASS */
 	PRIO_OPFAMILY,				/* DO_OPFAMILY */
 	PRIO_COLLATION,				/* DO_COLLATION */
+	PRIO_CONVERSION,			/* DO_KEK */
+	PRIO_CONVERSION,			/* DO_DEK */
 	PRIO_CONVERSION,			/* DO_CONVERSION */
 	PRIO_TABLE,					/* DO_TABLE */
 	PRIO_TABLE_ATTACH,			/* DO_TABLE_ATTACH */
@@ -1954,6 +1956,9 @@ describeDumpableObject(DumpableObject *obj, char *buf, int bufsize)
 					 "POST-DATA BOUNDARY  (ID %d)",
 					 obj->dumpId);
 			return;
+		case DO_KEK:
+		case DO_DEK:
+			break;
 	}
 	/* shouldn't get here */
 	snprintf(buf, bufsize,

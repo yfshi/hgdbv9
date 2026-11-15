@@ -931,12 +931,12 @@ LINE 1: SELECT '6a_cipher_len', tag, length(ope_vc::text) AS cipher_...
 psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:249: æ³¨æ„:  è¡¨ "tb_7856_enc" ä¸å­˜åœ¨
 psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:270: æ³¨æ„:  è¡¨ "tb_7824_enc" ä¸å­˜åœ¨
 psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:296: æ³¨æ„:  è¡¨ "test_reg_emp" ä¸å­˜åœ¨
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:319: é”™è¯¯:  cannot compare encrypted values for ordering: no OPE or DET ciphertext available
-HINT:  Enable OPE or DET encryption on the column to support comparison.
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:320: é”™è¯¯:  cannot compare encrypted values for ordering: no OPE or DET ciphertext available
-HINT:  Enable OPE or DET encryption on the column to support comparison.
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:319: é”™è¯¯:  cannot compare encrypted values for ordering: column has DET but not OPE encryption
+HINT:  DET only supports equality comparison. Add OPE encryption to the column to support ordering.
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:320: é”™è¯¯:  cannot compare encrypted values for ordering: column has DET but not OPE encryption
+HINT:  DET only supports equality comparison. Add OPE encryption to the column to support ordering.
 psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:353: æ³¨æ„:  è¡¨ "test_ope_eq" ä¸å­˜åœ¨
 psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:366: æ³¨æ„:  è¡¨ "tb_int2_enc" ä¸å­˜åœ¨
 psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:385: æ³¨æ„:  è¡¨ "test_algo" ä¸å­˜åœ¨
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:410: TECC query preprocessing failed: ²Ù×÷·ûĞèÒªOPE£¨±£Ğò¼ÓÃÜ£©Ëã·¨£¬µ«¸ÃÁĞÎ´ÅäÖÃOPE¡£
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:410: TECC query preprocessing failed: ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÒªOPEï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü£ï¿½ï¿½ã·¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Î´ï¿½ï¿½ï¿½ï¿½OPEï¿½ï¿½
 psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:437: æ³¨æ„:  é€’å½’åˆ é™¤ data encryption key dek_ope

@@ -1,0 +1,35 @@
+<!--
+doc/src/sgml/ref/drop_kek.sgml
+-->
+
+<refentry id="sql-dropkek">
+ <indexterm zone="sql-dropkek">
+  <primary>DROP KEK</primary>
+ </indexterm>
+
+ <refmeta>
+  <refentrytitle>DROP KEK</refentrytitle>
+  <manvolnum>7</manvolnum>
+  <refmiscinfo>SQL - Language Statements</refmiscinfo>
+ </refmeta>
+
+ <refnamediv>
+  <refname>DROP KEK</refname>
+  <refpurpose>remove a TECC key-encryption key</refpurpose>
+ </refnamediv>
+
+ <refsynopsisdiv>
+<synopsis>
+DROP KEK [ IF EXISTS ] <replaceable class="parameter">kek_name</replaceable> [, ...] [ CASCADE | RESTRICT ]
+</synopsis>
+ </refsynopsisdiv>
+
+ <refsect1>
+  <title>Description</title>
+  <para>
+   <command>DROP KEK</command> removes a TECC key-encryption key.  A KEK that
+   is referenced by DEKs or encrypted columns cannot be dropped unless the
+   dependency rules allow it.
+  </para>
+ </refsect1>
+</refentry>

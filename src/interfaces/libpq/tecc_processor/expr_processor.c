@@ -38,105 +38,13 @@ static bool expr_process_func_call(const FuncCall *func_call, TeccExprPartsList 
 static bool expr_process_a_const(const void *a_const, TeccExprPartsList *expr_parts);
 static bool expr_process_a_const_with_guc(const void *a_const, TeccExprPartsList *expr_parts,
                                         TeccExpressionContext *expr_ctx);
-static bool expr_process_a_expr(const A_Expr *a_expr, TeccExprPartsList *expr_parts);
-static bool expr_process_bool_expr(const BoolExpr *bool_expr, TeccExprPartsList *expr_parts);
-/* Parameter reference, type cast, array expression and set operation processing */
 static bool expr_process_param_ref(const Param *param, TeccExprPartsList *expr_parts);
-static bool expr_process_type_cast(const TypeCast *type_cast, TeccExprPartsList *expr_parts);
-static bool expr_process_array_expr(const ArrayExpr *array_expr, TeccExprPartsList *expr_parts);
-static bool expr_process_set_op(const SetOperationStmt *set_op, TeccExprPartsList *expr_parts);
-static bool expr_process_sublink(const SubLink *sublink, TeccExprPartsList *expr_parts);
-static bool expr_process_window_def(const WindowDef *wd, TeccExprPartsList *expr_parts);
-/* ReqID:TECC4.0 - Expression type coverage: NullTest, CaseExpr, RowExpr, CollateClause */
-static bool expr_process_null_test(const NullTest *nt, TeccExprPartsList *expr_parts);
-static bool expr_process_case_expr(const CaseExpr *ce, TeccExprPartsList *expr_parts);
-static bool expr_process_case_when(const CaseWhen *cw, TeccExprPartsList *expr_parts);
-static bool expr_process_row_expr(const RowExpr *rx, TeccExprPartsList *expr_parts);
-static bool expr_process_collate_clause(const CollateClause *cc, TeccExprPartsList *expr_parts);
-static bool expr_process_boolean_test(const struct BooleanTest *bt, TeccExprPartsList *expr_parts);
-static bool expr_process_timezone_expr(const struct TimeZoneExpr *tz, TeccExprPartsList *expr_parts);
 
 /* Internal helper functions for column reference expansion */
 static bool parse_single_name(const ColumnRef *col_ref, TeccColumnRefData *data);
 static bool parse_two_names(const ColumnRef *col_ref, TeccColumnRefData *data);
 static bool parse_three_names(const ColumnRef *col_ref, TeccColumnRefData *data);
 
-/* Simple table cache for tracking tables without encrypted columns */
-#define MAX_TABLE_CACHE 100
-typedef struct {
-    char table_name[64];
-    char schema_name[64];
-    bool has_encrypted_columns;  /* true if table has encrypted columns, false if known to have none */
-    time_t last_checked;
-} TableEncryptionCacheEntry;
-
-static TableEncryptionCacheEntry table_cache[MAX_TABLE_CACHE];
-static int table_cache_count = 0;
-static bool table_cache_initialized = false;
-
-/* Initialize table cache */
-static void init_table_cache(void)
-{
-    if (!table_cache_initialized) {
-        memset(table_cache, 0, sizeof(table_cache));
-        table_cache_count = 0;
-        table_cache_initialized = true;
-    }
-}
-
-/* Check if table is in cache */
-static bool check_table_in_cache(const char *schema_name, const char *table_name, bool *has_encrypted)
-{
-    init_table_cache();
-
-    for (int i = 0; i < table_cache_count; i++) {
-        if (strcmp(table_cache[i].table_name, table_name) == 0 &&
-            strcmp(table_cache[i].schema_name, schema_name) == 0) {
-            *has_encrypted = table_cache[i].has_encrypted_columns;
-            return true;
-        }
-    }
-    return false;
-}
-
-/* Add table to cache */
-static void add_table_to_cache(const char *schema_name, const char *table_name, bool has_encrypted)
-{
-    int slot = -1;
-    time_t oldest_time;
-    int oldest_index = 0;
-    int i;
-
-    init_table_cache();
-
-    /* Find empty slot or replace oldest entry if cache is full */
-    oldest_time = time(NULL);
-
-    for (i = 0; i < MAX_TABLE_CACHE; i++) {
-        if (table_cache[i].table_name[0] == '\0') {
-            slot = i;
-            break;
-        }
-        if (table_cache[i].last_checked < oldest_time) {
-            oldest_time = table_cache[i].last_checked;
-            oldest_index = i;
-        }
-    }
-
-    if (slot == -1) {
-        slot = oldest_index;
-    }
-
-    /* Update cache entry */
-    strncpy(table_cache[slot].table_name, table_name, sizeof(table_cache[slot].table_name) - 1);
-    strncpy(table_cache[slot].schema_name, schema_name, sizeof(table_cache[slot].schema_name) - 1);
-    table_cache[slot].has_encrypted_columns = has_encrypted;
-    table_cache[slot].last_checked = time(NULL);
-
-    if (slot >= table_cache_count) {
-        table_cache_count = slot + 1;
-    }
-}
 static bool parse_four_names(const ColumnRef *col_ref, TeccColumnRefData *data);
 static bool check_column_encryption_with_state(TeccColumnRefData *data, const TeccState *state);
 
@@ -432,8 +340,11 @@ tecc_expand_function_name(const struct FuncCall *func_call, TeccFuncNameData **f
         {
             /* Simple function name: function_name */
             Node *func_node = (Node *)list_nth(func_call->funcname, 0);
-            if (func_node != NULL && IsA(func_node, String))
+            if (func_node != NULL)
             {
+                /* Modify - ReqID:TECC4.0
+                 * any_name_list uses makeStringConst(), while some callers
+                 * still construct FE_T_String nodes.  strVal() supports both. */
                 char *func_name = strVal((Value *)func_node);
                 if (func_name != NULL)
                 {
@@ -448,8 +359,7 @@ tecc_expand_function_name(const struct FuncCall *func_call, TeccFuncNameData **f
             Node *schema_node = (Node *)list_nth(func_call->funcname, 0);
             Node *func_node = (Node *)list_nth(func_call->funcname, 1);
 
-            if (schema_node != NULL && IsA(schema_node, String) &&
-                func_node != NULL && IsA(func_node, String))
+            if (schema_node != NULL && func_node != NULL)
             {
                 char *schema_name = strVal((Value *)schema_node);
                 char *func_name = strVal((Value *)func_node);
@@ -470,9 +380,8 @@ tecc_expand_function_name(const struct FuncCall *func_call, TeccFuncNameData **f
             Node *schema_node = (Node *)list_nth(func_call->funcname, 1);
             Node *func_node = (Node *)list_nth(func_call->funcname, 2);
 
-            if (catalog_node != NULL && IsA(catalog_node, String) &&
-                schema_node != NULL && IsA(schema_node, String) &&
-                func_node != NULL && IsA(func_node, String))
+            if (catalog_node != NULL && schema_node != NULL &&
+                func_node != NULL)
             {
                 char *catalog_name = strVal((Value *)catalog_node);
                 char *schema_name = strVal((Value *)schema_node);
@@ -1008,59 +917,6 @@ expr_process_a_const_with_guc(const void *a_const, TeccExprPartsList *expr_parts
     return true;
 }
 
-/* Process A expression */
-static bool
-expr_process_a_expr(const A_Expr *a_expr, TeccExprPartsList *expr_parts)
-{
-    bool result = true;
-
-    /* Process left expression */
-    if (a_expr->lexpr != NULL)
-    {
-        result = expr_expand_recursive(a_expr->lexpr, expr_parts);
-        if (!result) return false;
-    }
-
-    /* Process right expression */
-    if (a_expr->rexpr != NULL)
-    {
-        result = expr_expand_recursive(a_expr->rexpr, expr_parts);
-        if (!result) return false;
-    }
-
-    /* Process escape expression (LIKE/ILIKE/SIMILAR) */
-    if (a_expr->escape != NULL)
-    {
-        result = expr_expand_recursive(a_expr->escape, expr_parts);
-        if (!result) return false;
-    }
-
-    return true;
-}
-
-/* Process boolean expression */
-static bool
-expr_process_bool_expr(const BoolExpr *bool_expr, TeccExprPartsList *expr_parts)
-{
-    ListCell *lc;
-    bool result = true;
-    Node *arg;
-
-    /* Process all arguments */
-    if (bool_expr->args == NIL)
-        return true;
-
-    foreach(lc, bool_expr->args)
-    {
-        arg = (Node *)lfirst(lc);
-        result = expr_expand_recursive(arg, expr_parts);
-        if (!result)
-            return false;
-    }
-
-    return true;
-}
-
 /* Process parameter reference */
 /* Process parameter reference */
 static bool
@@ -1082,421 +938,6 @@ expr_process_param_ref(const Param *param, TeccExprPartsList *expr_parts)
     return true;
 }
 
-/* Process type cast */
-static bool
-expr_process_type_cast(const TypeCast *type_cast, TeccExprPartsList *expr_parts)
-{
-    /* Process the expression being cast */
-    if (type_cast == NULL || expr_parts == NULL)
-    {
-        tecc_processor_debug(TECC_LOG_ERROR,
-                           "Invalid arguments to expr_process_type_cast");
-        return false;
-    }
-
-    if (type_cast->arg != NULL)
-    {
-        return expr_expand_recursive(type_cast->arg, expr_parts);
-    }
-
-    return true;
-}
-
-/* Process array expression */
-static bool
-expr_process_array_expr(const ArrayExpr *array_expr, TeccExprPartsList *expr_parts)
-{
-    bool result = true;
-
-    if (array_expr == NULL || expr_parts == NULL)
-    {
-        tecc_processor_debug(TECC_LOG_ERROR,
-                           "Invalid arguments to expr_process_array_expr");
-        return false;
-    }
-
-    /* Process all elements */
-    {
-        int i;
-        int num_elements = list_length(array_expr->elements);
-
-        for (i = 0; i < num_elements; i++)
-        {
-            Node *elem = (Node *)list_nth(array_expr->elements, i);
-            result = expr_expand_recursive(elem, expr_parts);
-            if (!result) return false;
-        }
-    }
-
-    return true;
-}
-
-/* Process set operation */
-static bool
-expr_process_set_op(const SetOperationStmt *set_op, TeccExprPartsList *expr_parts)
-{
-    bool result = true;
-
-    if (set_op == NULL || expr_parts == NULL)
-    {
-        tecc_processor_debug(TECC_LOG_ERROR,
-                           "Invalid arguments to expr_process_set_op");
-        return false;
-    }
-
-    tecc_processor_debug(TECC_LOG_DEBUG1,
-                       "Processing set operation: op=%d, all=%d",
-                       set_op->op, set_op->all);
-
-    /* Process left operand */
-    if (set_op->larg != NULL)
-    {
-        result = expr_expand_recursive(set_op->larg, expr_parts);
-        if (!result)
-        {
-            tecc_processor_debug(TECC_LOG_ERROR,
-                               "Failed to process left operand of set operation");
-            return false;
-        }
-    }
-
-    /* Process right operand */
-    if (set_op->rarg != NULL)
-    {
-        result = expr_expand_recursive(set_op->rarg, expr_parts);
-        if (!result)
-        {
-            tecc_processor_debug(TECC_LOG_ERROR,
-                               "Failed to process right operand of set operation");
-            return false;
-        }
-    }
-
-    /* Note: colTypes, colTypmods, colCollations, and groupClauses are not expanded
-     * as they are metadata about the result columns, not actual expressions
-     * that need to be processed for encryption.
-     */
-
-    tecc_processor_debug(TECC_LOG_DEBUG1,
-                       "Set operation processing completed successfully");
-    return true;
-}
-
-/*
- * Process SubLink node (subquery in expression).
- * Recursively processes the testexpr (outer comparison expression) and
- * walks the subselect's targetList, whereClause, groupClause, and
- * havingClause to discover encrypted column references within the subquery.
- *
- * ReqID:TECC4.0 Task A
- */
-static bool
-expr_process_sublink(const SubLink *sublink, TeccExprPartsList *expr_parts)
-{
-    bool result = true;
-    SelectStmt *subselect;
-
-    if (sublink == NULL || expr_parts == NULL)
-    {
-        tecc_processor_debug(TECC_LOG_ERROR,
-                           "Invalid arguments to expr_process_sublink");
-        return false;
-    }
-
-    tecc_processor_debug(TECC_LOG_DEBUG1,
-                       "Processing SubLink: type=%d", sublink->subLinkType);
-
-    /* Process testexpr (outer comparison expression for ANY/ALL sublinks) */
-    if (sublink->testexpr != NULL)
-    {
-        result = expr_expand_recursive(sublink->testexpr, expr_parts);
-        if (!result)
-        {
-            tecc_processor_debug(TECC_LOG_ERROR,
-                               "Failed to process SubLink testexpr");
-            return false;
-        }
-    }
-
-    /* Process the subselect — walk its expression-bearing fields */
-    subselect = (SelectStmt *)sublink->subselect;
-    if (subselect == NULL)
-        return true;
-
-    /* Process subquery targetList: each ResTarget.val is an expression */
-    if (subselect->targetList != NIL)
-    {
-        ListCell *lc;
-        void *first_item;
-
-        first_item = lfirst(list_head(subselect->targetList));
-        /* Check if targetList contains ResTarget nodes */
-        if (first_item != NULL && ((Node *)first_item)->type == FE_T_ResTarget)
-        {
-            for (lc = list_head(subselect->targetList); lc != NULL; lc = lnext(lc))
-            {
-                ResTarget *rt = (ResTarget *)lfirst(lc);
-                if (rt != NULL && rt->val != NULL)
-                {
-                    result = expr_expand_recursive(rt->val, expr_parts);
-                    if (!result)
-                        return false;
-                }
-            }
-        }
-    }
-
-    /* Process subquery WHERE clause */
-    if (subselect->whereClause != NULL)
-    {
-        result = expr_expand_recursive(subselect->whereClause, expr_parts);
-        if (!result)
-            return false;
-    }
-
-    /* Process subquery GROUP BY clause */
-    if (subselect->groupClause != NIL)
-    {
-        ListCell *lc;
-        for (lc = list_head(subselect->groupClause); lc != NULL; lc = lnext(lc))
-        {
-            Node *group_expr = (Node *)lfirst(lc);
-            if (group_expr != NULL)
-            {
-                result = expr_expand_recursive(group_expr, expr_parts);
-                if (!result)
-                    return false;
-            }
-        }
-    }
-
-    /* Process subquery HAVING clause */
-    if (subselect->havingClause != NULL)
-    {
-        result = expr_expand_recursive(subselect->havingClause, expr_parts);
-        if (!result)
-            return false;
-    }
-
-    tecc_processor_debug(TECC_LOG_DEBUG1,
-                       "SubLink processing completed successfully");
-    return true;
-}
-
-/* Process window definition (WindowDef) — traverse PARTITION BY and ORDER BY */
-static bool
-expr_process_window_def(const WindowDef *wd, TeccExprPartsList *expr_parts)
-{
-    bool result = true;
-
-    if (wd == NULL || expr_parts == NULL)
-        return false;
-
-    tecc_processor_debug(TECC_LOG_DEBUG1, "Processing WindowDef");
-
-    /* Process PARTITION BY clause — each entry is an expression */
-    if (wd->partitionClause != NIL)
-    {
-        ListCell *lc;
-        for (lc = list_head(wd->partitionClause); lc != NULL; lc = lnext(lc))
-        {
-            Node *part_expr = (Node *)lfirst(lc);
-            if (part_expr != NULL)
-            {
-                result = expr_expand_recursive(part_expr, expr_parts);
-                if (!result)
-                    return false;
-            }
-        }
-    }
-
-    /* Process ORDER BY clause — each SortBy contains an expression */
-    if (wd->orderClause != NIL)
-    {
-        ListCell *lc;
-        for (lc = list_head(wd->orderClause); lc != NULL; lc = lnext(lc))
-        {
-            SortBy *sb = (SortBy *)lfirst(lc);
-            if (sb != NULL && sb->node != NULL)
-            {
-                result = expr_expand_recursive(sb->node, expr_parts);
-                if (!result)
-                    return false;
-            }
-        }
-    }
-
-    tecc_processor_debug(TECC_LOG_DEBUG1,
-                       "WindowDef processing completed successfully");
-    return true;
-}
-
-/* ReqID:TECC4.0 - Process NullTest (IS NULL / IS NOT NULL) */
-static bool
-expr_process_null_test(const NullTest *nt, TeccExprPartsList *expr_parts)
-{
-    if (nt == NULL || expr_parts == NULL)
-        return false;
-
-    tecc_processor_debug(TECC_LOG_DEBUG1, "Processing NullTest");
-
-    if (nt->arg != NULL)
-        return expr_expand_recursive(nt->arg, expr_parts);
-
-    return true;
-}
-
-/* ReqID:TECC4.0 - Process BooleanTest (IS TRUE/FALSE/UNKNOWN) */
-static bool
-expr_process_boolean_test(const struct BooleanTest *bt, TeccExprPartsList *expr_parts)
-{
-    if (bt == NULL || expr_parts == NULL)
-        return false;
-
-    tecc_processor_debug(TECC_LOG_DEBUG1, "Processing BooleanTest");
-
-    if (bt->arg != NULL)
-        return expr_expand_recursive(bt->arg, expr_parts);
-
-    return true;
-}
-
-/* ReqID:TECC4.0 - Process TimeZoneExpr (AT TIME ZONE) */
-static bool
-expr_process_timezone_expr(const struct TimeZoneExpr *tz, TeccExprPartsList *expr_parts)
-{
-    if (tz == NULL || expr_parts == NULL)
-        return false;
-
-    tecc_processor_debug(TECC_LOG_DEBUG1, "Processing TimeZoneExpr");
-
-    if (tz->arg != NULL)
-    {
-        if (!expr_expand_recursive(tz->arg, expr_parts))
-            return false;
-    }
-    if (tz->timezone != NULL)
-    {
-        if (!expr_expand_recursive(tz->timezone, expr_parts))
-            return false;
-    }
-    return true;
-}
-
-/* ReqID:TECC4.0 - Process CaseExpr (CASE WHEN ... THEN ... ELSE ... END) */
-static bool
-expr_process_case_expr(const CaseExpr *ce, TeccExprPartsList *expr_parts)
-{
-    bool result = true;
-
-    if (ce == NULL || expr_parts == NULL)
-        return false;
-
-    tecc_processor_debug(TECC_LOG_DEBUG1, "Processing CaseExpr");
-
-    if (ce->arg != NULL)
-    {
-        result = expr_expand_recursive(ce->arg, expr_parts);
-        if (!result)
-            return false;
-    }
-
-    if (ce->args != NIL)
-    {
-        ListCell *lc;
-        for (lc = list_head(ce->args); lc != NULL; lc = lnext(lc))
-        {
-            CaseWhen *cw = (CaseWhen *)lfirst(lc);
-            if (cw != NULL)
-            {
-                result = expr_process_case_when(cw, expr_parts);
-                if (!result)
-                    return false;
-            }
-        }
-    }
-
-    if (ce->defresult != NULL)
-    {
-        result = expr_expand_recursive(ce->defresult, expr_parts);
-        if (!result)
-            return false;
-    }
-
-    return true;
-}
-
-/* ReqID:TECC4.0 - Process CaseWhen (WHEN condition THEN result) */
-static bool
-expr_process_case_when(const CaseWhen *cw, TeccExprPartsList *expr_parts)
-{
-    bool result = true;
-
-    if (cw == NULL || expr_parts == NULL)
-        return false;
-
-    tecc_processor_debug(TECC_LOG_DEBUG1, "Processing CaseWhen");
-
-    if (cw->expr != NULL)
-    {
-        result = expr_expand_recursive(cw->expr, expr_parts);
-        if (!result)
-            return false;
-    }
-
-    if (cw->result != NULL)
-    {
-        result = expr_expand_recursive(cw->result, expr_parts);
-        if (!result)
-            return false;
-    }
-
-    return true;
-}
-
-/* ReqID:TECC4.0 - Process RowExpr (ROW constructor) */
-static bool
-expr_process_row_expr(const RowExpr *rx, TeccExprPartsList *expr_parts)
-{
-    bool result = true;
-
-    if (rx == NULL || expr_parts == NULL)
-        return false;
-
-    tecc_processor_debug(TECC_LOG_DEBUG1, "Processing RowExpr");
-
-    if (rx->args != NIL)
-    {
-        ListCell *lc;
-        for (lc = list_head(rx->args); lc != NULL; lc = lnext(lc))
-        {
-            Node *arg = (Node *)lfirst(lc);
-            if (arg != NULL)
-            {
-                result = expr_expand_recursive(arg, expr_parts);
-                if (!result)
-                    return false;
-            }
-        }
-    }
-
-    return true;
-}
-
-/* ReqID:TECC4.0 - Process CollateClause (COLLATE) */
-static bool
-expr_process_collate_clause(const CollateClause *cc, TeccExprPartsList *expr_parts)
-{
-    if (cc == NULL || expr_parts == NULL)
-        return false;
-
-    tecc_processor_debug(TECC_LOG_DEBUG1, "Processing CollateClause");
-
-    if (cc->arg != NULL)
-        return expr_expand_recursive(cc->arg, expr_parts);
-
-    return true;
-}
 
 /* Parse single name (column only) */
 static bool
@@ -1507,7 +948,7 @@ parse_single_name(const ColumnRef *col_ref, TeccColumnRefData *data)
     if (col_ref == NULL || data == NULL || col_ref->fields == NULL)
         return false;
 
-    col_name = (char *)list_nth(col_ref->fields, 0);
+    col_name = strVal(list_nth(col_ref->fields, 0));
     if (col_name == NULL)
         return false;
 
@@ -1526,8 +967,8 @@ parse_two_names(const ColumnRef *col_ref, TeccColumnRefData *data)
     if (col_ref == NULL || data == NULL || col_ref->fields == NULL)
         return false;
 
-    table_name = (char *)list_nth(col_ref->fields, 0);
-    col_name = (char *)list_nth(col_ref->fields, 1);
+    table_name = strVal(list_nth(col_ref->fields, 0));
+    col_name = strVal(list_nth(col_ref->fields, 1));
 
     if (table_name == NULL || col_name == NULL)
         return false;
@@ -1550,9 +991,9 @@ parse_three_names(const ColumnRef *col_ref, TeccColumnRefData *data)
     if (col_ref == NULL || data == NULL || col_ref->fields == NULL)
         return false;
 
-    schema_name = (char *)list_nth(col_ref->fields, 0);
-    table_name = (char *)list_nth(col_ref->fields, 1);
-    col_name = (char *)list_nth(col_ref->fields, 2);
+    schema_name = strVal(list_nth(col_ref->fields, 0));
+    table_name = strVal(list_nth(col_ref->fields, 1));
+    col_name = strVal(list_nth(col_ref->fields, 2));
 
     if (schema_name == NULL || table_name == NULL || col_name == NULL)
         return false;
@@ -1578,10 +1019,10 @@ parse_four_names(const ColumnRef *col_ref, TeccColumnRefData *data)
     if (col_ref == NULL || data == NULL || col_ref->fields == NULL)
         return false;
 
-    catalog_name = (char *)list_nth(col_ref->fields, 0);
-    schema_name = (char *)list_nth(col_ref->fields, 1);
-    table_name = (char *)list_nth(col_ref->fields, 2);
-    col_name = (char *)list_nth(col_ref->fields, 3);
+    catalog_name = strVal(list_nth(col_ref->fields, 0));
+    schema_name = strVal(list_nth(col_ref->fields, 1));
+    table_name = strVal(list_nth(col_ref->fields, 2));
+    col_name = strVal(list_nth(col_ref->fields, 3));
 
     if (catalog_name == NULL || schema_name == NULL ||
         table_name == NULL || col_name == NULL)
@@ -1606,7 +1047,6 @@ check_column_encryption_with_state(TeccColumnRefData *data, const TeccState *sta
     const char *database_name;
     const char *schema_name;
     const char *table_name;
-    bool has_encrypted = false;
 
     if (data == NULL)
         return false;
@@ -1639,17 +1079,6 @@ check_column_encryption_with_state(TeccColumnRefData *data, const TeccState *sta
 
     schema_name = data->schema_name[0] != '\0' ? data->schema_name : "public";
     table_name = data->table_name;
-    if (check_table_in_cache(schema_name, table_name, &has_encrypted)) {
-        if (!has_encrypted) {
-            /* Table is known to have no encrypted columns */
-            data->is_encrypted = false;
-            tecc_processor_debug(TECC_LOG_DEBUG1,
-                               "Table cache hit: %s.%s has no encrypted columns",
-                               schema_name, table_name);
-            return true;
-        }
-        /* Table has encrypted columns, continue with normal check */
-    }
 
     /* Use cache module to check if column is encrypted */
     {
@@ -1691,44 +1120,6 @@ check_column_encryption_with_state(TeccColumnRefData *data, const TeccState *sta
             tecc_processor_debug(TECC_LOG_DEBUG1,
                                "Column %s.%s.%s is not encrypted or not found",
                                schema_name, data->table_name, data->column_name);
-        }
-
-        /* Update table cache after checking column encryption */
-        if (is_encrypted) {
-            add_table_to_cache(schema_name, table_name, true);
-        } else {
-            /* Check if table has any encrypted columns at all */
-            bool table_has_encrypted_columns = false;
-            int column_count = 0;
-            TeccColumnCacheItem **all_columns = tecc_cache_get_columns_by_table_name(
-                state, database_name, schema_name, table_name, &column_count);
-
-            if (all_columns != NULL && column_count > 0) {
-                /* Check each column to see if any is encrypted */
-                for (int i = 0; i < column_count; i++) {
-                    if (all_columns[i] != NULL) {
-                        /* Column is in cache, which means it's encrypted */
-                        table_has_encrypted_columns = true;
-                        break;
-                    }
-                }
-
-                /* Free the array (but not the items themselves) */
-                pg_free(all_columns);
-            }
-
-            /* Update table cache based on table-level check */
-            add_table_to_cache(schema_name, table_name, table_has_encrypted_columns);
-
-            if (!table_has_encrypted_columns) {
-                tecc_processor_debug(TECC_LOG_DEBUG1,
-                                   "Table %s.%s has no encrypted columns",
-                                   schema_name, table_name);
-            } else {
-                tecc_processor_debug(TECC_LOG_DEBUG1,
-                                   "Table %s.%s has encrypted columns (but current column is not encrypted)",
-                                   schema_name, table_name);
-            }
         }
         /* End - ReqID:TECC4.0 - 使用缓存接口检查列加密状态 */
     }

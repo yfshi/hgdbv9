@@ -1,11 +1,11 @@
-﻿/* Begin - ReqID:TECC4.0 */
+/* Begin - ReqID:TECC4.0 */
 /*
  * File: tecc_dek_cache.c
  * Abstract:
  *   TECC DEK缓存实现，基于简化设计的两层架构。
  *   提供DEK相关的缓存查询和管理功能。
  *
- * Authored by <Claude Code>, 2026-04-15.
+ * Authored by <wanghaoyan>, 2026-04-15.
  *
  * Copyright:
  *   Copyright (c) 2026, HighGo Software Co.,Ltd. All rights reserved.
@@ -834,7 +834,40 @@ tecc_cache_get_dek_by_name_search_path(const TeccState *state, const char *key_n
 			return item;
 	}
 
-	TECC_LOG(TECC_LOG_WARNING, "DEK search_path: key '%s' not found in current_schema/search_path (GUC may not be loaded)",
+	/* 3. 兜底：尝试不指定namespace加载（处理schema限定DEK名不在search_path的场景） */
+	{
+		TeccDekCacheItem *fallback_item = NULL;
+		int fb_ret;
+
+		fb_ret = load_dek_from_database_by_name(state, key_name, NULL, &fallback_item);
+		if (fb_ret == 0 && fallback_item != NULL)
+		{
+			TECC_LOG(TECC_LOG_WARNING,
+				 "DEK search_path: key '%s' loaded from DB without namespace (namespace=%s)",
+				 key_name, fallback_item->key_namespace ? fallback_item->key_namespace : "(null)");
+
+			/* 加载后手动插入缓存，后续查找可直接命中 */
+			if (fallback_item->key_name != NULL && fallback_item->key_namespace != NULL)
+			{
+				int insert_ret = insert_dek_into_cache(state, fallback_item);
+				if (insert_ret != 0)
+				{
+					TECC_LOG(TECC_LOG_WARNING,
+						 "DEK search_path: failed to insert fallback item into cache, ret=%d", insert_ret);
+				}
+			}
+
+			return fallback_item;
+		}
+		else
+		{
+			TECC_LOG(TECC_LOG_DEBUG1,
+				 "DEK search_path: fallback DB load for '%s' returned ret=%d, item=%p",
+				 key_name, fb_ret, (void*)fallback_item);
+		}
+	}
+
+	TECC_LOG(TECC_LOG_WARNING, "DEK search_path: key '%s' not found in current_schema/search_path/fallback",
 			 key_name);
 	return NULL;
 }
@@ -876,7 +909,16 @@ tecc_cache_remove_pending_dek(TeccState *state, const char *key_name, const char
     {
         TeccDekCacheItem *item = *(TeccDekCacheItem **)entry;
         if (item != NULL)
+        {
+            /* 同时从 OID 缓存中移除，防止 destroy_all_dek_items 双重释放 */
+            if (item->dek_oid != InvalidOid && manager->dek_cache != NULL)
+            {
+                DekHashKey oid_key;
+                oid_key.oid = item->dek_oid;
+                fe_hash_search(manager->dek_cache, &oid_key, HASH_REMOVE, NULL);
+            }
             destroy_dek_cache_item(item);
+        }
         pg_free(entry);
     }
     CACHE_UNLOCK(manager);

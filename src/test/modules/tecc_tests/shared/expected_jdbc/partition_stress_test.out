@@ -1,0 +1,157 @@
+CREATE KEK
+CREATE DEK
+NOTICE: table "stress_text" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+stress_text_a|3
+stress_text_x|3
+stress_text_other|3
+empty_string
+中文Unicode
+special_chars!@#
+|1
+A|2
+B|3
+C|4
+M|8
+N|9
+X|5
+Y|6
+Z|7
+UPDATE 1
+stress_text_a|2
+stress_text_x|4
+stress_text_other|3
+DELETE 1
+8
+NOTICE: table "stress_int2" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+stress_int2_neg|2
+stress_int2_pos|8
+3|0|Z
+5
+32766|H
+50|B
+20|B
+10|B
+5|B
+UPDATE 1
+stress_int2_neg|1
+stress_int2_pos|9
+DELETE 8
+stress_int2_neg|1
+stress_int2_pos|1
+NOTICE: table "stress_num" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+stress_num_neg|2
+stress_num_pos|5
+0.00|B
+0.123456789|F
+-999999.99|G
+-0.01|A
+0.00|B
+0.01|C
+0.123456789|F
+123.456|D
+999999.98|E
+UPDATE 1
+stress_num_neg|3
+stress_num_pos|4
+DELETE 1
+6
+NOTICE: table "stress_order" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 6
+stress_order_east|2
+stress_order_west|2
+stress_order_other|2
+2|2
+1006|0.01|SOUTH
+1001|50.00|EAST
+1002|150.00|EAST
+1003|200.00|WEST
+1004|300.00|WEST
+1005|999.99|NORTH
+stress_order_east|2
+stress_order_west|2
+stress_order_other|2
+NOTICE: table "stress_bulk" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 5
+INSERT 0 5
+INSERT 0 5
+INSERT 0 5
+stress_bulk_neg|10
+stress_bulk_pos|10
+TRUNCATE STRESS_BULK
+0
+NOTICE: table "reg_aad" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+reg_aad_ok|1
+NOTICE: table "reg_int2" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 3
+reg_int2_low|1
+reg_int2_high|2
+2|0
+UPDATE 1
+reg_int2_low|2
+reg_int2_high|1
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK

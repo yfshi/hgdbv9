@@ -25,7 +25,6 @@
 #include "server_interface.h"
 #include "kms_adapter.h"
 #include "utils.h"
-#include "config.h"
 #include "high_level_api.h"
 #include "../../interfaces/libpq/tecc_cache/tecc_metadata_cache.h"
 
@@ -409,8 +408,6 @@ key_manager_free_kek_info(PgTeccKekInfo *kek_info)
         free(kek_info->kek_name);
     if (kek_info->kms_path != NULL)
         free(kek_info->kms_path);
-    if (kek_info->kms_args != NULL)
-        free(kek_info->kms_args);
     if (kek_info->key_data != NULL)
     {
         /* Securely erase key data */
@@ -826,27 +823,8 @@ key_manager_ensure_connection(KeyManager *manager)
     /* Create connection pool if not exists */
     if (manager->db_connection == NULL)
     {
-        /* Get connection string from configuration */
-        conn_str = client_config_get_connection_string(NULL);
-        if (conn_str == NULL)
-        {
-            /* Fall back to default connection string */
-            conn_str = strdup("host=localhost port=5432 dbname=postgres user=postgres");
-        }
-
-        pool = connection_pool_create(1, 5, 30, 300, conn_str);
-        if (pool == NULL)
-        {
-            set_key_manager_error("Failed to create connection pool");
-            if (conn_str != NULL)
-                free(conn_str);
-            return -1;
-        }
-
-        if (conn_str != NULL)
-            free(conn_str);
-
-        manager->db_connection = pool;
+        set_key_manager_error("No connection pool configured");
+        return -1;
     }
 
     /* Get connection from pool */

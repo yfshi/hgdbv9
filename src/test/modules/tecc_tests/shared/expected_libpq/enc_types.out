@@ -105,10 +105,12 @@ DELETE 1
 
 CREATE TABLE
 INSERT 0 1
+INSERT 0 1
  id | val | name 
 ----+-----+------
   1 | 100 | row1
-(1 row)
+  1 | 200 | row2
+(2 rows)
 
 DROP TABLE
           ?column?          
@@ -117,9 +119,13 @@ DROP TABLE
 (1 row)
 
 CREATE TABLE
- val | note 
------+------
-(0 rows)
+INSERT 0 1
+INSERT 0 1
+ val |     note     
+-----+--------------
+ 100 | world
+ 99  | only_default
+(2 rows)
 
 DROP TABLE
         ?column?        
@@ -312,6 +318,15 @@ DROP TABLE
  === 9 VIEW ===
 (1 row)
 
+CREATE VIEW
+ id | c_int2 | c_int4 
+----+--------+--------
+  1 | 10     | 999
+  2 | 20     | 200
+  3 | 30     | 300
+(3 rows)
+
+DROP VIEW
     ?column?     
 -----------------
  === cleanup ===
@@ -320,22 +335,68 @@ DROP TABLE
 DROP TABLE
 DROP DEK
 DROP KEK
+             ?column?              
+-----------------------------------
+ === 10 multi-condition parity ===
+(1 row)
+
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+INSERT 0 5
+INSERT 0 5
+ id |   txt    | i4  |    vc    |  num   
+----+----------+-----+----------+--------
+  1 | test数据 | 100 | test文本 | 123.45
+(1 row)
+
+ id |   txt    | i4  |    vc    |  num   
+----+----------+-----+----------+--------
+  1 | test数据 | 100 | test文本 | 123.45
+(1 row)
+
+ id |    vc    |  i8   |   txt    |   f8   
+----+----------+-------+----------+--------
+  2 | 测试文本 |  2000 | 测试数据 | 56.789
+  3 | 测试test |  3000 | test测试 |  67.89
+  5 | 测试样例 | 20000 | 测试示例 | 89.012
+(3 rows)
+
+ id |    vc    |  i8   |   txt    |   f8   
+----+----------+-------+----------+--------
+  2 | 测试文本 | 2000  | 测试数据 | 56.789
+  3 | 测试test | 3000  | test测试 | 67.89
+  5 | 测试样例 | 20000 | 测试示例 | 89.012
+(3 rows)
+
+ id |                                                   bp                                                   | i2 |    vc    |  f4  
+----+--------------------------------------------------------------------------------------------------------+----+----------+------
+  3 | test测试                                                                                               |  3 | 测试test | 3.45
+(1 row)
+
+ id |    bp    | i2 |    vc    |  f4  
+----+----------+----+----------+------
+  3 | test测试 | 3  | 测试test | 3.45
+(1 row)
+
+ id | i2 | num | f4 | txt 
+----+----+-----+----+-----
+(0 rows)
+
+ id | i2 |  num   |  f4  |   txt    
+----+----+--------+------+----------
+  1 | 1  | 123.45 | 1.23 | test数据
+(1 row)
+
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
 psql:/.../enc_types.sql:6: NOTICE:  table "enc_types_t" does not exist, skipping
 psql:/.../enc_types.sql:7: NOTICE:  table "enc_types_def" does not exist, skipping
 psql:/.../enc_types.sql:8: NOTICE:  data encryption key "dek_enc_types" does not exist, skipping
 psql:/.../enc_types.sql:9: NOTICE:  key encryption key "kek_enc_types" does not exist, skipping
-psql:/.../enc_types.sql:99: ERROR:  column "val" is of type int4_enc but expression is of type integer
-LINE 1: INSERT INTO enc_types_def (val, name) VALUES (200, 'row2');
-                                                      ^
-HINT:  You will need to rewrite or cast the expression.
-psql:/.../enc_types.sql:108: ERROR:  column "val" is of type int4_enc but expression is of type integer
-LINE 1: INSERT INTO enc_types_def (val, note) VALUES (100, 'world');
-                                                      ^
-HINT:  You will need to rewrite or cast the expression.
-psql:/.../enc_types.sql:109: ERROR:  invalid hex string: "only_default"
-LINE 1: INSERT INTO enc_types_def (note) VALUES ('only_default');
-                                                 ^
-DETAIL:  Hex string must contain only 0-9, a-f, A-F characters and may have \x prefix.
 TECC ERROR: SELECT TypeCast processing failed: -1
 psql:/.../enc_types.sql:141: TECC query preprocessing failed: Cannot cast encrypted type text_enc to int2_enc: incompatible encrypted types
 TECC ERROR: SELECT TypeCast processing failed: -1
@@ -393,9 +454,3 @@ LINE 1: ...E'\\x被隐藏的HEX输出'::bpchar_enc::bpchar;
 psql:/.../enc_types.sql:203: ERROR:  cannot cast type text_enc to text
 LINE 1: ...E'\\x被隐藏的HEX输出'::text_enc::text;
                                                                 ^
-psql:/.../enc_types.sql:210: ERROR:  encrypted data type "int2_enc" requires ENCRYPTED WITH clause
-HINT:  Add ENCRYPTED WITH (dek = dek_name) to the column definition
-psql:/.../enc_types.sql:211: ERROR:  relation "enc_types_v" does not exist
-LINE 1: SELECT id, c_int2, c_int4 FROM enc_types_v ORDER BY id;
-                                       ^
-psql:/.../enc_types.sql:212: ERROR:  view "enc_types_v" does not exist

@@ -18,7 +18,6 @@
  * We must speak the same transmitted data representations as the backend
  * routines.
  *
- *
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
@@ -1234,6 +1233,8 @@ pqSocketCheck(PGconn *conn, int forRead, int forWrite, time_t end_time)
 	}
 
 	/* Check for SSL/GSS library buffering read bytes */
+#ifdef USE_SSL
+	/* Check for SSL library buffering read bytes */
 /* Begin - ReqID:SRS-SECURITY-TLCP */
 #ifdef USE_GMSSL
 	if (hg_is_TLCP(conn))
@@ -1248,6 +1249,7 @@ pqSocketCheck(PGconn *conn, int forRead, int forWrite, time_t end_time)
 		/* short-circuit the select */
 		return 1;
 	}
+#endif
 
 	/* We will retry as long as we get EINTR */
 	do

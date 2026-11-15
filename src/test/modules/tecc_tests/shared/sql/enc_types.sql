@@ -218,3 +218,68 @@ SELECT '=== cleanup ===';
 DROP TABLE enc_types_t;
 DROP DEK dek_enc_types;
 DROP KEK kek_enc_types;
+
+-- ============================================================
+-- 10. 多条件组合查询正确性（密文表 vs 明文表结果一致）
+-- Bug#8000 回归：TEXT/VARCHAR/BPCHAR/INT/FLOAT/NUMERIC 多条件
+-- 组合查询在加密表上应返回与明文表完全相同的结果
+-- ============================================================
+SELECT '=== 10 multi-condition parity ===';
+
+CREATE KEK kek_parity WITH (KEY_STORE='localkms', KEY_PATH='%KEKPATH%/kek_parity.key');
+CREATE DEK dek_parity WITH VALUES(KEK=kek_parity);
+
+CREATE TABLE parity_plain (
+    id SERIAL PRIMARY KEY,
+    txt TEXT, vc VARCHAR(100), bp BPCHAR(100),
+    i2 INT2, i4 INT4, i8 INT8,
+    num NUMERIC, f4 FLOAT4, f8 FLOAT8
+);
+CREATE TABLE parity_enc (
+    id SERIAL PRIMARY KEY,
+    txt text_enc ENCRYPTED WITH (DEK=dek_parity, SUPPORT_ALGO='ope,search'),
+    vc varchar_enc ENCRYPTED WITH (DEK=dek_parity, SUPPORT_ALGO='ope,search'),
+    bp bpchar_enc ENCRYPTED WITH (DEK=dek_parity, SUPPORT_ALGO='ope,search'),
+    i2 int2_enc ENCRYPTED WITH (DEK=dek_parity, SUPPORT_ALGO='ope'),
+    i4 int4_enc ENCRYPTED WITH (DEK=dek_parity, SUPPORT_ALGO='ope'),
+    i8 int8_enc ENCRYPTED WITH (DEK=dek_parity, SUPPORT_ALGO='ope'),
+    num numeric_enc ENCRYPTED WITH (DEK=dek_parity, SUPPORT_ALGO='ope'),
+    f4 float4_enc ENCRYPTED WITH (DEK=dek_parity, SUPPORT_ALGO='ope'),
+    f8 float8_enc ENCRYPTED WITH (DEK=dek_parity, SUPPORT_ALGO='ope')
+);
+
+INSERT INTO parity_plain (txt,vc,bp,i2,i4,i8,num,f4,f8) VALUES
+    ('test数据','test文本','test字符',1,100,1000,123.45,1.23,45.678),
+    ('测试数据','测试文本','测试字符',2,200,2000,234.56,2.34,56.789),
+    ('test测试','测试test','test测试',3,300,3000,345.67,3.45,67.890),
+    ('test示例','test样例','testdemo',10,1000,10000,456.78,4.56,78.901),
+    ('测试示例','测试样例','测试demo',20,2000,20000,567.89,5.67,89.012);
+
+INSERT INTO parity_enc (txt,vc,bp,i2,i4,i8,num,f4,f8) VALUES
+    ('test数据','test文本','test字符',1,100,1000,123.45,1.23,45.678),
+    ('测试数据','测试文本','测试字符',2,200,2000,234.56,2.34,56.789),
+    ('test测试','测试test','test测试',3,300,3000,345.67,3.45,67.890),
+    ('test示例','test样例','testdemo',10,1000,10000,456.78,4.56,78.901),
+    ('测试示例','测试样例','测试demo',20,2000,20000,567.89,5.67,89.012);
+
+-- P1: TEXT等值 + INT4范围
+SELECT id,txt,i4,vc,num FROM parity_plain WHERE txt='test数据' AND i4>=100 AND i4<=500 ORDER BY id;
+SELECT id,txt,i4,vc,num FROM parity_enc WHERE txt='test数据' AND i4>=100 AND i4<=500 ORDER BY id;
+
+-- P2: INT8范围 + VARCHAR模糊
+SELECT id,vc,i8,txt,f8 FROM parity_plain WHERE i8>=2000 AND i8<=40000 AND vc LIKE '%测试%' ORDER BY id;
+SELECT id,vc,i8,txt,f8 FROM parity_enc WHERE i8>=2000 AND i8<=40000 AND vc LIKE '%测试%' ORDER BY id;
+
+-- P3: BPCHAR模糊 + INT2等值
+SELECT id,bp,i2,vc,f4 FROM parity_plain WHERE bp LIKE '%test%' AND i2=3 ORDER BY id;
+SELECT id,bp,i2,vc,f4 FROM parity_enc WHERE bp LIKE '%test%' AND i2=3 ORDER BY id;
+
+-- P4: 多类型组合
+SELECT id,i2,num,f4,txt FROM parity_plain WHERE i2=1 AND num>=100 AND num<=500 AND f4=1.23 ORDER BY id;
+SELECT id,i2,num,f4,txt FROM parity_enc WHERE i2=1 AND num>=100 AND num<=500 AND f4=1.23 ORDER BY id;
+
+-- Cleanup
+DROP TABLE parity_plain CASCADE;
+DROP TABLE parity_enc CASCADE;
+DROP DEK dek_parity;
+DROP KEK kek_parity;

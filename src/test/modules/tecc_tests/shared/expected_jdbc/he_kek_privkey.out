@@ -1,0 +1,58 @@
+NOTICE: table "he_priv_t" does not exist, skipping
+DROP TABLE
+NOTICE: table "he_priv_nopriv" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "dek_priv_add" does not exist, skipping
+DROP DEK
+NOTICE: data encryption key "dek_priv_add2" does not exist, skipping
+DROP DEK
+NOTICE: data encryption key "dek_priv_nopriv_add" does not exist, skipping
+DROP DEK
+NOTICE: data encryption key "dek_priv_mul" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "kek_priv" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE DEK
+=== 1 with privkey ===
+CREATE TABLE
+INSERT 0 4
+1|10|3
+2|20|5
+3|0|0
+4|-5|-2
+25
+11
+21
+1
+-4
+8
+18
+-2
+-7
+9
+15
+0
+-6
+=== 2 without privkey ===
+\C POSTGRES
+ERROR: TECC CREATE DEK: KEK 'kek_priv' private key is unavailable (localkms: .priv file missing or unreadable), cannot create DEK: LOCAL KMS key file not found: KEKDIR/kek_priv.priv
+CREATE TABLE
+INSERT 0 2
+1|[读取异常: Bad value for type int : \x被隐藏的HEX输出]
+2|[读取异常: Bad value for type int : \x被隐藏的HEX输出]
+[读取异常: Bad value for type long : \x被隐藏的HEX输出]
+=== 3 restore privkey ===
+1|100
+2|200
+300
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+NOTICE: data encryption key "dek_priv_nopriv_add" does not exist, skipping
+DROP DEK
+DROP DEK
+DROP KEK

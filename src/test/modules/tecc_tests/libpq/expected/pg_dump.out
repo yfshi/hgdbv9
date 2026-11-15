@@ -40,7 +40,7 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- Name: t_pgdump_no_ope; Type: TABLE; Schema: public; Owner: -
+-- Name: t_pgdump_no_ope; Type: TABLE; Schema: public; Owner: USER
 --
 
 CREATE TABLE public.t_pgdump_no_ope (
@@ -52,7 +52,7 @@ CREATE TABLE public.t_pgdump_no_ope (
 
 
 --
--- Name: t_pgdump_no_ope_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: t_pgdump_no_ope_id_seq; Type: SEQUENCE; Schema: public; Owner: USER
 --
 
 CREATE SEQUENCE public.t_pgdump_no_ope_id_seq
@@ -65,21 +65,21 @@ CREATE SEQUENCE public.t_pgdump_no_ope_id_seq
 
 
 --
--- Name: t_pgdump_no_ope_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: t_pgdump_no_ope_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: USER
 --
 
 ALTER SEQUENCE public.t_pgdump_no_ope_id_seq OWNED BY public.t_pgdump_no_ope.id;
 
 
 --
--- Name: t_pgdump_no_ope id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: t_pgdump_no_ope id; Type: DEFAULT; Schema: public; Owner: USER
 --
 
 ALTER TABLE ONLY public.t_pgdump_no_ope ALTER COLUMN id SET DEFAULT nextval('public.t_pgdump_no_ope_id_seq'::regclass);
 
 
 --
--- Name: t_pgdump_no_ope t_pgdump_no_ope_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: t_pgdump_no_ope t_pgdump_no_ope_pkey; Type: CONSTRAINT; Schema: public; Owner: USER
 --
 
 ALTER TABLE ONLY public.t_pgdump_no_ope
@@ -118,7 +118,7 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- Name: t_pgdump_ope; Type: TABLE; Schema: public; Owner: -
+-- Name: t_pgdump_ope; Type: TABLE; Schema: public; Owner: USER
 --
 
 CREATE TABLE public.t_pgdump_ope (
@@ -131,7 +131,7 @@ CREATE TABLE public.t_pgdump_ope (
 
 
 --
--- Name: t_pgdump_ope_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: t_pgdump_ope_id_seq; Type: SEQUENCE; Schema: public; Owner: USER
 --
 
 CREATE SEQUENCE public.t_pgdump_ope_id_seq
@@ -144,21 +144,21 @@ CREATE SEQUENCE public.t_pgdump_ope_id_seq
 
 
 --
--- Name: t_pgdump_ope_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: t_pgdump_ope_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: USER
 --
 
 ALTER SEQUENCE public.t_pgdump_ope_id_seq OWNED BY public.t_pgdump_ope.id;
 
 
 --
--- Name: t_pgdump_ope id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: t_pgdump_ope id; Type: DEFAULT; Schema: public; Owner: USER
 --
 
 ALTER TABLE ONLY public.t_pgdump_ope ALTER COLUMN id SET DEFAULT nextval('public.t_pgdump_ope_id_seq'::regclass);
 
 
 --
--- Name: t_pgdump_ope t_pgdump_ope_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: t_pgdump_ope t_pgdump_ope_pkey; Type: CONSTRAINT; Schema: public; Owner: USER
 --
 
 ALTER TABLE ONLY public.t_pgdump_ope
@@ -193,7 +193,7 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Data for Name: test_pg_dump; Type: TABLE DATA; Schema: public; Owner: wxp
+-- Data for Name: test_pg_dump; Type: TABLE DATA; Schema: public; Owner: USER
 --
 
 COPY public.test_pg_dump (id, name) FROM stdin;
@@ -243,7 +243,7 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Data for Name: tb_all; Type: TABLE DATA; Schema: public; Owner: wxp
+-- Data for Name: tb_all; Type: TABLE DATA; Schema: public; Owner: USER
 --
 
 COPY public.tb_all (id, col_text, col_varchar, col_bpchar, col_int2, col_int4, col_int8, col_numeric, col_float4, col_float8) FROM stdin;
@@ -295,6 +295,13 @@ DROP TABLE
 restore:
 1|text_value|varchar_value|bpchar_val|123|456789|9876543210|12345.67|3.14|2.718281828
 DROP TABLE
+=== 5d pg_restore -1 single transaction ===
+NOTICE:  database "tecc_1tx_src" does not exist, skipping
+NOTICE:  database "tecc_1tx_dst" does not exist, skipping
+restored (single transaction):
+1|10|alpha
+2|20|beta
+det_eq|1
 === 6 pg_restore ACL: DEK permission denied ===
 DROP TABLE
 CREATE TABLE
@@ -306,7 +313,7 @@ REVOKE
 REVOKE
 DROP TABLE
 pg_restore: while PROCESSING TOC:
-pg_restore: from TOC entry 251; 1259 20979 TABLE t_acl wxp
+pg_restore: from TOC entry NNN; NNN NNN TABLE t_acl USER
 pg_restore: error: could not execute query: ERROR:  permission denied for DEK "public.dek_pgdump"
 DETAIL:  You do not have USAGE privilege on DEK "public.dek_pgdump".
 HINT:  Grant USAGE on the DEK to proceed.
@@ -317,12 +324,12 @@ Command was: CREATE TABLE public.t_acl (
 
 
 pg_restore: error: could not execute query: ERROR:  relation "public.t_acl" does not exist
-Command was: ALTER TABLE public.t_acl OWNER TO wxp;
+Command was: ALTER TABLE public.t_acl OWNER TO USER
 
-pg_restore: from TOC entry 3613; 0 20979 TABLE DATA t_acl wxp
+pg_restore: from TOC entry NNN; NNN NNN TABLE DATA t_acl USER
 pg_restore: error: could not execute query: ERROR:  relation "public.t_acl" does not exist
 Command was: COPY public.t_acl (id, name) FROM stdin;
-pg_restore: from TOC entry 3621; 0 0 ACL TABLE t_acl wxp
+pg_restore: from TOC entry NNN; NNN NNN ACL TABLE t_acl USER
 pg_restore: error: could not execute query: ERROR:  relation "public.t_acl" does not exist
 Command was: GRANT SELECT ON TABLE public.t_acl TO regress_pgdump_user;
 
@@ -333,20 +340,162 @@ GRANT
 GRANT
 GRANT
 pg_restore: while PROCESSING TOC:
-pg_restore: from TOC entry 251; 1259 20979 TABLE t_acl wxp
-pg_restore: error: could not execute query: ERROR:  must be member of role "wxp"
-Command was: ALTER TABLE public.t_acl OWNER TO wxp;
+pg_restore: from TOC entry NNN; NNN NNN TABLE t_acl USER
+pg_restore: error: could not execute query: ERROR:  must be member of role "USER"
+Command was: ALTER TABLE public.t_acl OWNER TO USER
 
 pg_restore: warning: errors ignored on restore: 1
 restore with ACL:
 1|Alice
 2|Bob
 DROP TABLE
+=== 7 pg_dump KEK/DEK ===
+CREATE KEK public.kek_pgdump (
+CREATE DEK public.dek_pgdump WITH VALUES(
+=== 8 sm2 KEK pg_dump/restore ===
+DROP KEK
+CREATE KEK
+8a_orig_pub_ok|t
+DROP KEK
+NOTICE:  database "tecc_sm2_src" does not exist, skipping
+--- 8b dump public_key 须为 130 位 hex 且 04 开头 ---
+8b_dump_pub_hex ok
+NOTICE:  database "tecc_restore_sm2" does not exist, skipping
+--- restore into fresh db ---
+SET
+SET
+SET
+SET
+SET
+ set_config 
+------------
+ 
+(1 row)
+
+SET
+SET
+SET
+SET
+CREATE KEK
+restored sm2 KEK public_key:
+t
 DROP TABLE
 DROP TABLE
 DROP TABLE
 DROP TABLE
 DROP DEK
+DROP KEK
+SET
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+=== 9 HE schema-only dump ===
+--
+-- PostgreSQL database dump
+--
+
+\restrict HIDDEN
+
+-- Dumped from database version 14.22
+-- Dumped by pg_dump version 14.22
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: he_dump_t; Type: TABLE; Schema: public; Owner: USER
+--
+
+CREATE TABLE public.he_dump_t (
+    id integer,
+    c_full int4_enc ENCRYPTED WITH (DEK = 'public.dek_he_s', SUPPORT_ALGO = 'det,he-add,he-mul', HE_ADD_DEK = 'public.dek_he_add', HE_MUL_DEK = 'public.dek_he_mul'),
+    c_add int4_enc ENCRYPTED WITH (SUPPORT_ALGO = 'he-add', HE_ADD_DEK = 'public.dek_he_add'),
+    c_mul int4_enc ENCRYPTED WITH (SUPPORT_ALGO = 'he-mul', HE_MUL_DEK = 'public.dek_he_mul')
+);
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict HIDDEN
+
+DROP TABLE
+SET
+SET
+SET
+SET
+SET
+
+SET
+SET
+SET
+SET
+SET
+SET
+CREATE TABLE
+SET
+INSERT 0 1
+restore he_dump_t:
+3|30|300|7
+HE binding survived restore:
+he_sum|300
+he_scalar_mul|14
+=== 9b HE full dump (schema+data) round-trip ===
+INSERT 0 2
+data-segment NULL markers in dump (expect 0): 0
+DROP TABLE
+SET
+SET
+SET
+SET
+SET
+
+SET
+SET
+SET
+SET
+SET
+SET
+CREATE TABLE
+COPY 3
+SET
+restored from full dump:
+3|30|300|7
+4|40|400|9
+5|50|500|11
+HE ops on restored data:
+he_sum|1200
+he_scalar_mul|14
+he_scalar_mul|18
+he_scalar_mul|22
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP DEK
+DROP KEK
 DROP KEK
 psql:/.../pg_dump.sql:8: NOTICE:  table "t_pgdump_no_ope" does not exist, skipping
 psql:/.../pg_dump.sql:9: NOTICE:  table "t_pgdump_ope" does not exist, skipping
@@ -375,7 +524,7 @@ psql:/.../tecc_pgdump_9col.sql:27: error: backslash commands are restricted; onl
 psql:/.../pg_dump.sql:100: ERROR:  relation "tb_all" does not exist
 LINE 1: SELECT * FROM tb_all;
                       ^
-psql:/.../pg_dump.sql:200: ERROR:  role "regress_pgdump_user" cannot be dropped because some objects depend on it
+psql:/.../pg_dump.sql:233: ERROR:  role "regress_pgdump_user" cannot be dropped because some objects depend on it
 DETAIL:  privileges for schema public
 privileges for key encryption key kek_pgdump
 privileges for data encryption key dek_pgdump

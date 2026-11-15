@@ -47,7 +47,8 @@ int tecc_search_sm4_encrypt(const unsigned char *key, size_t key_len,
                            const unsigned char *plaintext, size_t plain_len,
                            unsigned char *output_buffer, size_t buffer_size,
                            size_t *output_len,
-                           bool is_wildcard_pattern);
+                           bool is_wildcard_pattern,
+                           char escape_char);
 
 /*
  * SEARCH decryption interface - NOT SUPPORTED
@@ -61,12 +62,6 @@ int tecc_search_sm4_decrypt(const unsigned char *key, size_t key_len,
  * Data format validation interface
  */
 int tecc_search_sm4_validate_format(const unsigned char *ciphertext, size_t cipher_len);
-
-/*
- * Get SEARCH output buffer size
- */
-size_t tecc_search_sm4_get_format_size(size_t plain_len);
-
 
 /*
  * Clear sensitive memory

@@ -1,0 +1,29 @@
+DROP KEK
+DROP DEK
+DO
+DROP ROLE
+CREATE ROLE
+CREATE KEK
+CREATE DEK
+GRANT
+GRANT
+ kek_granted | dek_granted 
+-------------+-------------
+ t           | t
+(1 row)
+
+DROP OWNED
+ kek_granted | dek_granted 
+-------------+-------------
+ f           | f
+(1 row)
+
+DROP ROLE
+           status           
+----------------------------
+ drop-owned role cleanup ok
+(1 row)
+
+psql:/.../kek_dek_drop_owned.sql:16: NOTICE:  key encryption key "kek_do" does not exist, skipping
+psql:/.../kek_dek_drop_owned.sql:17: NOTICE:  data encryption key "dek_do" does not exist, skipping
+psql:/.../kek_dek_drop_owned.sql:24: NOTICE:  role "do_u1" does not exist, skipping

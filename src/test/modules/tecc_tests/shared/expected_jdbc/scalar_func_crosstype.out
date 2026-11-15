@@ -1,0 +1,94 @@
+NOTICE: table "enc_pgfunc_xg_ope" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "enc_pgfunc_xg_dek2" does not exist, skipping
+DROP DEK
+NOTICE: data encryption key "enc_pgfunc_xg_dek" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "enc_pgfunc_xg_kek" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+XG-int2xint4|4000|100|4000|100
+XG-int2xint4|30000|-700|30000|-700
+XG-int2xint8|5000000|100|5000000|100
+XG-int2xint8|30000|40|30000|40
+XG-int2xnumeric|1000.5|100|1000.5|100
+XG-int2xnumeric|30000|0.25|30000|0.25
+XG-int4xint8|5000000|4000|5000000|4000
+XG-int4xint8|40|-700|40|-700
+XG-int4xnumeric|4000|1000.5|4000|1000.5
+XG-int4xnumeric|0.25|-700|0.25|-700
+XG-int8xnumeric|5000000|1000.5|5000000|1000.5
+XG-int8xnumeric|40|0.25|40|0.25
+XG-float4xfloat8|6.25|3.5|6.25|3.5
+XG-float4xfloat8|99.5|1.5|99.5|1.5
+XG-float4xnumeric|1000.5|3.5|1000.5|3.5
+XG-float4xnumeric|99.5|0.25|99.5|0.25
+XG-float8xnumeric|1000.5|6.25|1000.5|6.25
+XG-float8xnumeric|1.5|0.25|1.5|0.25
+XG-int2xfloat4|100|3.5|100|3.5
+XG-int2xfloat4|30000|99.5|30000|99.5
+XG-int2xfloat8|100|6.25|100|6.25
+XG-int2xfloat8|30000|1.5|30000|1.5
+XG-int4xfloat8|4000|6.25|4000|6.25
+XG-int4xfloat8|1.5|-700|1.5|-700
+XG-textxvarchar|banana|apple|banana|apple
+XG-textxvarchar|zebra|apple|zebra|apple
+XG-textxbpchar|cherry|apple|cherry|apple
+XG-textxbpchar|zebra|mango|zebra|mango
+XG-varcharxbpchar|cherry|banana|cherry|banana
+XG-varcharxbpchar|mango|apple|mango|apple
+XG-varcharxtext|banana|apple|banana|apple
+XG-varcharxtext|zebra|apple|zebra|apple
+XG-3way-int|5000000|100|5000000|100
+XG-3way-int|30000|-700|30000|-700
+XG-3way-mixed|4000|6.25|4000|6.25
+XG-3way-mixed|1.5|-700|1.5|-700
+XG-3way-char|cherry|apple|cherry|apple
+XG-3way-char|zebra|apple|zebra|apple
+TYPEOF-int2xint8|int8_enc
+TYPEOF-int4xfloat8|float8_enc
+TYPEOF-int8xnumeric|numeric_enc
+TYPEOF-float8xnumeric|numeric_enc
+TYPEOF-textxvarchar|text_enc
+TYPEOF-varcharxtext|varchar_enc
+ERROR: GREATEST does not support this argument combination: this combination of encrypted types is not supported
+ERROR: GREATEST does not support this argument combination: this combination of encrypted types is not supported
+ERROR: GREATEST does not support this argument combination: this combination of encrypted types is not supported
+ERROR: LEAST does not support this argument combination: this combination of encrypted types is not supported
+ERROR: GREATEST does not support this argument combination: this combination of encrypted types is not supported
+ERROR: LEAST does not support this argument combination: this combination of encrypted types is not supported
+ERROR: GREATEST does not support this argument combination: encrypted columns and plain columns cannot be mixed
+ERROR: LEAST does not support this argument combination: encrypted columns and plain columns cannot be mixed
+ERROR: GREATEST does not support this argument combination: encrypted columns and plain columns cannot be mixed
+ERROR: LEAST does not support this argument combination: encrypted columns and plain columns cannot be mixed
+ERROR: TECC strict: function "greatest" has encrypted columns with different DEKs: [null.enc_pgfunc_xg_ope.c_int4 (key=enc_pgfunc_xg_dek)] and [null.enc_pgfunc_xg_ope.c2_int4 (key=enc_pgfunc_xg_dek2)]
+ERROR: TECC strict: function "least" has encrypted columns with different DEKs: [null.enc_pgfunc_xg_ope.c_int4 (key=enc_pgfunc_xg_dek)] and [null.enc_pgfunc_xg_ope.c2_int4 (key=enc_pgfunc_xg_dek2)]
+ERROR: GREATEST does not support this argument combination: the constant type does not match the encrypted column type
+ERROR: GREATEST does not support this argument combination: the constant type does not match the encrypted column type
+XG-charconst-ok|banana-ish|apple|banana-ish|apple
+XG-charconst-ok|zebra|banana-ish|zebra|banana-ish
+XG-cast-same|4000|0|4000|0
+XG-cast-same|0|-700|0|-700
+XG-cast-int8onint4|4000|0|4000|0
+XG-cast-int8onint4|0|-700|0|-700
+XG-cast-int4onint8|5000000|100|5000000|100
+XG-cast-int4onint8|100|40|100|40
+XG-cast-numeric-onint4|4000|0|4000|0
+XG-cast-numeric-onint4|0|-700|0|-700
+XG-cast-neg|4000|-1|4000|-1
+XG-cast-neg|-1|-700|-1|-700
+ERROR: ERROR: GREATEST types text_enc and character varying cannot be matched
+  Position: 51
+ERROR: GREATEST does not support this argument combination: this combination of encrypted types is not supported
+ERROR: GREATEST does not support this argument combination: the constant type does not match the encrypted column type
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+SEVERE: function "greatest" has encrypted columns with different DEKs: [null.enc_pgfunc_xg_ope.c_int4 (key=enc_pgfunc_xg_dek)] and [null.enc_pgfunc_xg_ope.c2_int4 (key=enc_pgfunc_xg_dek2)]
+SEVERE: function "least" has encrypted columns with different DEKs: [null.enc_pgfunc_xg_ope.c_int4 (key=enc_pgfunc_xg_dek)] and [null.enc_pgfunc_xg_ope.c2_int4 (key=enc_pgfunc_xg_dek2)]

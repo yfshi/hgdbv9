@@ -18,6 +18,7 @@
 #include "postgres_fe.h"
 #include "tecc_common_types.h"
 #include "../tecc_cache/tecc_metadata_cache.h"
+#include "../tecc_scheduler/tecc_crypto_context.h"  /* For TeccCryptoContext, tecc_destroy_crypto_context */
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>  /* For gettimeofday */
@@ -889,6 +890,16 @@ tecc_copy_state_destroy(TeccEnhancedCopyState *copy_state)
         pg_free(copy_state->column_mapping);
     }
 
+    /* Free column table OIDs */
+    if (copy_state->column_table_names != NULL) {
+        pg_free(copy_state->column_table_names);
+    }
+
+    /* Free subquery table OIDs */
+    if (copy_state->subquery_table_oids != NULL) {
+        pg_free(copy_state->subquery_table_oids);
+    }
+
     /* Free errors array */
     if (copy_state->errors != NULL) {
         pg_free(copy_state->errors);
@@ -899,28 +910,16 @@ tecc_copy_state_destroy(TeccEnhancedCopyState *copy_state)
         pg_free(copy_state->row_buffer);
     }
 
-    /* Free processor context */
-    if (copy_state->processor_ctx != NULL) {
-        /* TODO: Add cleanup function if needed */
-        pg_free(copy_state->processor_ctx);
-    }
-
-    /* Free crypto context */
+    /* Free crypto context — destroy each TeccCryptoContext before freeing the array */
     if (copy_state->crypto_ctx != NULL) {
-        /* TODO: Add cleanup function if needed */
-        pg_free(copy_state->crypto_ctx);
-    }
-
-    /* Free formatter context */
-    if (copy_state->formatter_ctx != NULL) {
-        /* TODO: Add cleanup function if needed */
-        pg_free(copy_state->formatter_ctx);
-    }
-
-    /* Free memory pool */
-    if (copy_state->memory_pool != NULL) {
-        /* TODO: Add cleanup function if needed */
-        pg_free(copy_state->memory_pool);
+        TeccCryptoContext **crypto_contexts = (TeccCryptoContext **)copy_state->crypto_ctx;
+        int i;
+        for (i = 0; i < copy_state->encrypted_column_count; i++) {
+            if (crypto_contexts[i] != NULL) {
+                tecc_destroy_crypto_context(crypto_contexts[i]);
+            }
+        }
+        pg_free(crypto_contexts);
     }
 
     /* Zero out the structure before freeing */

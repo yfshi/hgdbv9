@@ -1,0 +1,43 @@
+diff -U3 /home/highgo/test/ivorysql-401/src/test/regress/expected/psql.out /home/highgo/test/ivorysql-401/src/test/regress/results/psql.out
+--- /home/highgo/test/ivorysql-401/src/test/regress/expected/psql.out	2026-11-12 15:26:21.603055575 +0800
++++ /home/highgo/test/ivorysql-401/src/test/regress/results/psql.out	2026-11-14 12:15:39.606713523 +0800
+@@ -208,12 +208,13 @@
+ -- query buffer should remain unchanged
+ SELECT 1 AS x, 'Hello', 2 AS y, true AS "dirty\name"
+ \gdesc
+-   Column   |  Type   
+-------------+---------
+- x          | integer
+- ?column?   | text
+- y          | integer
+- dirty\name | boolean
++  Column  |  Type   
++----------+---------
++ x        | integer
++ ?column? | text
++ y        | integer
++ dirty   +| boolean
++ ame      | 
+ (4 rows)
+ 
+ \g
+@@ -224,12 +225,13 @@
+ 
+ -- all on one line
+ SELECT 3 AS x, 'Hello', 4 AS y, true AS "dirty\name" \gdesc \g
+-   Column   |  Type   
+-------------+---------
+- x          | integer
+- ?column?   | text
+- y          | integer
+- dirty\name | boolean
++  Column  |  Type   
++----------+---------
++ x        | integer
++ ?column? | text
++ y        | integer
++ dirty   +| boolean
++ ame      | 
+ (4 rows)
+ 
+  x | ?column? | y | dirty\name 

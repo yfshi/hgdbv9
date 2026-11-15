@@ -190,68 +190,6 @@ List *lappend_oid(List *list, Oid datum) {
     return list;
 }
 
-#if 0
-static List *list_concat(List *list1, List *list2) {
-    if (!list1) return list2;
-    if (!list2) return list1;
-
-    /* 将list2连接到list1的尾部 */
-    if (list1->tail) {
-        list1->tail->next = list2->head;
-        list1->tail = list2->tail;
-    } else {
-        list1->head = list2->head;
-        list1->tail = list2->tail;
-    }
-
-    list1->length += list2->length;
-
-    /* 释放list2的结构体，但不释放其中的元素 */
-    tecc_pfree(list2);
-
-    return list1;
-}
-#endif
-
-#if 0
-static List *list_copy(const List *list) {
-    /* ReqID:TECC4.0 - Fix C90 mixed declaration warning */
-    List *new_list = NULL;
-    ListCell *cell = NULL;
-
-    if (!list) return NULL;
-
-    new_list = (List *)tecc_palloc(sizeof(List));
-    if (!new_list) return NULL;
-
-    new_list->type = T_List;
-    new_list->list_type = list->list_type;
-    new_list->length = 0;
-    new_list->head = NULL;
-    new_list->tail = NULL;
-    new_list->next = NULL;
-
-    cell = (ListCell *)list->head;
-    while (cell) {
-        /* 注意：这里只复制列表结构，不复制元素数据 */
-        switch (list->list_type) {
-            case T_List:
-                new_list = lappend(new_list, cell->data.ptr_value);
-                break;
-            case T_IntList:
-                new_list = lappend_int(new_list, cell->data.int_value);
-                break;
-            case T_OidList:
-                new_list = lappend_oid(new_list, cell->data.oid_value);
-                break;
-        }
-        cell = cell->next;
-    }
-
-    return new_list;
-}
-#endif
-
 void list_free(List *list) {
     /* ReqID:TECC4.0 - Fix C90 mixed declaration warning */
     ListCell *cell;
@@ -370,6 +308,25 @@ void *list_nth(const List *list, int n) {
     }
 
     return cell ? cell->data.ptr_value : NULL;
+}
+
+/* ReqID:TECC4.0 - 返回第 n 个 ListCell 指针（对齐后端 list_nth_cell 语义；
+ * 越界返回 NULL）。stmt_processor.c 的 ORDER BY 列名提取依赖此函数。 */
+ListCell *list_nth_cell(const List *list, int n) {
+    ListCell *cell;
+    int i;
+
+    if (!list || n < 0 || n >= list->length) {
+        return NULL;
+    }
+
+    cell = list->head;
+    for (i = 0; i < n; i++) {
+        if (!cell) break;
+        cell = cell->next;
+    }
+
+    return cell;
 }
 
 void *lfirst(const ListCell *cell) {

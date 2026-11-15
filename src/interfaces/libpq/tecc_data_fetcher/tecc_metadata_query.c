@@ -39,34 +39,24 @@
 #include "tecc_bytea_decoder.h"
 
 /*
- * tecc_parse_kek_metadata - 解析KEK元数据
+ * tecc_parse_kek_fields_from_current_row - 解析游标当前行的KEK字段（不推进游标）
  *
- * cursor: 查询游标
- * result: 输出KEK元数据指针
+ * hg_kek_info 的每一行都带完整的KEK字段（列0-6）与一个参数（列7-9），
+ * 因此 KEK 列表的按 kek_oid 分组必须由调用方在"行"这一层完成：
+ * 由本函数取出当前行的字段，再由调用方决定它归属哪个 KEK 对象。
+ *
+ * cursor: 查询游标（当前行）
+ * result: 输出KEK元数据指针（仅字段，args留空由调用方追加）
  * 返回: 错误码
  */
-TeccFetcherErrorCode
-tecc_parse_kek_metadata(const TeccState *state, TeccCursorInterface *cursor, TeccKekMetadata **result)
+static TeccFetcherErrorCode
+tecc_parse_kek_fields_from_current_row(TeccCursorInterface *cursor, TeccKekMetadata **result)
 {
     TeccKekMetadata *kek = NULL;
     const char *value;
     time_t create_time;
 
-    if (cursor == NULL || result == NULL)
-    {
-        return TECC_FETCHER_ERROR_INVALID_PARAM;
-    }
-
-    /* 初始化输出参数 */
     *result = NULL;
-
-    /* 验证结果结构 */
-    TECC_LOG(TECC_LOG_DEBUG1, "tecc_parse_kek_metadata: Before validation, column count: %d", cursor->get_column_count(cursor));
-    if (!tecc_validate_kek_result(cursor))
-    {
-        TECC_LOG(TECC_LOG_ERROR, "tecc_parse_kek_metadata: KEK result validation failed, column count: %d", cursor->get_column_count(cursor));
-        return TECC_FETCHER_ERROR_PARSE;
-    }
 
     /* 分配内存 */
     kek = (TeccKekMetadata *)pg_malloc(sizeof(TeccKekMetadata));
@@ -77,15 +67,6 @@ tecc_parse_kek_metadata(const TeccState *state, TeccCursorInterface *cursor, Tec
 
     /* 初始化结构 */
     memset(kek, 0, sizeof(TeccKekMetadata));
-
-    /* 获取第一行数据 */
-    TECC_LOG(TECC_LOG_DEBUG1, "tecc_parse_kek_metadata: Starting to parse KEK metadata, calling cursor->next()");
-    if (cursor->next(cursor) != TECC_FETCHER_OK) {
-        TECC_LOG(TECC_LOG_WARNING, "tecc_parse_kek_metadata: No rows returned from query");
-        pg_free(kek);
-        return TECC_FETCHER_ERROR_PARSE;
-    }
-    TECC_LOG(TECC_LOG_DEBUG1, "tecc_parse_kek_metadata: Successfully fetched first row");
 
     /* 调试：打印所有列的值 */
     {
@@ -155,87 +136,131 @@ tecc_parse_kek_metadata(const TeccState *state, TeccCursorInterface *cursor, Tec
         }
     }
 
-    /* 解析参数 - 只有列数>=10时才解析参数（单个查询包含args） */
-    if (cursor->get_column_count(cursor) >= 10)
+    /* 设置结果（args留空，由调用方按行追加） */
+    *result = kek;
+
+    return TECC_FETCHER_OK;
+}
+
+/*
+ * tecc_kek_append_arg_from_current_row - 把游标当前行的参数追加到KEK（不推进游标）
+ *
+ * 对应 hg_kek_info 的列7-9（function_name / arg_key / arg_value）。
+ * 列数<10（无参数的批量查询形态）时不做任何事。
+ *
+ * cursor: 查询游标（当前行）
+ * kek: 目标KEK元数据
+ */
+static void
+tecc_kek_append_arg_from_current_row(TeccCursorInterface *cursor, TeccKekMetadata *kek)
+{
+    const char *function_name;
+    const char *arg_key;
+    const char *arg_value;
+    TeccKeyArg *arg;
+
+    if (cursor->get_column_count(cursor) < 10)
     {
-        /* 收集所有行的参数 */
-        List *args_list = NIL;
-        int args_count = 0;
+        return;
+    }
 
-        do {
-            const char *function_name = cursor->get_column(cursor, 7);
-            const char *arg_key = cursor->get_column(cursor, 8);
-            const char *arg_value = cursor->get_column(cursor, 9);
+    function_name = cursor->get_column(cursor, 7);
+    arg_key = cursor->get_column(cursor, 8);
+    arg_value = cursor->get_column(cursor, 9);
 
-            if (function_name != NULL && arg_key != NULL)
-            {
-                TeccKeyArg *arg = (TeccKeyArg *)pg_malloc(sizeof(TeccKeyArg));
-                if (arg != NULL)
-                {
-                    memset(arg, 0, sizeof(TeccKeyArg));
-                    arg->function_name = pg_strdup(function_name);
-                    arg->key = pg_strdup(arg_key);
-                    arg->value = (arg_value != NULL) ? decode_bytea_value(arg_value) : NULL;
+    if (function_name == NULL || arg_key == NULL)
+    {
+        return;
+    }
 
-                    args_list = lappend(args_list, arg);
-                    args_count++;
-                }
-            }
-        } while (cursor->next(cursor) == TECC_FETCHER_OK);
-
-        /* 将列表转换为数组 */
-        if (args_count > 0)
-        {
-            kek->args = (TeccKeyArg *)pg_malloc(sizeof(TeccKeyArg) * args_count);
-            if (kek->args != NULL)
-            {
-                ListCell *cell;
-                int i = 0;
-                foreach(cell, args_list)
-                {
-                    TeccKeyArg *arg = (TeccKeyArg *)lfirst(cell);
-                    kek->args[i] = *arg;
-                    i++;
-                }
-                kek->args_count = args_count;
-
-                /* 释放列表中的元素（数组已经复制了数据） */
-                foreach(cell, args_list)
-                {
-                    TeccKeyArg *arg = (TeccKeyArg *)lfirst(cell);
-                    pg_free(arg);
-                }
-                list_free(args_list);
-            }
-            else
-            {
-                /* 内存分配失败，清理列表 */
-                ListCell *cell;
-                foreach(cell, args_list)
-                {
-                    TeccKeyArg *arg = (TeccKeyArg *)lfirst(cell);
-                    if (arg->function_name != NULL) pg_free(arg->function_name);
-                    if (arg->key != NULL) pg_free(arg->key);
-                    if (arg->value != NULL) pg_free(arg->value);
-                    pg_free(arg);
-                }
-                list_free(args_list);
-                kek->args = NULL;
-                kek->args_count = 0;
-            }
-        }
-        else
-        {
-            kek->args = NULL;
-            kek->args_count = 0;
-        }
+    if (kek->args == NULL)
+    {
+        kek->args = (TeccKeyArg *)pg_malloc(sizeof(TeccKeyArg));
     }
     else
     {
-        /* 批量查询没有参数信息 */
-        kek->args = NULL;
-        kek->args_count = 0;
+        kek->args = (TeccKeyArg *)repalloc(kek->args,
+            sizeof(TeccKeyArg) * (kek->args_count + 1));
     }
+    if (kek->args == NULL)
+    {
+        return;
+    }
+
+    arg = &kek->args[kek->args_count];
+    memset(arg, 0, sizeof(TeccKeyArg));
+    arg->function_name = pg_strdup(function_name);
+    arg->key = pg_strdup(arg_key);
+    arg->value = (arg_value != NULL) ? decode_bytea_value(arg_value) : NULL;
+    kek->args_count++;
+}
+
+/*
+ * tecc_parse_kek_metadata - 解析KEK元数据
+ *
+ * 用于按名称/按OID取单个KEK的查询：从游标当前推进一行开始，读取该KEK的字段，
+ * 并收集属于同一 kek_oid 的所有参数行。多KEK的列表查询不走本函数，见
+ * tecc_parse_kek_list（那里必须逐行分组，不能靠"读到别的KEK就停"来划分）。
+ *
+ * state: TECC状态
+ * cursor: 查询游标
+ * result: 输出KEK元数据指针
+ * 返回: 错误码
+ */
+TeccFetcherErrorCode
+tecc_parse_kek_metadata(const TeccState *state, TeccCursorInterface *cursor, TeccKekMetadata **result)
+{
+    TeccFetcherErrorCode error_code;
+    TeccKekMetadata *kek = NULL;
+
+    if (cursor == NULL || result == NULL)
+    {
+        return TECC_FETCHER_ERROR_INVALID_PARAM;
+    }
+
+    /* 初始化输出参数 */
+    *result = NULL;
+
+    /* 验证结果结构 */
+    TECC_LOG(TECC_LOG_DEBUG1, "tecc_parse_kek_metadata: Before validation, column count: %d", cursor->get_column_count(cursor));
+    if (!tecc_validate_kek_result(cursor))
+    {
+        TECC_LOG(TECC_LOG_ERROR, "tecc_parse_kek_metadata: KEK result validation failed, column count: %d", cursor->get_column_count(cursor));
+        return TECC_FETCHER_ERROR_PARSE;
+    }
+
+    /* 获取第一行数据 */
+    TECC_LOG(TECC_LOG_DEBUG1, "tecc_parse_kek_metadata: Starting to parse KEK metadata, calling cursor->next()");
+    if (cursor->next(cursor) != TECC_FETCHER_OK) {
+        TECC_LOG(TECC_LOG_WARNING, "tecc_parse_kek_metadata: No rows returned from query");
+        return TECC_FETCHER_ERROR_PARSE;
+    }
+    TECC_LOG(TECC_LOG_DEBUG1, "tecc_parse_kek_metadata: Successfully fetched first row");
+
+    error_code = tecc_parse_kek_fields_from_current_row(cursor, &kek);
+    if (error_code != TECC_FETCHER_OK)
+    {
+        return error_code;
+    }
+
+    /* Begin - ReqID:TECC4.0 */
+    /* 收集本KEK的参数行：首行也要取（当前行即该KEK的第一行），之后逐行推进，
+     * 遇到 kek_oid 变化的行即停止且不消费它——单KEK查询不会有这种行，此处仅
+     * 防御查询意外返回了其他KEK（多KEK列表由 tecc_parse_kek_list 处理）。 */
+    tecc_kek_append_arg_from_current_row(cursor, kek);
+    while (cursor->next(cursor) == TECC_FETCHER_OK)
+    {
+        const char *oid_str = cursor->get_column(cursor, 0);
+        unsigned int row_oid = 0;
+
+        if (oid_str != NULL)
+            sscanf(oid_str, "%u", &row_oid);
+        if (row_oid != 0 && kek->kek_oid != 0 && row_oid != kek->kek_oid)
+            break;  /* 下一个KEK的行，停止（不消费此行） */
+
+        tecc_kek_append_arg_from_current_row(cursor, kek);
+    }
+    /* End - ReqID:TECC4.0 */
 
     /* 设置结果 */
     *result = kek;
@@ -544,6 +569,14 @@ tecc_parse_encrypted_column_metadata(TeccCursorInterface *cursor,
     else
         column->has_dek_permission = false;
 
+    /* ReqID:TECC4.0 - 一列多 DEK：HE 加法/乘法 DEK 名（纯 HE 列 dek_name 为 NULL） */
+    value = cursor->get_column(cursor, 12); /* he_add_dek */
+    if (value != NULL && strlen(value) > 0)
+        column->he_add_dek = pg_strdup(value);
+    value = cursor->get_column(cursor, 13); /* he_mul_dek */
+    if (value != NULL && strlen(value) > 0)
+        column->he_mul_dek = pg_strdup(value);
+
     /* 设置creator字段为InvalidOid（hg_encrypted_columns表没有creator字段） */
     column->creator = InvalidOid;
 
@@ -639,10 +672,14 @@ tecc_validate_column_result(TeccCursorInterface *cursor)
 
     column_count = cursor->get_column_count(cursor);
 
-    /* 加密列查询应返回12列：table_oid, table_name, column_attnum, column_name,
+    /* 加密列查询应返回14列：table_oid, table_name, column_attnum, column_name,
        data_type_original_oid, data_type_original_mod, dek_name, encryption_type,
-       collation_locale, column_key_id, create_date, has_dek_permission */
-    if (column_count != 12)
+       collation_locale, column_key_id, create_date, has_dek_permission,
+       he_add_dek, he_mul_dek。
+       ReqID:TECC4.0 - pg_upgrade V4.0.0 兼容：V4.0.0 视图无 he_add_dek/
+       he_mul_dek 两列，数据获取器缺列时不查，结果允许 12 列
+       （解析器按位置取值，越界列返回 NULL，he 字段保持 NULL）。 */
+    if (column_count != 14 && column_count != 12)
     {
         tecc_log_fetcher_error(TECC_FETCHER_ERROR_PARSE,
                                "Invalid column count for column query");
@@ -661,12 +698,18 @@ tecc_validate_column_result(TeccCursorInterface *cursor)
  *
  * 设计原则: 数据获取器负责解析原始查询结果为结构化元数据对象列表。
  * 缓存模块直接存储这些已解析的对象，无需再次解析。
+ *
+ * ReqID:TECC4.0 - hg_kek_info 是"每个KEK的每个参数各一行"（同一KEK的字段列
+ * 0-6 在它的每一行上重复），所以必须**逐行**按 kek_oid 分组：oid 与当前KEK
+ * 相同的行只贡献一个参数，不同的行才新建KEK对象。不能用"读到别的KEK就停、
+ * 把该行留给下一次调用"的写法——cursor->next() 前进一行，被留下的那行会被
+ * 下一次 next() 直接跳过，导致每个KEK丢掉首个参数行（如 KEY_PATH）。
  */
 TeccFetcherErrorCode
 tecc_parse_kek_list(const TeccState *state, TeccCursorInterface *cursor, List **result)
 {
     List *kek_list = NULL;
-    TeccKekMetadata *kek_metadata = NULL;
+    TeccKekMetadata *prev_kek = NULL;
     TeccFetcherErrorCode error_code;
 
     if (cursor == NULL || result == NULL)
@@ -686,25 +729,47 @@ tecc_parse_kek_list(const TeccState *state, TeccCursorInterface *cursor, List **
 
     TECC_LOG(TECC_LOG_DEBUG1, "tecc_parse_kek_list: Starting to parse KEK list, column count: %d", cursor->get_column_count(cursor));
 
-    /* 遍历所有行 — tecc_parse_kek_metadata内部调用cursor->next()推进，
-     * 对10列查询会通过do-while循环消费同一KEK的所有args行 */
-    while ((error_code = tecc_parse_kek_metadata(state, cursor, &kek_metadata)) == TECC_FETCHER_OK)
+    /* Begin - ReqID:TECC4.0 */
+    while (cursor->next(cursor) == TECC_FETCHER_OK)
     {
-        /* 添加到列表 */
-        if (kek_metadata != NULL)
-        {
-            kek_list = lappend(kek_list, kek_metadata);
-        }
-    }
+        TeccKekMetadata *row_kek = NULL;
 
-    /* 如果未解析到任何KEK且错误不是PARSE(正常结束)，返回错误 */
-    if (kek_list == NULL && error_code != TECC_FETCHER_ERROR_PARSE)
-    {
-        return error_code;
+        error_code = tecc_parse_kek_fields_from_current_row(cursor, &row_kek);
+        if (error_code != TECC_FETCHER_OK)
+        {
+            ListCell *cell;
+
+            foreach(cell, kek_list)
+            {
+                tecc_free_kek_metadata((TeccKekMetadata *)lfirst(cell));
+            }
+            if (kek_list != NIL)
+            {
+                list_free(kek_list);
+            }
+            return error_code;
+        }
+
+        if (prev_kek != NULL && prev_kek->kek_oid == row_kek->kek_oid
+            && prev_kek->kek_oid != 0)
+        {
+            /* 同一KEK的后续行：字段与首行相同，只保留首行的对象 */
+            tecc_free_kek_metadata(row_kek);
+        }
+        else
+        {
+            kek_list = lappend(kek_list, row_kek);
+            prev_kek = row_kek;
+        }
+
+        /* 本行携带的参数追加到所属KEK（列数<10时为空操作） */
+        tecc_kek_append_arg_from_current_row(cursor, prev_kek);
     }
+    /* End - ReqID:TECC4.0 */
 
     /* 返回已解析的列表 */
     *result = kek_list;
+    return TECC_FETCHER_OK;
 }
 
 /*

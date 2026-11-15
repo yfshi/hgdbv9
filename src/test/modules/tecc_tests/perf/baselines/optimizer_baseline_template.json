@@ -1,0 +1,61 @@
+{
+    "metadata": {
+        "purpose": "优化器改动前后性能基线模板",
+        "driver": "libpq",
+        "perf_rows": 1000000,
+        "perf_seed": 100000,
+        "perf_runs": 5,
+        "before_git": "未应用优化器工作区改动的 HEAD",
+        "after_git": "已应用优化器改动的工作区",
+        "captured_at": null,
+        "machine": null,
+        "notes": "运行 OPTIMIZER_BASELINE.md 中的命令后，从 perf/results/*.json 填入 avg_ms/runs_ms/resource。"
+    },
+    "cases": {
+        "optimizer_det_hash_join": {
+            "before_avg_ms": null,
+            "after_avg_ms": null,
+            "before_runs_ms": [],
+            "after_runs_ms": [],
+            "before_resource": {},
+            "after_resource": {},
+            "expected_plan_delta": "DET 等值连接在 DEK 兼容时可使用安全 hash join 路径。"
+        },
+        "optimizer_ope_order_join": {
+            "before_avg_ms": null,
+            "after_avg_ms": null,
+            "before_runs_ms": [],
+            "after_runs_ms": [],
+            "before_resource": {},
+            "after_resource": {},
+            "expected_plan_delta": "OPE 等值连接在支持保序能力时仍可使用排序相关路径。"
+        },
+        "optimizer_semijoin_det": {
+            "before_avg_ms": null,
+            "after_avg_ms": null,
+            "before_runs_ms": [],
+            "after_runs_ms": [],
+            "before_resource": {},
+            "after_resource": {},
+            "expected_plan_delta": "DET IN 半连接在 DEK 兼容时可使用安全 hash semijoin 路径。"
+        },
+        "optimizer_memoize_det": {
+            "before_avg_ms": null,
+            "after_avg_ms": null,
+            "before_runs_ms": [],
+            "after_runs_ms": [],
+            "before_resource": {},
+            "after_resource": {},
+            "expected_plan_delta": "重复 DET lateral 查找在等值比较 DEK 兼容时可使用 memoize。"
+        },
+        "optimizer_search_like_cost": {
+            "before_avg_ms": null,
+            "after_avg_ms": null,
+            "before_runs_ms": [],
+            "after_runs_ms": [],
+            "before_resource": {},
+            "after_resource": {},
+            "expected_plan_delta": "SEARCH LIKE 的代价应足够体现计算开销，从而影响不合理的连接/过滤顺序。"
+        }
+    }
+}

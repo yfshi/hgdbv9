@@ -23,7 +23,7 @@ INSERT 0 1
 INSERT 0 1
 INSERT 0 1
 1||||all empty string
-2|'<NULL>'|'<NULL>'|'<NULL>'|all NULL
+2|<NULL>|<NULL>|<NULL>|all NULL
 3|hello|hello|hello|normal
 (3 rows)
 DROP TABLE

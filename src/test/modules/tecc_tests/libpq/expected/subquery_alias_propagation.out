@@ -1,0 +1,46 @@
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+INSERT 0 3
+INSERT 0 3
+0_baseline_rows|3
+1_1_reported_case|3|Carol
+1_2_three_level|Carol
+1_3_four_level|Carol
+1_4_star_alias|Carol
+1_5_target_rename|Carol
+1_6_star_target_rename|Carol
+1_7_alias_chain|Carol
+1_8_both_qualified|Carol
+1_9_ope_outer|3
+1_10_ope_both|Alice|10
+1_11_no_match|0
+2_1_cte_qualified|3|Carol
+2_2_cte_inner_sub|3|Carol
+2_3_cte_column_alias_list|Carol
+2_4_cte_inner_rename|Carol
+2_5_cte_alias_no_match|0
+3_1_join_alias|Alice|100
+3_2_sub_join_table|Alice
+3_3_lateral|Carol|Alice
+3_4_union_in_sub|Carol
+3_5_cte_dml_returning|4|Dave
+3_6_sqb_after_delete|2
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+z_cleanup_done
+psql:/.../subquery_alias_propagation.sql:27: NOTICE:  table "t_sqa" does not exist, skipping
+psql:/.../subquery_alias_propagation.sql:28: NOTICE:  table "t_sqb" does not exist, skipping
+psql:/.../subquery_alias_propagation.sql:29: NOTICE:  data encryption key "dek_sqa_det" does not exist, skipping
+psql:/.../subquery_alias_propagation.sql:30: NOTICE:  data encryption key "dek_sqa_ope" does not exist, skipping
+psql:/.../subquery_alias_propagation.sql:31: NOTICE:  key encryption key "kek_sqa" does not exist, skipping

@@ -1130,6 +1130,28 @@ DefineIndex(Oid relationId,
 					  amcanorder, stmt->isconstraint, root_save_userid,
 					  root_save_sec_context, &root_save_nestlevel);
 
+	/* Begin - ReqID:TECC4.0 */
+	/*
+	 * Verify encrypted column support for the index.
+	 * For each indexed column, check that the required encryption algorithm
+	 * is enabled (OPE for B-Tree, DET for Hash).
+	 */
+	if (!partitioned)
+	{
+		for (i = 0; i < indexInfo->ii_NumIndexAttrs; i++)
+		{
+			AttrNumber	attno = indexInfo->ii_IndexAttrNumbers[i];
+
+			/* Skip expression-based index columns (attno == 0) */
+			if (attno == 0)
+				continue;
+
+			check_index_support_for_encrypted_column(relationId, attno,
+													 accessMethodId);
+		}
+	}
+	/* End - ReqID:TECC4.0 */
+
 	/*
 	 * The below call to index_create() creates the dependencies on types.  We
 	 * are responsible for checking USAGE.

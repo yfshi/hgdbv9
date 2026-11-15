@@ -1,0 +1,31 @@
+NOTICE: key encryption key "aj_kek" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+NOTICE: table "aj_t_txt" does not exist, skipping
+NOTICE: table "aj_t_int" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 3
+INSERT 0 3
+=== 1 单表基线 ===
+1a_int_range|2
+1b_txt_like|1
+1c_int_eq|1
+1d_txt_range|2
+=== 2 JOIN 左表别名限定 ===
+2a_txt_range|2
+2b_txt_like|1
+=== 3 JOIN 右表别名限定（原缺陷场景） ===
+3a_int_range|2
+3b_int_eq|1
+3c_mixed|1
+=== 4 对调 JOIN 顺序（镜像） ===
+4a_int_range|2
+4b_txt_range|2
+4c_txt_eq|1
+DROP TABLE
+DROP DEK
+DROP KEK
+=== 清理完成 ===

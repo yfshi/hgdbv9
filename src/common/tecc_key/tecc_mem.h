@@ -9,7 +9,7 @@
  * src/common/tecc_key/tecc_mem.h
  *
  * ReqID:TECC4.0 - Memory allocation wrapper
- * Authored by <Claude Code>, 20260415.
+ * Authored by <wanghaoyan>, 20260415.
  * Copyright (c) 2026, HighGo Software Co.,Ltd. All rights reserved.
  *
  *-------------------------------------------------------------------------

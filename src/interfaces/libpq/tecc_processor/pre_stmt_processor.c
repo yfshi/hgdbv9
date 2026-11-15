@@ -1,8 +1,3 @@
-#ifdef _MSC_VER
-#define TECC_ATTR_UNUSED
-#else
-#define TECC_ATTR_UNUSED __attribute__((unused))
-#endif
 
 /* Begin - ReqID:TECC4.0 */
 /*
@@ -34,7 +29,6 @@
 #include <stdio.h>
 
 /* Internal helper functions */
-static void free_type_replacement_info(TeccTypeReplacementInfo *info);
 static TeccPreStmtProcessorResult analyze_statement_for_preprocessing(TeccPreStmtProcessorContext *context);
 static TeccPreStmtProcessorResult process_parameter_types(TeccPreStmtProcessorContext *context);
 static TeccPreStmtProcessorResult build_reconstructed_query(TeccPreStmtProcessorContext *context);
@@ -373,21 +367,6 @@ tecc_pre_stmt_processor_run(PGconn *conn,
 
 /* ==================== Internal helper functions ==================== */
 
-/* Free type replacement information */
-static void TECC_ATTR_UNUSED
-free_type_replacement_info(TeccTypeReplacementInfo *info)
-{
-    if (info == NULL) {
-        return;
-    }
-
-    if (info->reason != NULL) {
-        pg_free(info->reason);
-    }
-
-    pg_free(info);
-}
-
 /* Analyze statement for preprocessing needs */
 static TeccPreStmtProcessorResult
 analyze_statement_for_preprocessing(TeccPreStmtProcessorContext *context)
@@ -438,6 +417,7 @@ analyze_statement_for_preprocessing(TeccPreStmtProcessorContext *context)
                             "CREATE TABLE detected - needs type replacement and query reconstruction");
     }
     else if (stmt_data->stmt_type == TECC_STMT_TYPE_CREATE_KEK ||
+             stmt_data->stmt_type == TECC_STMT_TYPE_ALTER_KEK ||
              stmt_data->stmt_type == TECC_STMT_TYPE_CREATE_DEK)
     {
         /* CREATE KEK/DEK: pass-through only.

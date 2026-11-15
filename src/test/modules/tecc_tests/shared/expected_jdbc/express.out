@@ -1,0 +1,261 @@
+NOTICE: key encryption key "kek_expr" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+=== 1 Expr Primitives (plain) ===
+NOTICE: table "test_expr" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+1a_coalesce|1|10
+1a_coalesce|2|0
+1a_coalesce|3|30
+1b_nullif|1|
+1b_nullif|2|
+1b_nullif|3|30
+1c_greatest|30
+1d_least|3
+1e_array|{1,10}
+1f_current_date|1
+1g_current_ts|1
+1g_current_ts|2
+1g_current_ts|3
+1h_coalesce_multi|1
+DROP TABLE
+=== 2 Boolean Operators (plain) ===
+NOTICE: table "test_bool" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+2a_not_like_str|1|10
+2a_not_like_str|2|20
+2a_not_like_str|3|30
+2b_ilike|1|10
+2b_ilike|2|20
+2b_ilike|3|30
+2c_not_ilike|1|10
+2c_not_ilike|2|20
+2c_not_ilike|3|30
+2d_not_between|1|10
+2e_not_in|1|10
+2f_is_distinct|1|10
+2f_is_distinct|3|30
+2g_not_distinct|2|20
+2h_combined|3|30
+DROP TABLE
+=== 3 Bool + Encrypted ===
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+3a_like|1|Alice
+3b_not_like|1|Alice
+3b_not_like|3|Charlie
+3b_not_like|4|Diana
+3c_distinct|1|Alice
+3c_distinct|3|Charlie
+3c_distinct|4|Diana
+3d_not_distinct|1|Alice
+3e_not_between|1|Alice
+3f_not_in|1|Alice
+3g_distinct_null|1|Alice
+3g_distinct_null|2|Bob
+3g_distinct_null|3|Charlie
+DROP TABLE
+=== 4 SubLink + Encrypted ===
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+INSERT 0 2
+4a_exists|2|Bob|60000|1
+4a_exists|3|Charlie|70000|2
+4a_exists|4|Diana|80000|2
+4b_in|1|Alice|50000|1
+4b_in|2|Bob|60000|1
+4b_in|3|Charlie|70000|2
+4c_not_in|1|Alice
+4c_not_in|2|Bob
+4c_not_in|3|Charlie
+4c_not_in|4|Diana
+4e_all_gt|2|Bob
+4e_all_gt|3|Charlie
+4e_all_gt|4|Diana
+4f_scalar|2|Bob|150000
+4f_scalar|3|Charlie|200000
+4f_scalar|4|Diana|200000
+4g_exists_null|1|Alice
+4g_exists_null|2|Bob
+4g_exists_null|3|Charlie
+4g_exists_null|4|Diana
+DROP TABLE
+DROP TABLE
+=== 5 Expr Primitives + Encrypted ===
+CREATE TABLE
+INSERT 0 4
+5a_coalesce|1|Alice|50000
+5a_coalesce|2|Bob|0
+5a_coalesce|3|Charlie|70000
+5a_coalesce|4|Diana|0
+5b_coalesce_multi|1|Alice|50000
+5b_coalesce_multi|2|Bob|8000
+5b_coalesce_multi|3|Charlie|70000
+5b_coalesce_multi|4|Diana|0
+5c_nullif|1|Alice|
+5c_nullif|2|Bob|
+5c_nullif|3|Charlie|70000
+5c_nullif|4|Diana|
+5d_nullif_col|1|Alice|50000
+5d_nullif_col|2|Bob|
+5d_nullif_col|3|Charlie|70000
+5d_nullif_col|4|Diana|
+5e_greatest|1|Alice|55000
+5e_greatest|2|Bob|55000
+5e_greatest|3|Charlie|70000
+5e_greatest|4|Diana|55000
+5f_least|1|Alice|50000
+5f_least|2|Bob|65000
+5f_least|3|Charlie|65000
+5f_least|4|Diana|65000
+5g_array|{"\\x被隐藏的HEX输出","\\x被隐藏的HEX输出"}
+5h_coalesce_where|1|Alice
+5h_coalesce_where|3|Charlie
+5i_current_date|1|Alice
+5i_current_date|3|Charlie
+DROP TABLE
+=== 6 Aggregate/Window + Encrypted ===
+CREATE TABLE
+INSERT 0 5
+6a_count_distinct|4
+6b_filter|3
+6c_over_part|1|Engineering|50000|1
+6c_over_part|3|Engineering|70000|2
+6c_over_part|4|Engineering|80000|3
+6c_over_part|2|Sales|60000|1
+6d_over_ord|4|Diana|80000|1
+6d_over_ord|3|Charlie|70000|2
+6d_over_ord|2|Bob|60000|3
+6d_over_ord|1|Alice|50000|4
+6d_over_ord|5|Eve||5
+6e_over_empty|1|Alice|50000|4
+6e_over_empty|2|Bob|60000|4
+6e_over_empty|3|Charlie|70000|4
+6e_over_empty|4|Diana|80000|4
+6f_distinct_filter|2
+6g_agg_order|Alice,Bob,Charlie,Diana,Eve
+DROP TABLE
+=== 7 VALUES/CTE + Encrypted ===
+CREATE TABLE
+INSERT 0 4
+7a_const_star|1|hello
+7a_const_star|2|world
+7b_where|20|b
+7b_where|30|c
+CREATE TABLE
+INSERT 0 2
+7c_check|5|from_vals|55000
+7c_check|6|from_vals|65000
+INSERT 0 3
+7d_check|7d_star_ins|2|60000
+7d_check|7d_star_ins|3|70000
+7d_check|7d_star_ins|4|80000
+7d_check|7c_ins|5|55000
+7d_check|7c_ins|6|65000
+7e_sub|1|Alice|50000|IT
+7f_union_val|1
+7f_union_val|2
+7f_union_val|3
+7f_union_val|1
+7f_union_val|2
+7f_union_val|3
+7g_order|1|a
+7g_order|2|b
+7g_order|3|c
+7h_nested|1|x
+7h_nested|2|y
+Values Scan on "*VALUES*"  (cost=0.00..0.03 rows=1 width=36)
+  Filter: (column1 = 1)
+EXPLAIN SELECT
+7r_basic|1
+7r_basic|2
+7r_basic|3
+7r_basic|4
+WITH RECURSIVE
+7r_const_star|999|1
+7r_const_star|999|2
+7r_const_star|999|3
+WITH RECURSIVE
+7r_rec_enc|1|1
+7r_rec_enc|1|2
+7r_rec_enc|1|3
+7r_rec_enc|1|4
+WITH RECURSIVE
+7r_coalesce|1|50000
+7r_coalesce|2|60000
+7r_coalesce|3|70000
+7r_coalesce|4|80000
+WITH RECURSIVE
+7r_order_enc|Diana|80000
+7r_order_enc|Charlie|70000
+7r_order_enc|Bob|60000
+7r_order_enc|Alice|50000
+WITH RECURSIVE
+7r_multi|1|10
+7r_multi|1|9
+7r_multi|1|8
+7r_multi|2|10
+7r_multi|2|9
+7r_multi|2|8
+WITH RECURSIVE
+7r_filter|2
+WITH RECURSIVE
+CREATE TABLE
+INSERT 0 3
+7r_graph|1|Bob
+7r_graph|2|Charlie
+7r_graph|3|Diana
+WITH RECURSIVE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+=== 7b UNION/INTERSECT/EXCEPT + Encrypted ===
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+INSERT 0 4
+7b1_union_all|1|50000|Engineering
+7b1_union_all|3|50000|Engineering
+7b1_union_all|3|50000|Engineering
+7b2_union_distinct|1|50000|Engineering
+7b2_union_distinct|3|50000|Engineering
+7b3_intersect|3|50000|Engineering
+7b3_intersect|4|70000|Marketing
+7b4_except|1|50000|Engineering
+7b4_except|2|60000|Sales
+7b5_union_col|4
+7b6_intersect_where|3|50000|Engineering
+7b7_except_specific|1|Alice|50000
+7b7_except_specific|2|Bob|60000
+7b8_multi_set|5
+SET ENABLE_HASHAGG
+7b9_union_distinct_off|4
+7b9_intersect_off|2
+7b9_except_off|1
+RESET ENABLE_HASHAGG
+7b9_union_distinct_on|4
+7b9_intersect_on|2
+7b9_except_on|1
+DROP TABLE
+DROP TABLE
+=== 8 Enc + Plain Function ===
+NOTICE: table "test_text_func" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+8a_func_expr|1|fixed_text|Category_1
+8a_func_expr|2|fixed_text|Category_2
+8a_func_expr|3|fixed_text|Category_3
+DROP TABLE
+=== Cleanup ===
+NOTICE: drop cascades to data encryption key dek_expr
+DROP KEK

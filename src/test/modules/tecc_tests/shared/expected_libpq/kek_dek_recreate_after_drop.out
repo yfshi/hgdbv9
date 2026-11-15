@@ -1,0 +1,56 @@
+DROP TABLE
+DROP KEK
+                             ?column?                              
+-------------------------------------------------------------------
+ === 1 第一代：建 KEK/DEK/表 + 写入（喂给旧会话一份 DEK 缓存） ===
+(1 row)
+
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+  t   | id | c  
+------+----+----
+ gen1 |  1 | 10
+ gen1 |  2 | 20
+(2 rows)
+
+                            ?column?                             
+-----------------------------------------------------------------
+ === 2 DROP + 同名重建（换另一对密钥文件），仍在旧会话里写入 ===
+(1 row)
+
+DROP TABLE
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+         t         | id | c  
+-------------------+----+----
+ gen2 same session |  3 | 30
+ gen2 same session |  4 | 40
+(2 rows)
+
+                           ?column?                           
+--------------------------------------------------------------
+ === 3 新连接读取（修复前：Batch decrypt: item N failed） ===
+(1 row)
+
+        t        | id | c  
+-----------------+----+----
+ gen2 fresh conn |  3 | 30
+ gen2 fresh conn |  4 | 40
+(2 rows)
+
+      ?column?      
+--------------------
+ === 99 CLEANUP ===
+(1 row)
+
+DROP TABLE
+DROP KEK
+psql:/.../kek_dek_recreate_after_drop.sql:21: NOTICE:  table "bug9254_t" does not exist, skipping
+psql:/.../kek_dek_recreate_after_drop.sql:22: NOTICE:  key encryption key "bug9254_k" does not exist, skipping
+psql:/.../kek_dek_recreate_after_drop.sql:46: NOTICE:  drop cascades to data encryption key bug9254_d
+psql:/.../kek_dek_recreate_after_drop.sql:72: NOTICE:  drop cascades to data encryption key bug9254_d

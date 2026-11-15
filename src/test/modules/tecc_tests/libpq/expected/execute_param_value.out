@@ -1,0 +1,47 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+1_literal_baseline|1|alpha|10|p1
+1_literal_baseline|2|beta|20|p2
+PREPARE
+2_param_det_hit|1
+2_param_det_hit|2
+PREPARE
+3_param_ope_hit|1
+3_param_ope_hit|2
+PREPARE
+INSERT 0 1
+4_param_insert_value|3|gamma|30|p3
+2_param_det_hit|3
+5_literal_sees_param_row|3
+INSERT 0 1
+2_param_det_hit|4
+INSERT 0 1
+6_escape_string|5|esc'aped
+2_param_det_hit|1
+INSERT 0 1
+7_embedded_quote|6|quo'ted
+2_param_det_hit|6
+INSERT 0 1
+8_plain_param_intact|7|p7
+PREPARE
+9_cast_param_hit|1
+PREPARE
+10_cast_param_left|2
+PREPARE
+11_cast_ope_hit|1
+PREPARE
+12_derived_param_hit|1
+PREPARE
+13_derived_ope_param|1
+DEALLOCATE ALL
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../execute_param_value.sql:13: NOTICE:  table "test_epv" does not exist, skipping
+psql:/.../execute_param_value.sql:14: NOTICE:  data encryption key "dek_epv" does not exist, skipping
+psql:/.../execute_param_value.sql:15: NOTICE:  key encryption key "kek_epv" does not exist, skipping

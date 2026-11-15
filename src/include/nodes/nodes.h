@@ -655,8 +655,10 @@ typedef enum NodeTag
 	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 	/* Begin - ReqID:TECC4.0 */
 	T_CreateKekStmt,                                /* in nodes/parsenodes.h */
-	T_CreateDekStmt                                 /* in nodes/parsenodes.h */
+	T_CreateDekStmt,                                 /* in nodes/parsenodes.h */
 	/* End - ReqID:TECC4.0 */
+	T_IntroducerConst,				/* Req:SRS-MYSQL-SQL-Select */
+		T_AlterKekStmt,					/* in nodes/parsenodes.h */
 } NodeTag;
 
 /*

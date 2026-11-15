@@ -160,7 +160,7 @@ kms_type_to_string(KmsType kms_type)
         case KMS_TYPE_LOCAL:
             return "localkms";
         case KMS_TYPE_HSM:
-            return "hsmkms";
+            return "tzwykms";	/* V4.0.1+ name; 'hsmkms' was the V4.0 name */
         case KMS_TYPE_HSM_SWXA:
             return "swxakms";
         default:
@@ -180,12 +180,17 @@ string_to_kms_type(const char *kms_type_str)
 
     if (strcasecmp(kms_type_str, "localkms") == 0)
         return KMS_TYPE_LOCAL;
-    else if (strcasecmp(kms_type_str, "hsmkms") == 0)
+    else if (strcasecmp(kms_type_str, "tzwykms") == 0 ||
+             strcasecmp(kms_type_str, "hsmkms") == 0)
+        /* tzwykms is the V4.0.1+ name for the TZWY HSM; hsmkms is kept
+         * as a backwards-compatible alias for V4.0. */
         return KMS_TYPE_HSM;
     else if (strcasecmp(kms_type_str, "swxakms") == 0)
         return KMS_TYPE_HSM_SWXA;
     else
-        return KMS_TYPE_LOCAL;  /* Default to LOCAL */
+        /* ReqID:TECC4.0 - 未知/拼错的 KEY_STORE 字符串返回 UNKNOWN，
+         * 不再静默降级为 LOCAL（否则拼错 swxakms 会误用本地文件 KMS）。 */
+        return KMS_TYPE_UNKNOWN;
 }
 
 /*
@@ -200,7 +205,7 @@ kms_type_supported(KmsType kms_type)
         case KMS_TYPE_LOCAL:
             return true;  /* Always supported */
         case KMS_TYPE_HSM:
-            return false; /* TODO: Implement HSM support */
+            return true;  /* TZWY HSM adapter (fe-hsm-adapter.c) */
         case KMS_TYPE_HSM_SWXA:
             return true;  /* SWXA HSM adapter */
         default:
@@ -213,7 +218,7 @@ kms_type_supported(KmsType kms_type)
  *    Create KMS configuration
  */
 KmsConfig *
-kms_config_create(KmsType kms_type, const char *kms_path, const char *kms_args)
+kms_config_create(KmsType kms_type, const char *kms_path)
 {
     KmsConfig *config = NULL;
 
@@ -230,9 +235,6 @@ kms_config_create(KmsType kms_type, const char *kms_path, const char *kms_args)
         config->kms_path = pg_strdup(kms_path);
     else
         config->kms_path = pg_strdup(LOCAL_KMS_DEFAULT_BASE_PATH);
-
-    if (kms_args != NULL)
-        config->kms_args = pg_strdup(kms_args);
 
     /* Set defaults */
     config->algorithm = pg_strdup("SM4-CBC");
@@ -256,8 +258,6 @@ kms_config_destroy(KmsConfig *config)
 
     if (config->kms_path != NULL)
         pg_free(config->kms_path);
-    if (config->kms_args != NULL)
-        pg_free(config->kms_args);
     if (config->algorithm != NULL)
         pg_free(config->algorithm);
     if (config->hmac_algorithm != NULL)
@@ -1815,7 +1815,7 @@ local_kms_adapter_create(const KmsConfig *config)
 
     /* Set adapter fields */
     adapter->kms_type = KMS_TYPE_LOCAL;
-    adapter->config = kms_config_create(config->kms_type, config->kms_path, config->kms_args);
+    adapter->config = kms_config_create(config->kms_type, config->kms_path);
     if (!adapter->config)
     {
         set_kms_error("Failed to create configuration for local KMS adapter");
@@ -1939,4 +1939,22 @@ TECC_CONSTRUCTOR(kms_adapter_module_init)
 
     tecc_key_log(LOG_LEVEL_INFO, __func__, __FILE__, __LINE__,
                 "KMS adapter module initialized");
+}
+
+/*
+ * Public wrapper around static decrypt_kek_from_storage.
+ * Decrypts a KEK buffer (read from .key/.priv file) and returns the plaintext.
+ *
+ * buf:       KEK file buffer (as read from file, includes header+data+hmac)
+ * len:       buffer length
+ * plain:     output pointer (caller must pg_free)
+ * plain_len: output length
+ *
+ * Returns 0 on success, -1 on error.
+ */
+int
+tecc_decrypt_kek_from_buffer(const unsigned char *buf, size_t len,
+                             unsigned char **plain, size_t *plain_len)
+{
+    return decrypt_kek_from_storage(buf, len, plain, plain_len);
 }

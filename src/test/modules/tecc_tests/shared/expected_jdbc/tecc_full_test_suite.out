@@ -1,0 +1,984 @@
+NOTICE: table "tecc_test" does not exist, skipping
+DROP TABLE
+NOTICE: table "tecc_int_test" does not exist, skipping
+DROP TABLE
+NOTICE: table "t_rnd" does not exist, skipping
+DROP TABLE
+NOTICE: table "plain" does not exist, skipping
+DROP TABLE
+NOTICE: table "enc" does not exist, skipping
+DROP TABLE
+NOTICE: table "t_det" does not exist, skipping
+DROP TABLE
+NOTICE: table "t_ope" does not exist, skipping
+DROP TABLE
+NOTICE: table "t_search" does not exist, skipping
+DROP TABLE
+NOTICE: table "t_det_search" does not exist, skipping
+DROP TABLE
+NOTICE: table "t_ope_search" does not exist, skipping
+DROP TABLE
+NOTICE: table "t_float4_test" does not exist, skipping
+DROP TABLE
+NOTICE: table "t_rnd_idx_bug" does not exist, skipping
+DROP TABLE
+NOTICE: table "b1_numeric_det" does not exist, skipping
+DROP TABLE
+NOTICE: table "b1_v2" does not exist, skipping
+DROP TABLE
+NOTICE: table "b1_v3" does not exist, skipping
+DROP TABLE
+NOTICE: table "b1_test" does not exist, skipping
+DROP TABLE
+NOTICE: table "bug1" does not exist, skipping
+DROP TABLE
+NOTICE: table "bug2" does not exist, skipping
+DROP TABLE
+NOTICE: table "bug2b" does not exist, skipping
+DROP TABLE
+NOTICE: table "bug4" does not exist, skipping
+DROP TABLE
+NOTICE: table "tecc_test_all" does not exist, skipping
+DROP TABLE
+NOTICE: role "tecc_test_user" does not exist, skipping
+DROP USER
+NOTICE: data encryption key "test_dek" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "test_kek" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+bpchar_enc
+float4_enc
+float8_enc
+int2_enc
+int4_enc
+int8_enc
+numeric_enc
+text_enc
+varchar_enc
+NOTICE: table "t_det" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+NOTICE: table "t_ope" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+NOTICE: table "t_search" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+NOTICE: table "t_det_search" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+NOTICE: table "t_ope_search" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+NOTICE: table "t_rnd" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+NOTICE: table "t_det_ope" does not exist, skipping
+DROP TABLE
+ERROR: ERROR: DET and OPE algorithms cannot be specified together in SUPPORT_ALGO
+  Hint: DET is for equality queries, OPE is for range queries. Choose one.
+NOTICE: table "t_collate" does not exist, skipping
+DROP TABLE
+ERROR: Column 'name' with COLLATE requires support_algo to include 'ope'. Set support_algo = 'ope' for this column.
+NOTICE: table "tecc_test" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 14
+tecc_test|14
+1|张三|20000|99999.99
+2|Alice|1000|123.45
+3|张三丰|-50000|-500.00
+4|hello|0|0.00
+5|alice|1|1.00
+1|张三
+2|Charlie             
+3|Eve                 
+4|test                
+5|alice               
+6|Eve2                
+7|TEST                
+8|foo_bar             
+9|pct_sign            
+10|_start              
+12|
+13|测试              
+14|mixCase             
+1|20000
+6|20000
+1|100
+2|1
+3|-100
+5|1
+6|100
+7|50
+8|-1
+9|10
+10|20
+12|-32768
+13|42
+14|255
+2|1.5
+3|-100
+4|0
+12|
+ERROR: Encrypted column [tecc_test.col_int4] incompatible with operator [>]: Range operator requires OPE algorithm, but the column does not have OPE enabled (only DET)
+ERROR: Encrypted column [t_rnd.name] incompatible with operator [=]: RND-encrypted column does not support any comparison operator; ciphertext is not comparable
+1|3000000
+2|50000
+5|1
+6|3000000
+7|7777777
+9|1000
+10|2000
+13|424242
+14|16777215
+1|3000000
+2|50000
+6|3000000
+7|7777777
+13|424242
+14|16777215
+3|-999999
+8|-1
+12|-9223372036854775808
+3|-0.001
+4|0
+8|-1
+12|-1.7976931348E308
+2|50000
+5|1
+9|1000
+10|2000
+13|424242
+2|50000
+4|world
+6|David2
+7|World
+8|xyz_123
+9|test_like
+10|under_score
+2|Bob
+3|David
+4|world
+6|David2
+7|World
+8|xyz_123
+9|test_like
+10|under_score
+1|张三
+3|张三丰
+6|张三丰
+2|Bob
+14|abcXYZ
+2|Alice
+4|hello
+5|alice
+7|Hello
+8|abc_def
+9|test%like
+10|%percent
+12|
+13|测试
+14|test123
+9|test%like
+14|test123
+5|ALICE
+2|Bob
+ERROR: Encrypted column [tecc_test.col_bpchar] incompatible with operator [LIKE]: Pattern matching operator requires SEARCH algorithm, but the column does not have SEARCH enabled (only DET)
+NOTICE: table "tecc_int_test" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+100
+100
+20000
+100
+100
+100
+3.14
+3.14
+2.718
+张三
+Alice
+张三丰
+李四
+Bob
+David
+李四
+Bob
+David
+ERROR: ERROR: cannot cast type text_enc to int4_enc
+  Position: 16
+CREATE INDEX
+ERROR: ERROR: cannot create B-tree index on encrypted column without OPE encryption
+  Detail: Column "col_text" in table "tecc_test" does not have OPE encryption enabled.
+  Hint: Enable OPE encryption for the column or use Hash index instead.
+CREATE INDEX
+ERROR: ERROR: cannot create B-tree index on encrypted column without OPE encryption
+  Detail: Column "name" in table "t_rnd" does not have OPE encryption enabled.
+  Hint: Enable OPE encryption for the column or use Hash index instead.
+INSERT 0 1
+INSERT 0 1
+NOTICE: index "idx_t_rnd_btree" does not exist, skipping
+DROP INDEX
+INSERT 0 1
+INSERT 0 1
+|test_rnd_1
+|test_rnd_2
+|same_text
+|same_text
+ERROR: Encrypted column [t_rnd.name] incompatible with operator [=]: RND-encrypted column does not support any comparison operator; ciphertext is not comparable
+ERROR: Encrypted column [t_rnd.name] incompatible with operator [>]: RND-encrypted column does not support any comparison operator; ciphertext is not comparable
+ERROR: Encrypted column [t_rnd.name] incompatible with operator [LIKE]: RND-encrypted column does not support any comparison operator; ciphertext is not comparable
+NOTICE: role "tecc_test_user" does not exist, skipping
+DROP USER
+CREATE USER
+GRANT USAGE
+GRANT SELECT,
+GRANT USAGE
+GRANT USAGE
+REVOKE USAGE
+REVOKE ALL
+REVOKE USAGE
+REVOKE ALL
+DROP USER
+NOTICE: table "plain" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+NOTICE: table "enc" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 15
+INSERT 0 15
+1|99999.99
+7|99999.99
+1|99999.99
+7|99999.99
+4|-999999
+9|-1
+13|-9223372036854775808
+4|-999999
+9|-1
+13|-9223372036854775808
+1|20000
+3|2147483647
+7|20000
+8|55555
+15|65535
+4|-0.001
+9|-1
+13|-1.7976931348E308
+1|99999.99
+2|123.45
+3|0.01
+5|0.00
+6|1.00
+7|99999.99
+8|500.00
+9|-1.00
+10|10.10
+11|20.20
+14|42.42
+15|255.55
+5|world
+7|David2
+8|World
+9|xyz_123
+10|test_like
+11|under_score
+1|王五              
+2|Charlie             
+3|周八              
+4|Eve                 
+5|test                
+6|alice               
+7|Eve2                
+8|TEST                
+9|foo_bar             
+10|pct_sign            
+15|mixCase             
+1|王五                  
+2|Charlie             
+3|周八                  
+4|Eve                 
+5|test                
+6|alice               
+7|Eve2                
+8|TEST                
+9|foo_bar             
+10|pct_sign            
+15|mixCase             
+1|张三
+4|张三丰
+7|张三丰
+1|张三
+4|张三丰
+7|张三丰
+5|0
+6|1
+9|-1
+4|-999999
+9|-1
+13|-9223372036854775808
+10|test_like
+1|3.14
+2|1.5
+3|1.0E10
+7|3.14
+8|50.5
+10|10.1
+11|20.2
+14|4.2
+15|255.255
+1|3.14
+2|1.5
+3|1.0E10
+7|3.14
+8|50.5
+10|10.1
+11|20.2
+14|4.2
+15|255.255
+NOTICE: table "b12_test" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+1|100|100
+3|50|50
+2|100|200
+ERROR: ERROR: cannot compare encrypted values for equality: neither DET nor OPE ciphertext available
+  Hint: Enable DET or OPE encryption on the column to support equality comparison.
+DROP TABLE
+NOTICE: table "b_int2" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 10
+max(32767)|1
+min(-32768)|1
+zero(0)|1
+dup(100)|2
+NULL|1
+>0|4
+<0|4
+BETWEEN -10 AND 10|3
+NOTICE: table "b_int4" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 10
+max|1
+min|1
+max-1|1
+min+1|1
+zero|1
+>0|4
+<0|4
+>0 AND <1000000|2
+NOTICE: table "b_int8" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 10
+max|1
+min|1
+max-1|1
+min+1|1
+zero|1
+>0|4
+<0|4
+NOTICE: table "b_float4" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 9
+=0.0|1
+=1.0|1
+=3.14|1
+IS NULL|1
+>0|4
+<0|3
+NOTICE: table "b_float8" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 8
+=0.0|1
+=1.0|1
+>0|4
+<0|2
+>=1.0|3
+NOTICE: table "b_numeric" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 11
+=0|1
+=12345.67|1
+=99999.99(dup)|3
+IS NULL|1
+ERROR: Encrypted column [b_numeric.v] incompatible with operator [>]: Range operator requires OPE algorithm, but the column does not have OPE enabled (only DET)
+NOTICE: table "b_text" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 14
+='' (空串)|1
+=hello|1
+=Hello|1
+=张三|1
+=a%b_c|1
+=12345|1
+<>''|12
+NOTICE: table "b_null" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 6
+c1 IS NULL|2
+c2 IS NULL|2
+c3 IS NULL|2
+all NULL|1
+c1=''|1
+c2=0 AND c3=0.0|1
+c1 NOT NULL|4
+c2 NOT NULL|4
+c3 NOT NULL|4
+NOTICE: table "b_like" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 12
+LIKE 'abc%'|5
+LIKE 'ab%'|6
+LIKE '张%'|2
+LIKE '%abc%'|7
+LIKE '%bc%'|7
+NOT LIKE 'abc%'|6
+LIKE 'ab_'|1
+LIKE 'abc'(精确)|1
+LIKE '''|1
+NOTICE: table "b_cast" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+NOTICE: table "b_mixed" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 12
+name='张三' AND age=25|1
+age=30 AND salary>8000|1
+age=28 OR age=35|4
+LIKE+range|2
+age IN(28,30)|4
+age NOT IN(28,30)|7
+age 25-30|6
+salary 5000-10000|7
+count(*)|10
+count(v_det)|9
+count(DISTINCT v_det)|8
+NOTICE: table "b_colcmp" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 6
+v1=v2|4
+v1<>v2|1
+NOTICE: table "idx_i2" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 50
+INSERT 0 150
+INSERT 0 100
+CREATE INDEX
+CREATE INDEX
+SET ENABLE_SEQSCAN
+SET ENABLE_SEQSCAN
+i2 det=200|1
+i2 ope>280|20
+NOTICE: table "idx_i4" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 50
+INSERT 0 150
+INSERT 0 100
+CREATE INDEX
+CREATE INDEX
+SET ENABLE_SEQSCAN
+SET ENABLE_SEQSCAN
+i4 det=200|1
+i4 ope>280|20
+NOTICE: table "idx_i8" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 30
+INSERT 0 150
+CREATE INDEX
+CREATE INDEX
+SET ENABLE_SEQSCAN
+SET ENABLE_SEQSCAN
+NOTICE: table "idx_f4" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 50
+INSERT 0 150
+CREATE INDEX
+CREATE INDEX
+SET ENABLE_SEQSCAN
+SET ENABLE_SEQSCAN
+NOTICE: table "idx_f8" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 50
+INSERT 0 150
+CREATE INDEX
+CREATE INDEX
+SET ENABLE_SEQSCAN
+SET ENABLE_SEQSCAN
+NOTICE: table "idx_nm" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 50
+INSERT 0 150
+CREATE INDEX
+CREATE INDEX
+SET ENABLE_SEQSCAN
+SET ENABLE_SEQSCAN
+NOTICE: table "idx_tx" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 50
+INSERT 0 28
+CREATE INDEX
+CREATE INDEX
+NOTICE: table "idx_vc" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 46
+CREATE INDEX
+CREATE INDEX
+NOTICE: table "idx_bp" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 46
+CREATE INDEX
+CREATE INDEX
+NOTICE: table "ext_a" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 6
+NOTICE: table "ext_b" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 9
+NOTICE: table "ext_d" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 10
+NOTICE: table "neg_test" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 2
+ERROR: Encrypted column [neg_test.v_det] incompatible with operator [>]: Range operator requires OPE algorithm, but the column does not have OPE enabled (only DET)
+ERROR: Encrypted column [neg_test.v_rnd] incompatible with operator [=]: RND-encrypted column does not support any comparison operator; ciphertext is not comparable
+ERROR: Encrypted column [neg_test.v_rnd] incompatible with operator [LIKE]: RND-encrypted column does not support any comparison operator; ciphertext is not comparable
+ERROR: Encrypted column [neg_test.v_det] incompatible with operator [LIKE]: Pattern matching operator requires SEARCH algorithm, but the column does not have SEARCH enabled (only DET)
+ERROR: ERROR: cannot cast type text_enc to int4_enc
+  Position: 14
+ERROR: ERROR: cannot cast type int4_enc to text_enc
+  Position: 13
+ERROR: ERROR: cannot compare encrypted values for equality: neither DET nor OPE ciphertext available
+  Hint: Enable DET or OPE encryption on the column to support equality comparison.
+ERROR: ERROR: operator does not exist: int4_enc = text
+  Hint: No operator matches the given name and argument types. You might need to add explicit type casts.
+  Position: 36
+session_alive|2
+NOTICE: table "pt_text" does not exist, skipping
+NOTICE: table "pt_text_a" does not exist, skipping
+NOTICE: table "pt_text_b" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 4
+text(ope)LIST|4
+NOTICE: table "pt_vc" does not exist, skipping
+NOTICE: table "pt_vc_1" does not exist, skipping
+NOTICE: table "pt_vc_2" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 3
+varchar(ope)LIST|3
+NOTICE: table "pt_bp" does not exist, skipping
+NOTICE: table "pt_bp_a" does not exist, skipping
+NOTICE: table "pt_bp_b" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 4
+bpchar(ope)LIST|4
+NOTICE: table "pt_i2" does not exist, skipping
+NOTICE: table "pt_i2_young" does not exist, skipping
+NOTICE: table "pt_i2_old" does not exist, skipping
+NOTICE: table "plain_i2" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 4
+CREATE TABLE
+INSERT 0 4
+NOTICE: table "pt_i4" does not exist, skipping
+NOTICE: table "pt_i4_low" does not exist, skipping
+NOTICE: table "pt_i4_mid" does not exist, skipping
+NOTICE: table "pt_i4_high" does not exist, skipping
+NOTICE: table "plain_i4" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 4
+CREATE TABLE
+INSERT 0 4
+NOTICE: table "pt_i8" does not exist, skipping
+NOTICE: table "pt_i8_small" does not exist, skipping
+NOTICE: table "pt_i8_large" does not exist, skipping
+NOTICE: table "plain_i8" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 4
+CREATE TABLE
+INSERT 0 4
+NOTICE: table "pt_f4" does not exist, skipping
+NOTICE: table "pt_f4_low" does not exist, skipping
+NOTICE: table "pt_f4_high" does not exist, skipping
+NOTICE: table "plain_f4" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 4
+CREATE TABLE
+INSERT 0 4
+NOTICE: table "pt_f8" does not exist, skipping
+NOTICE: table "pt_f8_low" does not exist, skipping
+NOTICE: table "pt_f8_high" does not exist, skipping
+NOTICE: table "plain_f8" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 4
+CREATE TABLE
+INSERT 0 4
+NOTICE: table "pt_nm" does not exist, skipping
+NOTICE: table "pt_nm_low" does not exist, skipping
+NOTICE: table "pt_nm_mid" does not exist, skipping
+NOTICE: table "pt_nm_high" does not exist, skipping
+NOTICE: table "plain_nm" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 4
+CREATE TABLE
+INSERT 0 4
+NOTICE: table "cast_src" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+100
+100
+20000
+100
+100
+20000
+100
+20000
+3000000
+3.14
+3.14
+2.718
+100
+100
+100
+100
+100
+3.14
+3.14
+2.718
+hello
+world
+hello
+world
+test
+test
+hello
+world
+hello
+test
+ERROR: ERROR: cannot cast type text_enc to int4_enc
+  Position: 10
+ERROR: ERROR: cannot cast type text_enc to int4_enc
+  Position: 8
+ERROR: ERROR: cannot cast type int4_enc to text_enc
+  Position: 10
+ERROR: ERROR: cannot cast type int8_enc to float8_enc
+  Position: 13
+hello
+test
+NOTICE: table "employee" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 10
+1|张三|15000|技术部|2020-03-15|5
+2|李四|12000|市场部|2021-06-01|4
+3|王五|18000|技术部|2019-01-10|6
+4|赵六|25000|管理部|2018-05-20|7
+5|Alice|20000|Engineering|2022-01-15|5
+6|Bob|16000|Sales|2021-09-01|4
+7|Charlie|22000|Engineering|2020-07-10|6
+8|孙七|9000|市场部||2
+9|周八||技术部|2022-06-01|3
+10||11000|管理部|2023-01-01|3
+1|张三|技术部
+1|张三|技术部|2020-03-15
+3|王五|技术部|2019-01-10
+9|周八|技术部|2022-06-01
+1|张三|15000|技术部
+3|王五|18000|技术部
+1|张三|5
+4|赵六|2018-05-20
+3|王五|2019-01-10
+1|张三|2020-03-15
+7|Charlie|2020-07-10
+2|李四|2021-06-01
+6|Bob|2021-09-01
+5|Alice|2022-01-15
+9|周八|2022-06-01
+10||2023-01-01
+4|赵六|25000
+7|Charlie|22000
+5|Alice|20000
+3|王五|18000
+6|Bob|16000
+1|张三|15000
+2|李四|12000
+10||11000
+8|孙七|9000
+4|赵六|25000|管理部
+3|王五|18000|技术部
+ERROR: TECC strict: function 'avg' is not in the encryption-safe whitelist but references encrypted column [employee.salary]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+8|孙七||
+10||320101199905209012|2023-01-01
+UPDATE 3
+1|张三|技术部|6
+3|王五|技术部|7
+9|周八|技术部|4
+NOTICE: table "medical" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 9
+1|张三|高血压|1500.5|市第一医院|心内科|2025-01-10
+2|李四|急性阑尾炎|8500|市第一医院|普外科|2025-01-15
+3|王五|糖尿病|3200|省中心医院|内分泌科|2025-02-01
+4|赵六|骨折|12000|市骨科医院|骨科|2025-02-10
+5|Alice|Hypertension|2500|General Hospital|Cardiology|2025-03-01
+6|Bob|Appendicitis|9000|General Hospital|Surgery|2025-03-05
+7|张三|常规体检|800|市第一医院|体检中心|2025-03-15
+8|孙七||1500|省中心医院|内科|
+9||肺炎|4500||呼吸科|2025-04-01
+1|张三|高血压|市第一医院
+7|张三|常规体检|市第一医院
+4|赵六|12000|骨科
+6|Bob|9000|Surgery
+2|李四|8500|普外科
+张三|技术部|高血压|1500.5
+李四|市场部|急性阑尾炎|8500
+王五|技术部|糖尿病|3200
+赵六|管理部|骨折|12000
+Alice|Engineering|Hypertension|2500
+1|张三|高血压|1500.5
+7|张三|常规体检|800
+ERROR: TECC strict: function 'avg' is not in the encryption-safe whitelist but references encrypted column [medical.cost]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, coalesce).
+NOTICE: table "account" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 7
+1|6222021234567890|50000.00|工商银行|储蓄账户|active
+2|6228480987654321|150000.00|农业银行|理财账户|active
+3|6227003333222244|3500.00|建设银行|储蓄账户|active
+4|6217001111222233|850000.00|工商银行|储蓄账户|frozen
+5|6226098888777766|25000.00|招商银行|储蓄账户|active
+6|6225889999000011|1000.00|工商银行|储蓄账户|active
+7||750000.00|招商银行|理财账户|active
+4|850000.00|工商银行
+7|750000.00|招商银行
+2|150000.00|农业银行
+1|50000.00|储蓄账户
+4|850000.00|储蓄账户
+ERROR: TECC strict: function 'sum' requires HE-ADD on encrypted column [account.balance], but column uses OPE. Reconfigure the column with the required algorithm or rewrite the SQL.
+7|750000.00|招商银行
+1|6222021234567890|50000.00
+4|850000.00|工商银行
+7|750000.00|招商银行
+1|50000.00|工商银行
+5|25000.00|招商银行
+6|1000.00|工商银行
+NOTICE: table "cp_test" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+NOTICE: table "cp_restore" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+TRUNCATE CP_RESTORE
+restored|0
+original|1|张三|25|5000
+original|2|李四|30|8000
+original|3|王五|28|6000
+NOTICE: table "cp_restore2" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+TRUNCATE CP_TEST
+SET SEARCH_PATH
+pgdump+\\i|0
+kek_backup|0
+NOTICE: table "r_src" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+NOTICE: table "r_copy" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+0
+0
+0
+0
+0
+NOTICE: table "r_dump" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+SET SEARCH_PATH
+0
+0
+0
+0
+0
+NOTICE: table "cp_restore3" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+TRUNCATE CP_TEST
+pgdump+pgrestore|0
+NOTICE: table "edge1" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+direct|1
+INSERT 0 1
+INSERT 0 1
+ERROR: TECC: literal encrypt failed for public.edge1.v: invalid input syntax for type integer: "1.5" (column public.edge1.v)
+INSERT 0 1
+NOTICE: table "edge2" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 2
+UPDATE 1
+update_ok|1
+DELETE 1
+delete_ok|0
+NOTICE: table "edge3_plain" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 2
+NOTICE: table "edge3_enc" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+ERROR: INSERT...SELECT into encrypted column "v" without explicit encryption is not allowed
+CREATE OR
+ERROR: Encrypted column [edge2.v] incompatible with operator [>]: Range operator requires OPE algorithm, but the column does not have OPE enabled (only DET)
+INSERT 0 2
+2
+ALTER TABLE
+ERROR: ERROR: cannot alter type of a column
+  Detail: DEPENDENCY depends on column "v"
+NOTICE: table "edge8" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+TRUNCATE EDGE2
+INSERT 0 4
+trunc+insert|4
+session_ok|4
+NOTICE: table "diff1" does not exist, skipping
+NOTICE: table "diff2" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "dek2" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "kek2" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+CREATE TABLE
+INSERT 0 1
+ERROR: INSERT...SELECT into encrypted column "v" without explicit encryption is not allowed
+ERROR: cannot compare encrypted columns with different DEKs: "diff1.v" (DEK sym:test_dek) and "diff2.v" (DEK sym:dek2)
+NOTICE: table "idx_both" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 10
+CREATE INDEX
+CREATE INDEX
+1
+ERROR: TECC CREATE KEK 'kek_bad': key_path option is required
+ERROR: ERROR: TECC CREATE DEK 'dek_bad': referenced KEK 'nonexistent_kek' does not exist in key manager. Please execute CREATE KEK nonexistent_kek ... first and ensure KEK status is active before retrying.
+ERROR: ERROR: cannot drop key encryption key "test_kek" because encrypted columns depend on it
+ERROR: ERROR: cannot drop data encryption key "test_dek" because encrypted columns depend on it
+  Detail: Encrypted column "COL" in table OID OID uses this DEK.
+CREATE KEK
+DROP TABLE
+DROP DEK
+DROP KEK
+ERROR: ERROR: DEK "bad_dek_name" not found, cannot create encrypted column "v"
+  Hint: Create the DEK first with CREATE DEK in TECC encryption mode (psql -k on).
+ERROR: ERROR: encrypted data type "text_enc" requires ENCRYPTED WITH clause
+  Hint: Add ENCRYPTED WITH (dek = dek_name) to the column definition
+NOTICE: table "mixed_type" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+ERROR: INSERT...SELECT into encrypted column "v_enc" without explicit encryption is not allowed
+ERROR: ERROR: column "v_plain" cannot be cast automatically to type int4_enc
+  Hint: You might need to specify "USING v_plain::int4_enc".
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+CREATE TABLE
+INSERT 0 1
+ERROR: Unsupported ALTER TABLE ... ALTER COLUMN ... SET DEFAULT on encrypted column def_sup.v: the default expression would be sent to the server as plaintext, because the client has no encryption path for defaults changed by ALTER TABLE. Write the encrypted value through INSERT/UPDATE instead.
+CREATE TABLE
+INSERT 0 1
+xdek_ok|1

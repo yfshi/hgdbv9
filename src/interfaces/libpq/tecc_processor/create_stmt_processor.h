@@ -145,5 +145,21 @@ extern char **tecc_query_partkey_columns(PGconn *conn,
 
 /* ReqID:TECC4.0 - Map encrypted type name to base type OID (e.g. "int4_enc"->INT4OID) */
 extern Oid map_enc_type_name_to_base_oid(const char *type_name);
+
+/* ReqID:TECC4.0 - 解析"目标列还不存在"的加密列将来生效的 collation locale 文本
+ * （CTAS、物化视图/视图定义里的带 ENCRYPTED WITH cast、加密列 DEFAULT 共用）。
+ * 有 COLLATE 子句时按它解析，否则文本类型取库默认排序规则的 collcollate；
+ * 非文本类型或解析失败返回 NULL（调用方按"拿不到 locale"处理，行为同修复前）。
+ * 返回值 pg_strdup，调用方负责 pg_free。 */
+extern char *resolve_new_column_collation_locale(PGconn *conn, Oid base_oid,
+                                                 const CollateClause *coll_clause);
+
+/* ReqID:TECC4.0 - 从 ENCRYPTED WITH 选项里取同态 DEK 名（HE_ADD_DEK / HE_MUL_DEK），
+ * 供"目标列还不存在"的写入路径（CTAS 的结果表列、视图/物化视图定义里的 cast、
+ * 加密列 DEFAULT）把同态 DEK 传给加密入口 —— 这些路径拿不到列元数据，同态 DEK
+ * 没有别的来源。返回解析树内的字符串指针（不复制、不要释放），没有则置 NULL。 */
+extern void tecc_typename_get_he_dek_names(const TypeName *type_name,
+                                           const char **he_add_dek_name,
+                                           const char **he_mul_dek_name);
 #endif /* CREATE_STMT_PROCESSOR_H */
 /* End - ReqID:TECC4.0 */

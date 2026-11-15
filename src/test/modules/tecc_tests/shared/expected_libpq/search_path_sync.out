@@ -1,0 +1,64 @@
+DROP SCHEMA
+DROP KEK
+DROP KEK
+DROP DEK
+CREATE KEK
+CREATE SCHEMA
+SET
+CREATE KEK
+CREATE DEK
+SET
+CREATE DEK
+SET
+CREATE DEK
+SET
+SET
+CREATE DEK
+SET
+RESET
+CREATE DEK
+BEGIN
+SET
+ROLLBACK
+CREATE DEK
+SET
+SET
+CREATE DEK
+SET
+CREATE TABLE
+SET
+INSERT 0 1
+ id |  v  
+----+-----
+  1 | 100
+(1 row)
+
+RESET
+DROP SCHEMA
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP DEK
+DROP DEK
+DROP DEK
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+psql:/.../search_path_sync.sql:25: NOTICE:  schema "sp1" does not exist, skipping
+psql:/.../search_path_sync.sql:26: NOTICE:  key encryption key "kek_pub" does not exist, skipping
+psql:/.../search_path_sync.sql:27: NOTICE:  key encryption key "kek_sp1" does not exist, skipping
+psql:/.../search_path_sync.sql:28: NOTICE:  data encryption key "dek_sp1" does not exist, skipping
+psql:/.../search_path_sync.sql:104: NOTICE:  drop cascades to 6 other objects
+DETAIL:  drop cascades to key encryption key kek_sp1
+drop cascades to data encryption key dek_sp1
+drop cascades to data encryption key dek_a
+drop cascades to data encryption key dek_b
+drop cascades to data encryption key dek_f
+drop cascades to table sp1.t1
+psql:/.../search_path_sync.sql:105: NOTICE:  table "t_pub" does not exist, skipping
+psql:/.../search_path_sync.sql:106: NOTICE:  data encryption key "dek_a" does not exist, skipping
+psql:/.../search_path_sync.sql:107: NOTICE:  data encryption key "dek_b" does not exist, skipping
+psql:/.../search_path_sync.sql:111: NOTICE:  data encryption key "dek_f" does not exist, skipping
+psql:/.../search_path_sync.sql:112: NOTICE:  data encryption key "dek_sp1" does not exist, skipping
+psql:/.../search_path_sync.sql:114: NOTICE:  key encryption key "kek_sp1" does not exist, skipping

@@ -1,0 +1,7 @@
+=== 1 SELECT after overwrite (expect ciphertext) ===
+1|\x被隐藏的HEX输出
+2|\x被隐藏的HEX输出
+=== 2 INSERT after overwrite (expect error) ===
+TECC ERROR: Failed to decrypt DEK 'dek_ovr': the KEK 'kek_ovr' key file no longer matches this DEK (key material was changed/replaced after the DEK was created). Restore the original KEK key file and reconnect, or DROP and recreate the DEK.
+TECC ERROR: TECC SCHEDULER ERROR: Failed to get DEK key for encryption
+psql:/.../kek_overwrite_2_verify.sql:19: TECC query preprocessing failed: Encryption failed: Cannot encrypt: DEK decryption failed with error 1103

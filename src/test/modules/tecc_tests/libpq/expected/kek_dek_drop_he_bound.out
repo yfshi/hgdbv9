@@ -1,0 +1,57 @@
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+CREATE KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE DEK
+CREATE DEK
+=== 1 setup: bind three kinds of column ===
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+1 he-add col|15
+1 he-mul col|6
+1 det col|aa
+=== 2 bound: drop must be rejected ===
+2 deks alive|3
+=== 3 unbound: drop must succeed ===
+DROP DEK
+3 hbk_free alive|0
+=== 4 KEK with bound DEK: drop must be rejected ===
+4 keks alive|2
+=== 5 after unbind: drop must succeed ===
+DROP TABLE
+DROP DEK
+DROP TABLE
+DROP DEK
+DROP TABLE
+DROP DEK
+DROP KEK
+DROP KEK
+5 deks left|0
+5 keks left|0
+psql:/.../kek_dek_drop_he_bound.sql:35: NOTICE:  table "hbk_t" does not exist, skipping
+psql:/.../kek_dek_drop_he_bound.sql:35: NOTICE:  table "hbk_q" does not exist, skipping
+psql:/.../kek_dek_drop_he_bound.sql:35: NOTICE:  table "hbk_s" does not exist, skipping
+psql:/.../kek_dek_drop_he_bound.sql:36: NOTICE:  data encryption key "hbk_add" does not exist, skipping
+psql:/.../kek_dek_drop_he_bound.sql:37: NOTICE:  data encryption key "hbk_mul" does not exist, skipping
+psql:/.../kek_dek_drop_he_bound.sql:38: NOTICE:  data encryption key "hbk_sym" does not exist, skipping
+psql:/.../kek_dek_drop_he_bound.sql:39: NOTICE:  data encryption key "hbk_free" does not exist, skipping
+psql:/.../kek_dek_drop_he_bound.sql:40: NOTICE:  key encryption key "hbk_k" does not exist, skipping
+psql:/.../kek_dek_drop_he_bound.sql:41: NOTICE:  key encryption key "hbk_ks" does not exist, skipping
+psql:/.../kek_dek_drop_he_bound.sql:81: ERROR:  cannot drop data encryption key "hbk_add" because encrypted columns depend on it
+psql:/.../kek_dek_drop_he_bound.sql:82: ERROR:  cannot drop data encryption key "hbk_mul" because encrypted columns depend on it
+psql:/.../kek_dek_drop_he_bound.sql:83: ERROR:  cannot drop data encryption key "hbk_sym" because encrypted columns depend on it
+psql:/.../kek_dek_drop_he_bound.sql:101: ERROR:  cannot drop key encryption key "hbk_k" because encrypted columns depend on it
+psql:/.../kek_dek_drop_he_bound.sql:102: ERROR:  cannot drop key encryption key "hbk_k" because encrypted columns depend on it
+psql:/.../kek_dek_drop_he_bound.sql:103: ERROR:  cannot drop key encryption key "hbk_ks" because encrypted columns depend on it
+psql:/.../kek_dek_drop_he_bound.sql:104: ERROR:  cannot drop key encryption key "hbk_ks" because encrypted columns depend on it

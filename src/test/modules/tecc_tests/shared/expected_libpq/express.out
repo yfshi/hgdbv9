@@ -282,9 +282,9 @@ INSERT 0 4
  5f_least |  4 | Diana   | 65000
 (4 rows)
 
- ?column? |                                                                                                                                                                                                                                                              array                                                                                                                                                                                                                                                              
-----------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- 5g_array | \x{"\\x被隐藏的HEX输出","\\x被隐藏的HEX输出"}
+ ?column? |                                                                                                                                                                                                                                             array                                                                                                                                                                                                                                             
+----------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 5g_array | {"\\x被隐藏的HEX输出","\\x被隐藏的HEX输出"}
 (1 row)
 
      ?column?      | id |  name   
@@ -490,6 +490,95 @@ INSERT 0 3
 DROP TABLE
 DROP TABLE
 DROP TABLE
+                   ?column?                    
+-----------------------------------------------
+ === 7b UNION/INTERSECT/EXCEPT + Encrypted ===
+(1 row)
+
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+INSERT 0 4
+   ?column?    | id | salary |    dept     
+---------------+----+--------+-------------
+ 7b1_union_all |  1 | 50000  | Engineering
+ 7b1_union_all |  3 | 50000  | Engineering
+ 7b1_union_all |  3 | 50000  | Engineering
+(3 rows)
+
+      ?column?      | id | salary |    dept     
+--------------------+----+--------+-------------
+ 7b2_union_distinct |  1 | 50000  | Engineering
+ 7b2_union_distinct |  3 | 50000  | Engineering
+(2 rows)
+
+   ?column?    | id | salary |    dept     
+---------------+----+--------+-------------
+ 7b3_intersect |  3 | 50000  | Engineering
+ 7b3_intersect |  4 | 70000  | Marketing
+(2 rows)
+
+  ?column?  | id | salary |    dept     
+------------+----+--------+-------------
+ 7b4_except |  1 | 50000  | Engineering
+ 7b4_except |  2 | 60000  | Sales
+(2 rows)
+
+   ?column?    | count 
+---------------+-------
+ 7b5_union_col |     4
+(1 row)
+
+      ?column?       | id | salary |    dept     
+---------------------+----+--------+-------------
+ 7b6_intersect_where |  3 | 50000  | Engineering
+(1 row)
+
+      ?column?       | id | name  | salary 
+---------------------+----+-------+--------
+ 7b7_except_specific |  1 | Alice | 50000
+ 7b7_except_specific |  2 | Bob   | 60000
+(2 rows)
+
+   ?column?    | count 
+---------------+-------
+ 7b8_multi_set |     5
+(1 row)
+
+SET
+        ?column?        | count 
+------------------------+-------
+ 7b9_union_distinct_off |     4
+(1 row)
+
+     ?column?      | count 
+-------------------+-------
+ 7b9_intersect_off |     2
+(1 row)
+
+    ?column?    | count 
+----------------+-------
+ 7b9_except_off |     1
+(1 row)
+
+RESET
+       ?column?        | count 
+-----------------------+-------
+ 7b9_union_distinct_on |     4
+(1 row)
+
+     ?column?     | count 
+------------------+-------
+ 7b9_intersect_on |     2
+(1 row)
+
+   ?column?    | count 
+---------------+-------
+ 7b9_except_on |     1
+(1 row)
+
+DROP TABLE
+DROP TABLE
             ?column?            
 --------------------------------
  === 8 Enc + Plain Function ===
@@ -515,5 +604,5 @@ DROP KEK
 psql:/.../express.sql:11: NOTICE:  key encryption key "kek_expr" does not exist, skipping
 psql:/.../express.sql:24: NOTICE:  table "test_expr" does not exist, skipping
 psql:/.../express.sql:44: NOTICE:  table "test_bool" does not exist, skipping
-psql:/.../express.sql:295: NOTICE:  table "test_text_func" does not exist, skipping
-psql:/.../express.sql:315: NOTICE:  drop cascades to data encryption key dek_expr
+psql:/.../express.sql:393: NOTICE:  table "test_text_func" does not exist, skipping
+psql:/.../express.sql:413: NOTICE:  drop cascades to data encryption key dek_expr

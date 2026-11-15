@@ -1,0 +1,213 @@
+NOTICE: table "bpchar_plain" does not exist, skipping
+DROP TABLE
+NOTICE: table "cross_plain" does not exist, skipping
+DROP TABLE
+NOTICE: table "bpchar_enc" does not exist, skipping
+DROP TABLE
+NOTICE: table "cross_enc" does not exist, skipping
+DROP TABLE
+NOTICE: table "bpchar_enc_ope" does not exist, skipping
+DROP TABLE
+NOTICE: table "cross_enc_ope" does not exist, skipping
+DROP TABLE
+NOTICE: data encryption key "dek_bpchar_ts" does not exist, skipping
+DROP DEK
+NOTICE: data encryption key "dek_bpchar_ope" does not exist, skipping
+DROP DEK
+NOTICE: key encryption key "kek_bpchar_ts" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 5
+INSERT 0 2
+INSERT 0 5
+INSERT 0 2
+INSERT 0 5
+INSERT 0 2
+=== Setup OK ===
+=== A: 同类型等值比较 ===
+A1_bp_eq_bp|true
+A1_bp_eq_bp_enc|true
+A2_bp_eq_bp_sp|true
+A2_bp_eq_bp_sp_enc|true
+A3_tx_eq_tx|true
+A3_tx_eq_tx_enc|true
+A4_tx_eq_tx_sp|false
+A4_tx_eq_tx_sp_enc|false
+A5_tx_eq_tx_spsp|true
+A5_tx_eq_tx_spsp_enc|true
+A6_vc_eq_vc|true
+A6_vc_eq_vc_enc|true
+A7_vc_eq_vc_sp|false
+A7_vc_eq_vc_sp_enc|false
+A8_bp_eq_const|abc       
+A8_bp_eq_const|abc       
+A8_bp_eq_const_enc|abc       
+A8_bp_eq_const_enc|abc       
+A9_bp_eq_const_sp|abc       
+A9_bp_eq_const_sp|abc       
+A9_bp_eq_const_sp_enc|abc       
+A9_bp_eq_const_sp_enc|abc       
+=== B: 跨类型等值比较（全排列） ===
+B1_bp_eq_tx|true
+B1_bp_eq_tx_enc|true
+B2_bp_eq_tx_tail|false
+B2_bp_eq_tx_tail_enc|false
+B3_bp_tail_eq_tx|true
+B3_bp_tail_eq_tx_enc|true
+B4_bp_eq_vc|true
+B4_bp_eq_vc_enc|true
+B5_bp_eq_vc_tail|true
+B5_bp_eq_vc_tail_enc|true
+B6_bp_tail_eq_vc|true
+B6_bp_tail_eq_vc_enc|true
+B7_tx_eq_bp|true
+B7_tx_eq_bp_enc|true
+B8_tx_tail_eq_bp|false
+B8_tx_tail_eq_bp_enc|false
+B9_tx_eq_bp_tail|true
+B9_tx_eq_bp_tail_enc|true
+B10_vc_eq_bp|true
+B10_vc_eq_bp_enc|true
+B11_vc_tail_eq_bp|true
+B11_vc_tail_eq_bp_enc|true
+B12_vc_eq_bp_tail|true
+B12_vc_eq_bp_tail_enc|true
+B13_tx_eq_vc|true
+B13_tx_eq_vc_enc|true
+B14_tx_tail_eq_vc|false
+B14_tx_tail_eq_vc_enc|false
+B15_tx_eq_vc_tail|false
+B15_tx_eq_vc_tail_enc|false
+B16_vc_eq_tx|true
+B16_vc_eq_tx_enc|true
+B17_vc_tail_eq_tx|false
+B17_vc_tail_eq_tx_enc|false
+B18_vc_eq_tx_tail|false
+B18_vc_eq_tx_tail_enc|false
+=== C: 范围比较（全排列） ===
+C3_tx_gt_abc|2|abc   
+C3_tx_gt_abc_ope|2|abc   
+C4_tx_gt_tail|true
+C4_tx_gt_tail_ope|true
+C5_bp_gt_bp_tail|false
+C5_bp_gt_bp_tail_ope|false
+C6_bp_lt_abc|3|          
+C6_bp_lt_abc|5|          
+C6_bp_lt_abc_ope|3|
+C6_bp_lt_abc_ope|5|          
+C7_bp_gt_tx|false
+C7_bp_gt_tx_ope|false
+C8_tx_gt_bp|false
+C8_tx_gt_bp_ope|false
+C9_bp_between|1|abc       
+C9_bp_between|2|abc       
+C9_bp_between_ope|1|abc       
+C9_bp_between_ope|2|abc       
+=== D: 纯空格/边界值 ===
+D1_sp_vs_empty|          
+D1_sp_vs_empty|          
+D1_sp_vs_empty_enc|
+D1_sp_vs_empty_enc|          
+D2_sp_eq_sp|true
+D2_sp_eq_sp_enc|true
+D3_bp_sp_eq_tx_sp|false
+D3_bp_sp_eq_tx_sp_enc|false
+D4_bp_sp_eq_vc_sp|true
+D4_bp_sp_eq_vc_sp_enc|true
+D5_vc_sp_eq_empty|
+D5_vc_sp_eq_empty_enc|
+D6_tx_sp_gt_abc|2
+D6_tx_sp_gt_abc_ope|2
+D8_sp_gt_empty|true
+D8_sp_gt_empty_ope|true
+D9_tx_sp_eq_bp_sp|false
+D9_tx_sp_eq_bp_sp_enc|false
+D10_bp_empty_eq_bp_sp|true
+D10_bp_empty_eq_bp_sp_enc|true
+D11_bp_empty_eq_vc_sp|true
+D11_bp_empty_eq_vc_sp_enc|true
+D12_bp_empty_eq_vc_sp_ope|true
+D12_bp_empty_eq_vc_sp_ope_plain|true
+=== E: 常量比较 ===
+E1_bp_eq_const|abc       
+E1_bp_eq_const|abc       
+E1_bp_eq_const_enc|abc       
+E1_bp_eq_const_enc|abc       
+E2_bp_eq_const_sp|abc       
+E2_bp_eq_const_sp|abc       
+E2_bp_eq_const_sp_enc|abc       
+E2_bp_eq_const_sp_enc|abc       
+E3_tx_eq_const|abc
+E3_tx_eq_const_enc|abc
+E4_tx_eq_const_sp|abc   
+E4_tx_eq_const_sp_enc|abc   
+E5_vc_eq_const_sp|abc   
+E5_vc_eq_const_sp_enc|abc   
+E6_const_eq_bp|abc       
+E6_const_eq_bp|abc       
+E6_const_eq_bp_enc|abc       
+E6_const_eq_bp_enc|abc       
+E7_bp_eq_plain_const|abc       
+E7_bp_eq_plain_const|abc       
+E7_bp_eq_plain_const_enc|abc       
+E7_bp_eq_plain_const_enc|abc       
+E8_tx_gt_const|abc   
+E8_tx_gt_const_ope|abc   
+=== F: SELECT表达式比较 ===
+F1_bp_cmp_eq|true|true
+F1_bp_cmp_eq_enc|true|true
+F2_tx_cmp_eq|true|false
+F2_tx_cmp_eq_enc|true|false
+F3_vc_cmp_eq|true|false
+F3_vc_cmp_eq_enc|true|false
+=== G: NULL/空串 ===
+G1_null|4
+G1_null_enc|4
+G2_empty_bp|3
+G2_empty_bp|5
+G2_empty_bp_enc|3
+G2_empty_bp_enc|5
+G3_empty_tx|3
+G3_empty_tx_enc|3
+=== H: UPDATE跨类型赋值 ===
+UPDATE 1
+H1_enc_tx_from_bp|abc
+UPDATE 1
+H2_enc_bp_from_tx|abc       
+H3_cross_after_update|true
+UPDATE 1
+UPDATE 1
+UPDATE 1
+H1p_tx_from_bp|abc
+UPDATE 1
+H2p_bp_from_tx|abc       
+H3p_cross_after_update|true
+UPDATE 1
+UPDATE 1
+=== I: INSERT隐式转换 ===
+I1_insert_bp|abc       
+I1_insert_bp|abc       
+I1_insert_bp_enc|abc       
+I1_insert_bp_enc|abc       
+I2_insert_bp_sp|abc       
+I2_insert_bp_sp|abc       
+I2_insert_bp_sp_enc|abc       
+I2_insert_bp_sp_enc|abc       
+=== Cleanup ===
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK

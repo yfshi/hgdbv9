@@ -422,8 +422,8 @@ psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/s
 psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/crypto_verify.sql:36: TECC query preprocessing failed: invalid input syntax for type real: "Infinity"
 psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/crypto_verify.sql:37: TECC query preprocessing failed: invalid input syntax for type real: "-Infinity"
 psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/crypto_verify.sql:48: 注意:  表 "test_empty" 不存在
-psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/crypto_verify.sql:70: 错误:  cannot compare encrypted values for ordering: no OPE or DET ciphertext available
-HINT:  Enable OPE or DET encryption on the column to support comparison.
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/crypto_verify.sql:70: 错误:  cannot compare encrypted values for ordering: column has DET but not OPE encryption
+HINT:  DET only supports equality comparison. Add OPE encryption to the column to support ordering.
 psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/crypto_verify.sql:80: 注意:  表 "test_float4_prec" 不存在
 psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/crypto_verify.sql:89: 注意:  表 "test_float8_prec" 不存在
 psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/crypto_verify.sql:98: 注意:  表 "test_numeric_prec" 不存在

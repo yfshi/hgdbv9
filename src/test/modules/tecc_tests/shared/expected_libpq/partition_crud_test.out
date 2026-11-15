@@ -384,8 +384,29 @@ DELETE 1
 # CTE/WITH + 子查询 插入测试
 #####################################################################
 --- WITH + INSERT INTO 分区表 ---
-psql:/.../partition_crud_test.sql:16: NOTICE:  KEK "kek_crud" already exists, skipping
-psql:/.../partition_crud_test.sql:17: NOTICE:  DEK "dek_crud" already exists, skipping
+psql:/.../partition_crud_test.sql:27: NOTICE:  table "t_text_main" does not exist, skipping
+psql:/.../partition_crud_test.sql:27: NOTICE:  table "t_text_a" does not exist, skipping
+psql:/.../partition_crud_test.sql:27: NOTICE:  table "t_text_b" does not exist, skipping
+psql:/.../partition_crud_test.sql:27: NOTICE:  table "t_text_other" does not exist, skipping
+psql:/.../partition_crud_test.sql:96: NOTICE:  table "t_int2_main" does not exist, skipping
+psql:/.../partition_crud_test.sql:96: NOTICE:  table "t_int2_neg" does not exist, skipping
 psql:/.../partition_crud_test.sql:96: NOTICE:  table "t_int2_zero" does not exist, skipping
+psql:/.../partition_crud_test.sql:96: NOTICE:  table "t_int2_pos" does not exist, skipping
+psql:/.../partition_crud_test.sql:96: NOTICE:  table "t_int2_big" does not exist, skipping
+psql:/.../partition_crud_test.sql:157: NOTICE:  table "t_num_main" does not exist, skipping
+psql:/.../partition_crud_test.sql:157: NOTICE:  table "t_num_neg" does not exist, skipping
+psql:/.../partition_crud_test.sql:157: NOTICE:  table "t_num_small" does not exist, skipping
+psql:/.../partition_crud_test.sql:157: NOTICE:  table "t_num_med" does not exist, skipping
+psql:/.../partition_crud_test.sql:157: NOTICE:  table "t_num_large" does not exist, skipping
+psql:/.../partition_crud_test.sql:207: NOTICE:  table "t_f4_main" does not exist, skipping
+psql:/.../partition_crud_test.sql:207: NOTICE:  table "t_f4_cold" does not exist, skipping
+psql:/.../partition_crud_test.sql:207: NOTICE:  table "t_f4_cool" does not exist, skipping
+psql:/.../partition_crud_test.sql:207: NOTICE:  table "t_f4_warm" does not exist, skipping
+psql:/.../partition_crud_test.sql:207: NOTICE:  table "t_f4_hot" does not exist, skipping
+psql:/.../partition_crud_test.sql:250: NOTICE:  table "t_f8_main" does not exist, skipping
+psql:/.../partition_crud_test.sql:250: NOTICE:  table "t_f8_neg" does not exist, skipping
+psql:/.../partition_crud_test.sql:250: NOTICE:  table "t_f8_zero" does not exist, skipping
+psql:/.../partition_crud_test.sql:250: NOTICE:  table "t_f8_pos" does not exist, skipping
+psql:/.../partition_crud_test.sql:250: NOTICE:  table "t_f8_big" does not exist, skipping
 TECC ERROR: WITH clause (CTE) combined with INSERT...SELECT into encrypted table is not supported in TECC mode. The CTE values are computed on the server side and cannot be pre-encrypted by the client. Consider: 1) rewriting as INSERT...VALUES with pre-computed values, or 2) avoiding the WITH clause for INSERTs into encrypted tables.
-psql:/.../partition_crud_test.sql:298: TECC query preprocessing failed: Processor failed to process query
+psql:/.../partition_crud_test.sql:298: TECC query preprocessing failed: INSERT ... SELECT into encrypted column "payload" (position 1) requires a literal constant (optionally signed, optionally a cast with ENCRYPTED WITH (DEK = ...)); pre-compute the value and insert it as a literal

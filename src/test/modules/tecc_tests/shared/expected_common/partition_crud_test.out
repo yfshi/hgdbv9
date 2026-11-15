@@ -301,4 +301,4 @@ NOTICE: table "t_f8_zero" does not exist, skipping
 NOTICE: table "t_f8_pos" does not exist, skipping
 NOTICE: table "t_f8_big" does not exist, skipping
 TECC ERROR: WITH clause (CTE) combined with INSERT...SELECT into encrypted table is not supported in TECC mode. The CTE values are computed on the server side and cannot be pre-encrypted by the client. Consider: 1) rewriting as INSERT...VALUES with pre-computed values, or 2) avoiding the WITH clause for INSERTs into encrypted tables.
-psql:/.../partition_crud_test.sql:298: TECC query preprocessing failed: Processor failed to process query
+psql:/.../partition_crud_test.sql:298: TECC query preprocessing failed: INSERT ... SELECT into encrypted column "payload" (position 1) requires a literal constant (optionally signed, optionally a cast with ENCRYPTED WITH (DEK = ...)); pre-compute the value and insert it as a literal

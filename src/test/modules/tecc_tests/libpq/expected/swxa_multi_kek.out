@@ -1,0 +1,27 @@
+DROP DATABASE
+CREATE DATABASE
+You are now connected to database "tecc_mk_db" as user "postgres".
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+CREATE KEK
+You are now connected to database "tecc_mk_db" as user "postgres".
+kek order|hp_k
+kek order|zz_local
+INSERT 0 1
+hsm kek after 2nd kek|1|100
+hsm kek after 2nd kek|2|999
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+local kek|1|7
+DROP TABLE
+DROP DEK
+DROP KEK
+DROP TABLE
+DROP DEK
+DROP KEK
+You are now connected to database "postgres" as user "postgres".
+DROP DATABASE
+psql:/.../swxa_multi_kek.sql:22: NOTICE:  database "tecc_mk_db" does not exist, skipping

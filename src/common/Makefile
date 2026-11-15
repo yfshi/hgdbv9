@@ -95,10 +95,16 @@ OBJS_COMMON = \
 	sm4_adapter.o \
 	tecc_algorithm/tecc_sm4_ope.o \
 	tecc_algorithm/tecc_search_sm4.o \
+	tecc_algorithm/tecc_sm4_ope.o \
+	tecc_algorithm/tecc_search_sm4.o \
+	tecc_algorithm/tecc_sm2_algo.o \
 	tecc_algorithm/tecc_sm3_internal.o \
 	tecc_algorithm/tecc_sm4_internal.o \
 	tecc_algorithm/tecc_pattern.o \
 	tecc_algorithm/tecc_algorithm_api.o \
+	tecc_algorithm/tecc_ec_elgamal.o \
+	tecc_algorithm/tecc_bsgs_tables_data.o \
+	tecc_algorithm/tecc_elgamal.o \
 	tecc_algorithm/tecc_byteorder.o \
 	tecc_key/high_level_api.o \
 	tecc_key/key_manager.o \
@@ -106,6 +112,7 @@ OBJS_COMMON = \
 	tecc_key/server_interface.o \
 	tecc_key/security.o \
 	tecc_key/config.o \
+	tecc_key/tecc_sm2.o \
 	tecc_key/utils.o
 
 
@@ -247,11 +254,26 @@ tecc_key/%_srv.o: tecc_key/%.c
 	@if test ! -d $(DEPDIR); then mkdir -p $(DEPDIR); fi
 	$(CC) $(CFLAGS) $(filter-out -DFRONTEND,$(CPPFLAGS)) -DFRONTEND=0 -c $< -o $@ -MMD -MP -MF $(DEPDIR)/$(*F)_srv.Po
 
+# ---- ReqID:TECC4.0 - BSGS 静态表数据生成（保证与核心算法一致）----
+# 生成程序直接 include tecc_ec_elgamal.c 复用核心建表逻辑；核心算法
+# （tecc_ec_elgamal.c）变化时自动重新编译生成程序并重新生成表数据，
+# 使静态表数据始终与算法同源（详见 tecc_gen_bsgs_table.c 文件头注释）。
+tecc_algorithm/tecc_gen_bsgs_table: tecc_algorithm/tecc_gen_bsgs_table.c tecc_algorithm/tecc_ec_elgamal.c
+	@if test ! -d $(DEPDIR); then mkdir -p $(DEPDIR); fi
+	$(CC) $(CFLAGS) $(PTHREAD_CFLAGS) -I$(top_srcdir)/src/include -I$(srcdir)/tecc_algorithm \
+		-o $@ $(srcdir)/tecc_algorithm/tecc_gen_bsgs_table.c $(LDFLAGS) -lssl -lcrypto -lz $(PTHREAD_LIBS)
+
+tecc_algorithm/tecc_bsgs_tables_data.c tecc_algorithm/tecc_bsgs_tables_data.h: tecc_algorithm/tecc_gen_bsgs_table tecc_algorithm/tecc_ec_elgamal.c
+	cd $(srcdir)/tecc_algorithm && ./tecc_gen_bsgs_table
+
+tecc_algorithm/tecc_ec_elgamal.o tecc_algorithm/tecc_ec_elgamal_shlib.o tecc_algorithm/tecc_ec_elgamal_srv.o: tecc_algorithm/tecc_bsgs_tables_data.h
+
 # kwlist_d.h is in the distribution tarball, so it is not cleaned here.
 clean distclean:
 	rm -f libpgcommon.a libpgcommon_shlib.a libpgcommon_srv.a
 	rm -f $(OBJS_FRONTEND) $(OBJS_SHLIB) $(OBJS_SRV)
 	rm -f tecc_algorithm/*.o tecc_algorithm/*_shlib.o tecc_algorithm/*_srv.o
+	rm -f tecc_algorithm/tecc_gen_bsgs_table
 	rm -f tecc_key/*.o tecc_key/*_shlib.o tecc_key/*_srv.o
 
 maintainer-clean: distclean

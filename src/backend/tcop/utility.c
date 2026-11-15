@@ -8,7 +8,6 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
- *
  * IDENTIFICATION
  *	  src/backend/tcop/utility.c
  *
@@ -312,6 +311,7 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_CreateCollectionTypeStmt:
 		case T_AlterCollectionTypeStmt:
 		/* End - ReqID:SRS-SQL-Collection */
+		case T_AlterKekStmt:
 		case T_CreateKekStmt:
 		case T_CreateDekStmt:
 			{
@@ -1830,6 +1830,10 @@ ProcessUtilitySlow(ParseState *pstate,
 				address = CreateExtension(pstate, (CreateExtensionStmt *) parsetree);
 				break;
 
+			case T_AlterKekStmt:
+				address = AlterKekCmd((AlterKekStmt *) parsetree);
+				break;
+
 			case T_CreateKekStmt:
 				address = CreateKek((CreateKekStmt *) parsetree);
 				break;
@@ -2910,6 +2914,18 @@ CreateCommandTag(Node *parsetree)
 		case T_CreateDekStmt:
 			tag = CMDTAG_CREATE_DEK;
 			break;
+
+		/*
+		 * ReqID:TECC4.0 - ALTER KEK 此前与 CREATE KEK 共用 CMDTAG_CREATE_KEK，
+		 * 于是 psql 把 ALTER KEK 显示成 "CREATE KEK"。KEK 名下有 DEK 时轮换会
+		 * 返回 hg_kek_rotate_dek_arg 的结果集，客户端显示的是结果集而非命令标签，
+		 * 所以只有"无 DEK 的 KEK 轮换"能看见这个错误标签；依赖命令标签判断
+		 * 语句类型的脚本/工具在任何情况下都会误判。
+		 */
+		case T_AlterKekStmt:
+			tag = CMDTAG_ALTER_KEK;
+			break;
+
 		case T_AlterTableSpaceOptionsStmt:
 			tag = CMDTAG_ALTER_TABLESPACE;
 			break;
@@ -3892,6 +3908,7 @@ GetCommandLogLevel(Node *parsetree)
 
 		case T_CreateStmt:
 		case T_CreateForeignTableStmt:
+		case T_AlterKekStmt:
 		case T_CreateKekStmt:
 		case T_CreateDekStmt:
 			lev = LOGSTMT_DDL;

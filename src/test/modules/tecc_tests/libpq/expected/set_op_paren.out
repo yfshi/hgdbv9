@@ -1,0 +1,55 @@
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+INSERT 0 3
+INSERT 0 3
+1_baseline|1|alpha|10
+1_baseline|2|beta|20
+1_baseline|3|gamma|30
+2_plain_except|2|beta
+2_plain_except|3|gamma
+3_plain_union|1|alpha
+3_plain_union|2|beta
+3_plain_union|3|gamma
+3_plain_union|4|delta
+2|beta
+3|gamma
+4|delta
+2|beta
+3|gamma
+2|beta
+3|gamma
+2|beta
+3|gamma
+1|alpha
+3|gamma
+2|beta
+3|gamma
+4|delta
+1|alpha
+2|beta
+1|alpha
+2|beta
+3|gamma
+4|delta
+1|10
+3|30
+1|alpha
+1|alpha
+2|beta
+3|gamma
+4|delta
+8_paren_sublink|beta
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../set_op_paren.sql:18: NOTICE:  table "test_setop_a" does not exist, skipping
+psql:/.../set_op_paren.sql:19: NOTICE:  table "test_setop_b" does not exist, skipping
+psql:/.../set_op_paren.sql:20: NOTICE:  data encryption key "dek_setop" does not exist, skipping
+psql:/.../set_op_paren.sql:21: NOTICE:  key encryption key "kek_setop" does not exist, skipping

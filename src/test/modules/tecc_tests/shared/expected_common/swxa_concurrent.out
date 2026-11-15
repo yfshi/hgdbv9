@@ -1,0 +1,30 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+(1 row)
+main_after|1|100
+main_after|2|200
+main_after|3|300
+(3 rows)
+INSERT 0 1
+main_final|1|100
+main_final|2|200
+main_final|3|300
+main_final|4|500
+(4 rows)
+=== background worker ===
+INSERT 0 1
+bg_final|1|100
+bg_final|2|200
+bg_final|3|300
+bg_final|4|500
+DROP TABLE
+DROP KEK
+NOTICE: table "conc_t" does not exist, skipping
+NOTICE: data encryption key "conc_dek" does not exist, skipping
+NOTICE: key encryption key "conc_kek" does not exist, skipping
+NOTICE: drop cascades to data encryption key conc_dek

@@ -69,7 +69,9 @@
 #include "utils/ora_compatible.h"
 #include "utils/guc.h"
 /* End - ReqID:SRS-SQL-ROWNUM */
-
+/* Begin - ReqID:TECC4.0 */
+#include "utils/tecc/tecc_index.h"
+/* End - ReqID:TECC4.0 */
 
 /* GUC parameters */
 double		cursor_tuple_fraction = DEFAULT_CURSOR_TUPLE_FRACTION;
@@ -161,6 +163,9 @@ static bool is_degenerate_grouping(PlannerInfo *root);
 static void create_degenerate_grouping_paths(PlannerInfo *root,
 											 RelOptInfo *input_rel,
 											 RelOptInfo *grouped_rel);
+/* Begin - ReqID:TECC4.0 */
+static bool tecc_group_columns_need_hash(PlannerInfo *root, List *groupClause);
+/* End - ReqID:TECC4.0 */
 static RelOptInfo *make_grouping_rel(PlannerInfo *root, RelOptInfo *input_rel,
 									 PathTarget *target, bool target_parallel_safe,
 									 Node *havingQual);
@@ -3930,6 +3935,69 @@ get_number_of_groups(PlannerInfo *root,
 	return dNumGroups;
 }
 
+/* Begin - ReqID:TECC4.0 */
+/*
+ * tecc_group_columns_need_hash
+ *		Can sort-based grouping be ruled out because a GROUP BY key is an
+ *		encrypted column without an OPE ciphertext segment?
+ *
+ * grouping_is_sortable() is true for encrypted types (they register a
+ * btree opfamily), but cipherdata_cmp_internal() can only order values
+ * that carry OPE.  DET-only / RND-only / SEARCH-only columns would fail
+ * at execution time under Sort + GroupAggregate even though grouping
+ * itself only needs equality (cipherdata_eq / cipherdata_hash).  When
+ * such a bare base-table column appears in the GROUP BY list, callers
+ * must not offer the sort-based grouping path.
+ *
+ * Expressions and non-base-table Vars cannot be resolved statically;
+ * return false for those keys so the regular cost-based choice stands
+ * (same conservative rule as tecc_setop_columns_need_hash).
+ */
+static bool
+tecc_group_columns_need_hash(PlannerInfo *root, List *groupClause)
+{
+	ListCell   *lc;
+
+	if (root->parse == NULL || groupClause == NIL)
+		return false;
+
+	foreach(lc, groupClause)
+	{
+		SortGroupClause *sgc = (SortGroupClause *) lfirst(lc);
+		TargetEntry *tle;
+		Node	   *expr;
+		Var		   *var;
+		RangeTblEntry *rte;
+
+		tle = get_sortgroupclause_tle(sgc, root->parse->targetList);
+		if (tle == NULL || tle->expr == NULL)
+			continue;
+
+		expr = (Node *) tle->expr;
+		while (expr != NULL && IsA(expr, RelabelType))
+			expr = (Node *) ((RelabelType *) expr)->arg;
+		if (expr == NULL || !IsA(expr, Var))
+			continue;
+
+		var = (Var *) expr;
+		if (var->varlevelsup != 0 || var->varattno <= 0 ||
+			var->varno <= 0 ||
+			var->varno > list_length(root->parse->rtable))
+			continue;
+
+		rte = planner_rt_fetch(var->varno, root);
+		if (rte == NULL || rte->rtekind != RTE_RELATION)
+			continue;
+
+		if (!tecc_column_supports_ordering(rte->relid,
+										   (int16) var->varattno))
+			return true;
+	}
+
+	return false;
+}
+/* End - ReqID:TECC4.0 */
+
 /*
  * create_grouping_paths
  *
@@ -3979,6 +4047,17 @@ create_grouping_paths(PlannerInfo *root,
 	{
 		int			flags = 0;
 		GroupPathExtraData extra;
+		/* Begin - ReqID:TECC4.0 */
+		bool		tecc_need_hash;
+		/* End - ReqID:TECC4.0 */
+
+		/*
+		 * Begin - ReqID:TECC4.0
+		 * Does a DET-only (no OPE) GROUP BY key rule sort-based grouping out?
+		 * Both the sort and the hash decision below need the answer.
+		 * End - ReqID:TECC4.0
+		 */
+		tecc_need_hash = tecc_group_columns_need_hash(root, parse->groupClause);
 
 		/*
 		 * Determine whether it's possible to perform sort-based
@@ -3990,9 +4069,20 @@ create_grouping_paths(PlannerInfo *root,
 		 * If we have grouping sets, we might be able to sort some but not all
 		 * of them; in this case, we need can_sort to be true as long as we
 		 * must consider any sorted-input plan.
+		 *
+		 * Begin - ReqID:TECC4.0
+		 * A bare DET-only (no OPE) GROUP BY key cannot be sorted at execution
+		 * time even though grouping_is_sortable() says yes; withhold the sort
+		 * flag so the planner only offers HashAggregate (equality/hash on DET).
+		 * Rollup grouping sets keep the sort flag as before — they still need
+		 * sorted input for partial grouping.
+		 * End - ReqID:TECC4.0
 		 */
 		if ((gd && gd->rollups != NIL)
-			|| grouping_is_sortable(parse->groupClause))
+			|| (grouping_is_sortable(parse->groupClause) &&
+				/* Begin - ReqID:TECC4.0 */
+				!tecc_need_hash))
+				/* End - ReqID:TECC4.0 */
 			flags |= GROUPING_CAN_USE_SORT;
 
 		/*
@@ -4012,6 +4102,14 @@ create_grouping_paths(PlannerInfo *root,
 		 * support ordered-set aggregates in hashed aggregation, but that case
 		 * is also included in the numOrderedAggs count.
 		 *
+		 * Begin - ReqID:TECC4.0
+		 * Exception: TECC dedups the supported single bare encrypted-column
+		 * DISTINCT form with a per-group TupleHashTable rather than a Tuplesort,
+		 * so only that form is not counted in numOrderedAggs (see prepagg.c).
+		 * Other DISTINCT forms, aggregates with an explicit ORDER BY, and
+		 * ordered-set aggregates still are.
+		 * End - ReqID:TECC4.0
+		 *
 		 * Note: grouping_is_hashable() is much more expensive to check than
 		 * the other gating conditions, so we want to do it last.
 		 */
@@ -4019,6 +4117,26 @@ create_grouping_paths(PlannerInfo *root,
 			 root->numOrderedAggs == 0 &&
 			 (gd ? gd->any_hashable : grouping_is_hashable(parse->groupClause))))
 			flags |= GROUPING_CAN_USE_HASH;
+
+		/*
+		 * Begin - ReqID:TECC4.0
+		 * Take the sort path back when hashing is not on offer either.
+		 * numOrderedAggs > 0 (aggregate-level DISTINCT or ORDER BY) is the
+		 * main way this happens: hashed aggregation is off the table, so
+		 * withholding sort on top of it leaves the grouping rel with no path
+		 * at all and the query dies with a bare "could not implement GROUP BY
+		 * / Some of the datatypes only support hashing, while others only
+		 * support sorting" that says nothing about the encrypted column.
+		 * Such a query cannot be executed by any plan (Sort + GroupAggregate
+		 * on a DET-only key fails in cipherdata_cmp_internal, and hashing
+		 * cannot do ordered aggregates), so keep the behaviour of letting it
+		 * fail at execution time with the TECC-specific ordering diagnostic
+		 * instead of a generic planner one.
+		 * End - ReqID:TECC4.0
+		 */
+		if (tecc_need_hash && (flags & GROUPING_CAN_USE_HASH) == 0 &&
+			grouping_is_sortable(parse->groupClause))
+			flags |= GROUPING_CAN_USE_SORT;
 
 		/*
 		 * Determine whether partial aggregation is possible.

@@ -294,7 +294,6 @@ socket_close(int code, Datum arg)
 /*
  * Streams -- wrapper around Unix socket system calls
  *
- *
  *		Stream functions are used for vanilla TCP connection protocol.
  */
 
@@ -1412,6 +1411,13 @@ internal_flush(void)
 					if (OidIsValid(MyDatabaseId) && audit_system_event_hook)
 						audit_system_event_hook(true, SYSTEM_EVENT_CMD_FAIL);
 				}
+				AbortCurrentTransaction();
+				StartTransactionCommand();
+				UserAbortTransactionBlock(false);
+				CommitTransactionCommand();
+
+				if (OidIsValid(MyDatabaseId) && audit_system_event_hook)
+					audit_system_event_hook(true, SYSTEM_EVENT_CMD_FAIL);
 #endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 

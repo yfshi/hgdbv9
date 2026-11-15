@@ -229,6 +229,34 @@ DropDek(DropStmt *stmt)
             table_close(enc_col_rel, AccessShareLock);
         }
 
+        /* ReqID:TECC4.0 - 同态 DEK 的绑定不在 column_key_id 上，而在
+         * hg_encrypted_column_args 的 he_add_dek/he_mul_dek 条目里，上面的
+         * 占用检查看不到。纯同态列的 column_key_id 是空的，于是列还引用着密钥、
+         * 密钥却能删掉；重建同名 DEK 时分布式身份标识由"模式名.密钥名"哈希得出、
+         * 与原来完全相同，写入点的跨 DEK 校验会照样通过，遗留密文却已解不开。
+         * 因此这里必须一并拦住。 */
+        {
+            Oid            he_table_oid = InvalidOid;
+            char          *he_column_name = NULL;
+            const char    *he_arg_key = NULL;
+
+            if (find_he_dek_bound_column(dek_form->column_key_distributed_id,
+                                         &he_table_oid, &he_column_name,
+                                         &he_arg_key))
+            {
+                ereport(ERROR,
+                        (errcode(ERRCODE_DEPENDENT_OBJECTS_STILL_EXIST),
+                         errmsg("cannot drop data encryption key \"%s\" "
+                                "because encrypted columns depend on it",
+                                dek_name),
+                         errdetail("Encrypted column \"%s\" in table OID %u "
+                                   "uses this DEK as its %s key.",
+                                   he_column_name, he_table_oid, he_arg_key)));
+            }
+            if (he_column_name != NULL)
+                pfree(he_column_name);
+        }
+
         /* Create object address for dependency tracking */
         dek_addr.classId = HgDekRelationId;
         dek_addr.objectId = dek_oid;

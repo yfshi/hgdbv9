@@ -133,6 +133,11 @@ extern int security_decrypt_dek_with_hmac(const unsigned char *encrypted_dek, si
                                          const unsigned char *kek, size_t kek_len,
                                          unsigned char **plain_dek, size_t *plain_dek_len);
 
+/* DEK decryption with automatic format detection (SM2 envelope vs SM4-CBC+HMAC) */
+extern int security_decrypt_dek_auto(const unsigned char *encrypted_dek, size_t encrypted_dek_len,
+                                     const unsigned char *kek, size_t kek_len,
+                                     unsigned char **plain_dek, size_t *plain_dek_len);
+
 /* HMAC operations */
 extern int security_generate_hmac(const unsigned char *data, size_t data_len,
                                  const unsigned char *key, size_t key_len,

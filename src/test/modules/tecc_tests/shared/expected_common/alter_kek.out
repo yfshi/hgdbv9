@@ -1,0 +1,148 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+=== 1 CREATE KEK (old) ===
+(1 row)
+CREATE KEK
+=== 2 CREATE DEK ===
+(1 row)
+CREATE DEK
+=== 3 CREATE TABLE + INSERT ===
+(1 row)
+CREATE TABLE
+INSERT 0 3
+=== 4 BEFORE ALTER ===
+(1 row)
+1|Alice|30
+2|Bob|25
+3|Charlie|35
+(3 rows)
+=== 5 ALTER KEK ===
+(1 row)
+(1 row)
+=== 6 AFTER ALTER (old data) ===
+(1 row)
+1|Alice|30
+2|Bob|25
+3|Charlie|35
+(3 rows)
+=== 7 INSERT new data ===
+(1 row)
+INSERT 0 2
+=== 8 ALL data ===
+(1 row)
+1|Alice|30
+2|Bob|25
+3|Charlie|35
+4|Diana|28
+5|Eve|22
+(5 rows)
+=== 9 SEARCH ===
+(1 row)
+1|Alice|30
+(1 row)
+=== 10 OPE range ===
+(1 row)
+4|Diana|28
+1|Alice|30
+3|Charlie|35
+(3 rows)
+DROP TABLE
+DROP DEK
+DROP KEK
+=== 11 CREATE asym KEK + sym DEK ===
+(1 row)
+CREATE KEK
+CREATE DEK
+=== 12 envelope length assert ===
+(1 row)
+t
+(1 row)
+=== 13 CREATE TABLE + INSERT (envelope) ===
+(1 row)
+CREATE TABLE
+INSERT 0 3
+1|Eve
+2|Frank
+3|Grace
+(3 rows)
+=== 14 ALTER KEK (envelope re-encrypt) ===
+(1 row)
+(1 row)
+=== 15 AFTER ALTER (envelope) ===
+(1 row)
+1|Eve
+2|Frank
+3|Grace
+(3 rows)
+INSERT 0 1
+1|Eve
+2|Frank
+3|Grace
+4|Hank
+(4 rows)
+=== 16 PUBLIC_KEY updated (HE DEK after rotation) ===
+(1 row)
+t
+(1 row)
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+1|100
+2|200
+(2 rows)
+=== 17 ALTER KEK privilege (Bug 9255) ===
+(1 row)
+DROP ROLE
+CREATE ROLE
+GRANT
+SET
+RESET
+GRANT
+SET
+(1 row)
+RESET
+1|Alice|30
+2|Bob|25
+3|Charlie|35
+4|Diana|28
+5|Eve|22
+(5 rows)
+SET
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+1|owner1
+2|owner2
+(2 rows)
+(1 row)
+1|owner1
+2|owner2
+(2 rows)
+RESET
+=== 99 CLEANUP ===
+(1 row)
+DROP TABLE
+DROP DEK
+DROP KEK
+REVOKE
+REVOKE
+DROP ROLE
+DROP TABLE
+DROP DEK
+DROP KEK
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+NOTICE: table "rot_test" does not exist, skipping
+NOTICE: data encryption key "dek_rotate" does not exist, skipping
+NOTICE: key encryption key "kek_rotate" does not exist, skipping
+NOTICE: table "env_test" does not exist, skipping
+NOTICE: data encryption key "dek_env" does not exist, skipping
+NOTICE: key encryption key "kek_env" does not exist, skipping
+NOTICE: role "u_rot" does not exist, skipping
+ERROR: permission denied for key encryption key kek_rotate

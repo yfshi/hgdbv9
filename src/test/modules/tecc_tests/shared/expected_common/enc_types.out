@@ -54,13 +54,19 @@ DELETE 1
 (1 row)
 CREATE TABLE
 INSERT 0 1
+INSERT 0 1
 1|100|row1
-(1 row)
+1|200|row2
+(2 rows)
 DROP TABLE
 === 6 DEFAULT text_enc ===
 (1 row)
 CREATE TABLE
-(0 rows)
+INSERT 0 1
+INSERT 0 1
+100|world
+99|only_default
+(2 rows)
 DROP TABLE
 === 7 int2 -> int4 ===
 (1 row)
@@ -138,8 +144,45 @@ hello
 (1 row)
 === 9 VIEW ===
 (1 row)
+CREATE VIEW
+1|10|999
+2|20|200
+3|30|300
+(3 rows)
+DROP VIEW
 === cleanup ===
 (1 row)
+DROP TABLE
+DROP DEK
+DROP KEK
+=== 10 multi-condition parity ===
+(1 row)
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+INSERT 0 5
+INSERT 0 5
+1|test数据|100|test文本|123.45
+(1 row)
+1|test数据|100|test文本|123.45
+(1 row)
+2|测试文本|2000|测试数据|56.789
+3|测试test|3000|test测试|67.89
+5|测试样例|20000|测试示例|89.012
+(3 rows)
+2|测试文本|2000|测试数据|56.789
+3|测试test|3000|test测试|67.89
+5|测试样例|20000|测试示例|89.012
+(3 rows)
+3|test测试|3|测试test|3.45
+(1 row)
+3|test测试|3|测试test|3.45
+(1 row)
+(0 rows)
+1|1|123.45|1.23|test数据
+(1 row)
+DROP TABLE
 DROP TABLE
 DROP DEK
 DROP KEK
@@ -147,18 +190,6 @@ NOTICE: table "enc_types_t" does not exist, skipping
 NOTICE: table "enc_types_def" does not exist, skipping
 NOTICE: data encryption key "dek_enc_types" does not exist, skipping
 NOTICE: key encryption key "kek_enc_types" does not exist, skipping
-ERROR: column "val" is of type int4_enc but expression is of type integer
-LINE 1: INSERT INTO enc_types_def (val, name) VALUES (200, 'row2');
-^
-HINT:  You will need to rewrite or cast the expression.
-ERROR: column "val" is of type int4_enc but expression is of type integer
-LINE 1: INSERT INTO enc_types_def (val, note) VALUES (100, 'world');
-^
-HINT:  You will need to rewrite or cast the expression.
-ERROR: invalid hex string: "only_default"
-LINE 1: INSERT INTO enc_types_def (note) VALUES ('only_default');
-^
-DETAIL:  Hex string must contain only 0-9, a-f, A-F characters and may have \x prefix.
 TECC ERROR: SELECT TypeCast processing failed: -1
 psql:/.../enc_types.sql:141: TECC query preprocessing failed: Cannot cast encrypted type text_enc to int2_enc: incompatible encrypted types
 TECC ERROR: SELECT TypeCast processing failed: -1
@@ -216,9 +247,3 @@ LINE 1: ...E'\\x被隐藏的HEX输出'::bpchar_enc::bpchar;
 ERROR: cannot cast type text_enc to text
 LINE 1: ...E'\\x被隐藏的HEX输出'::text_enc::text;
 ^
-ERROR: encrypted data type "int2_enc" requires ENCRYPTED WITH clause
-HINT:  Add ENCRYPTED WITH (dek = dek_name) to the column definition
-ERROR: relation "enc_types_v" does not exist
-LINE 1: SELECT id, c_int2, c_int4 FROM enc_types_v ORDER BY id;
-^
-ERROR: view "enc_types_v" does not exist

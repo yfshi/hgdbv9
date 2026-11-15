@@ -19,6 +19,7 @@
 #include "nodes/params.h"
 #include "nodes/parsenodes.h"
 #include "storage/block.h"
+#include "parser/parsetree.h"
 
 
 /*

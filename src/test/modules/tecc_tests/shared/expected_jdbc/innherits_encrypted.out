@@ -1,0 +1,12 @@
+NOTICE: key encryption key "inh_kek" does not exist, skipping
+DROP KEK
+NOTICE: data encryption key "inh_dek" does not exist, skipping
+DROP DEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+ERROR: ERROR: INHERITS of table with encrypted column "c_det" is not supported
+  Hint: Use PARTITION OF instead of INHERITS for table inheritance with encrypted columns
+DROP TABLE
+DROP DEK
+DROP KEK

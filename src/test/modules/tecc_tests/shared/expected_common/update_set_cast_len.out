@@ -1,0 +1,73 @@
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+=== USCAST-1 对照：裸常量写入 varchar_enc(5) ===
+(1 row)
+abcde|t
+(1 row)
+=== USCAST-2 cast(5) 值 10 字符 -> 截断存 abcde（libpq 13.14）===
+(1 row)
+UPDATE 1
+abcde|t|f
+(1 row)
+=== USCAST-3 cast(20) 值 10 字符 -> 按目标列拒绝、值不变（libpq 13.14b）===
+(1 row)
+abcde|t
+(1 row)
+=== USCAST-4 未声明长度的 cast（::varchar_enc）-> 按目标列拒绝 ===
+(1 row)
+abcde
+(1 row)
+=== USCAST-5a bpchar_enc(3) 值 5 字符 -> 截断存 abc ===
+(1 row)
+UPDATE 1
+abc|t|f
+(1 row)
+=== USCAST-5b cast(2) 写 3 个汉字 -> 按字符计截断为 2 个 ===
+(1 row)
+UPDATE 1
+中文|t|f
+(1 row)
+=== USCAST-6 同句 cast 与裸常量 -> 两者都被加密（libpq 13.14c）===
+(1 row)
+UPDATE 1
+vwxyz|t|qwerty|t
+(1 row)
+=== USCAST-7 INSERT 侧同形态（回归锚点）===
+(1 row)
+CREATE TABLE
+INSERT 0 1
+abcde|t
+(1 row)
+=== USCAST-8a WHERE 的密态 cast 与裸常量都要命中（对齐 libpq 13.15）===
+(1 row)
+UPDATE 1
+1
+(1 row)
+1
+(1 row)
+=== USCAST-8b 纯 SELECT 的密态 cast 与列密文等值（对齐 libpq 13.16）===
+(1 row)
+t
+(1 row)
+=== USCAST-END 清理 ===
+(1 row)
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+NOTICE: table "uscast_t" does not exist, skipping
+NOTICE: table "uscast_ins" does not exist, skipping
+NOTICE: data encryption key "uscast_dek" does not exist, skipping
+NOTICE: key encryption key "uscast_kek" does not exist, skipping
+TECC ERROR: TECC SCHEDULER ERROR: value too long for type character varying(5)
+TECC ERROR: SET clause processing failed: -3
+psql:/.../update_set_cast_len.sql:62: TECC query preprocessing failed: Encryption failed: value too long for type character varying(5)
+TECC ERROR: TECC SCHEDULER ERROR: value too long for type character varying(5)
+TECC ERROR: SET clause processing failed: -3
+psql:/.../update_set_cast_len.sql:68: TECC query preprocessing failed: Encryption failed: value too long for type character varying(5)

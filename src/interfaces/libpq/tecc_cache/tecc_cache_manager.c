@@ -1,11 +1,11 @@
-﻿/* Begin - ReqID:TECC4.0 */
+/* Begin - ReqID:TECC4.0 */
 /*
  * File: tecc_cache_manager.c
  * Abstract:
  *   TECC缓存管理器核心实现，基于简化设计的两层架构。
  *   提供缓存管理器的初始化和基础管理功能。
  *
- * Authored by <Claude Code>, 2026-04-15.
+ * Authored by <wanghaoyan>, 2026-04-15.
  *
  * Copyright:
  *   Copyright (c) 2026, HighGo Software Co.,Ltd. All rights reserved.
@@ -102,6 +102,8 @@ static FeHashTable *create_column_hash_table(void);
 static FeHashTable *create_kek_name_hash_table(void);
 static FeHashTable *create_dek_name_hash_table(void);
 static FeHashTable *create_column_name_hash_table(void);
+static FeHashTable *create_table_schema_hash_table(void);
+static void clear_hash_table_data_pointers(FeHashTable *htab);
 static void destroy_hash_table(FeHashTable *hash_table);
 static void destroy_all_kek_items(FeHashTable *htab);
 static void destroy_all_dek_items(FeHashTable *htab);
@@ -115,7 +117,6 @@ static void destroy_column_cache_item(TeccColumnCacheItem *item);
 /* 缓存刷新辅助函数 */
 static int mark_kek_cache_for_refresh(TeccCacheManager *manager);
 static int mark_dek_cache_for_refresh(TeccCacheManager *manager);
-static int mark_column_cache_for_refresh(TeccCacheManager *manager);
 static int refresh_guc_params(TeccCacheManager *manager);
 
 /* 定时刷新检查函数 */
@@ -226,6 +227,7 @@ tecc_cache_init(TeccState *state)
     manager->kek_name_cache = create_kek_name_hash_table();
     manager->dek_name_cache = create_dek_name_hash_table();
     manager->column_name_cache = create_column_name_hash_table();
+    manager->table_schema_cache = create_table_schema_hash_table();
 
     if (manager->kek_name_cache == NULL || manager->dek_name_cache == NULL || manager->column_name_cache == NULL) {
         if (manager->kek_name_cache != NULL) {
@@ -239,6 +241,10 @@ tecc_cache_init(TeccState *state)
         if (manager->column_name_cache != NULL) {
             destroy_hash_table(manager->column_name_cache);
             manager->column_name_cache = NULL;
+        }
+        if (manager->table_schema_cache != NULL) {
+            destroy_hash_table(manager->table_schema_cache);
+            manager->table_schema_cache = NULL;
         }
         if (manager->kek_cache != NULL) {
             destroy_hash_table(manager->kek_cache);
@@ -337,18 +343,25 @@ tecc_cache_cleanup(TeccState *state)
         manager->column_cache = NULL;
     }
 
-    /* 清理名称查找哈希表 */
+    /* 清理名称查找哈希表 — item已由destroy_all_*_items释放，先清空悬空data指针 */
     if (manager->kek_name_cache != NULL) {
+        clear_hash_table_data_pointers(manager->kek_name_cache);
         destroy_hash_table(manager->kek_name_cache);
         manager->kek_name_cache = NULL;
     }
     if (manager->dek_name_cache != NULL) {
+        clear_hash_table_data_pointers(manager->dek_name_cache);
         destroy_hash_table(manager->dek_name_cache);
         manager->dek_name_cache = NULL;
     }
     if (manager->column_name_cache != NULL) {
+        clear_hash_table_data_pointers(manager->column_name_cache);
         destroy_hash_table(manager->column_name_cache);
         manager->column_name_cache = NULL;
+    }
+    if (manager->table_schema_cache != NULL) {
+        destroy_hash_table(manager->table_schema_cache);
+        manager->table_schema_cache = NULL;
     }
 
     /* 3. 销毁锁 */
@@ -696,8 +709,8 @@ tecc_cache_get_timed_refresh_status(TeccState *state,
 void
 tecc_cache_clear(const TeccState *state)
 {
-	TECC_LOG(TECC_LOG_INFO, "CACHE_CLEAR: called (full cache wipe)");
     TeccCacheManager *manager = NULL;
+	TECC_LOG(TECC_LOG_INFO, "CACHE_CLEAR: called (full cache wipe)");
 
     /* 参数检查 */
     if (state == NULL) {
@@ -714,18 +727,19 @@ tecc_cache_clear(const TeccState *state)
     CACHE_WLOCK(manager);
 
     /* 清理所有缓存数据 */
-    /* 清理KEK缓存 */
+    /* 清理KEK缓存 — 先安全释放item并清空哈希条目data指针，再销毁哈希表 */
     if (manager->kek_cache != NULL) {
+        destroy_all_kek_items(manager->kek_cache);
         destroy_hash_table(manager->kek_cache);
         manager->kek_cache = create_kek_hash_table();
         if (manager->kek_cache == NULL) {
-            /* 哈希表创建失败，但继续清理其他缓存 */
             manager->kek_cache = NULL;
         }
     }
 
     /* 清理DEK缓存 */
     if (manager->dek_cache != NULL) {
+        destroy_all_dek_items(manager->dek_cache);
         destroy_hash_table(manager->dek_cache);
         manager->dek_cache = create_dek_hash_table();
         if (manager->dek_cache == NULL) {
@@ -735,6 +749,7 @@ tecc_cache_clear(const TeccState *state)
 
     /* 清理加密列缓存 */
     if (manager->column_cache != NULL) {
+        destroy_all_column_items(manager->column_cache);
         destroy_hash_table(manager->column_cache);
         manager->column_cache = create_column_hash_table();
         if (manager->column_cache == NULL) {
@@ -742,8 +757,9 @@ tecc_cache_clear(const TeccState *state)
         }
     }
 
-    /* 清理名称查找哈希表 */
+    /* 清理名称查找哈希表 — item已由destroy_all_*_items释放，先清空悬空data指针 */
     if (manager->kek_name_cache != NULL) {
+        clear_hash_table_data_pointers(manager->kek_name_cache);
         destroy_hash_table(manager->kek_name_cache);
         manager->kek_name_cache = create_kek_name_hash_table();
         if (manager->kek_name_cache == NULL) {
@@ -751,6 +767,7 @@ tecc_cache_clear(const TeccState *state)
         }
     }
     if (manager->dek_name_cache != NULL) {
+        clear_hash_table_data_pointers(manager->dek_name_cache);
         destroy_hash_table(manager->dek_name_cache);
         manager->dek_name_cache = create_dek_name_hash_table();
         if (manager->dek_name_cache == NULL) {
@@ -758,10 +775,18 @@ tecc_cache_clear(const TeccState *state)
         }
     }
     if (manager->column_name_cache != NULL) {
+        clear_hash_table_data_pointers(manager->column_name_cache);
         destroy_hash_table(manager->column_name_cache);
         manager->column_name_cache = create_column_name_hash_table();
         if (manager->column_name_cache == NULL) {
             manager->column_name_cache = NULL;
+        }
+    }
+    if (manager->table_schema_cache != NULL) {
+        destroy_hash_table(manager->table_schema_cache);
+        manager->table_schema_cache = create_table_schema_hash_table();
+        if (manager->table_schema_cache == NULL) {
+            manager->table_schema_cache = NULL;
         }
     }
 
@@ -819,6 +844,9 @@ tecc_cache_clear_specific(TeccCacheManager *manager, TeccCacheRefreshType cache_
                 }
             }
             if (manager->kek_name_cache != NULL) {
+                /* 名称缓存与主缓存共享item指针，item已由destroy_all_kek_items释放，
+                 * 先清空悬空data指针防止fe_hash_destroy双重释放 */
+                clear_hash_table_data_pointers(manager->kek_name_cache);
                 destroy_hash_table(manager->kek_name_cache);
                 manager->kek_name_cache = create_kek_name_hash_table();
                 if (manager->kek_name_cache == NULL) {
@@ -843,6 +871,9 @@ tecc_cache_clear_specific(TeccCacheManager *manager, TeccCacheRefreshType cache_
                 }
             }
             if (manager->dek_name_cache != NULL) {
+                /* 名称缓存与主缓存共享item指针，item已由destroy_all_dek_items释放，
+                 * 先清空悬空data指针防止fe_hash_destroy双重释放 */
+                clear_hash_table_data_pointers(manager->dek_name_cache);
                 destroy_hash_table(manager->dek_name_cache);
                 manager->dek_name_cache = create_dek_name_hash_table();
                 if (manager->dek_name_cache == NULL) {
@@ -867,9 +898,20 @@ tecc_cache_clear_specific(TeccCacheManager *manager, TeccCacheRefreshType cache_
                 }
             }
             if (manager->column_name_cache != NULL) {
+                /* 名称缓存与主缓存共享item指针，item已由destroy_all_column_items释放，
+                 * 先清空悬空data指针防止fe_hash_destroy双重释放 */
+                clear_hash_table_data_pointers(manager->column_name_cache);
                 destroy_hash_table(manager->column_name_cache);
                 manager->column_name_cache = create_column_name_hash_table();
                 if (manager->column_name_cache == NULL) {
+                    CACHE_RWUNLOCK(manager);
+                    return TECC_CACHE_ERROR_MEMORY;
+                }
+            }
+            if (manager->table_schema_cache != NULL) {
+                destroy_hash_table(manager->table_schema_cache);
+                manager->table_schema_cache = create_table_schema_hash_table();
+                if (manager->table_schema_cache == NULL) {
                     CACHE_RWUNLOCK(manager);
                     return TECC_CACHE_ERROR_MEMORY;
                 }
@@ -881,8 +923,9 @@ tecc_cache_clear_specific(TeccCacheManager *manager, TeccCacheRefreshType cache_
 
         case TECC_CACHE_REFRESH_ALL:
             /* 清理所有缓存 */
-            /* 清理KEK缓存 */
+            /* 清理KEK缓存 — 先从主表安全释放item，再清空名称缓存悬空指针后销毁两张表 */
             if (manager->kek_cache != NULL) {
+                destroy_all_kek_items(manager->kek_cache);
                 destroy_hash_table(manager->kek_cache);
                 manager->kek_cache = create_kek_hash_table();
                 if (manager->kek_cache == NULL) {
@@ -891,6 +934,7 @@ tecc_cache_clear_specific(TeccCacheManager *manager, TeccCacheRefreshType cache_
                 }
             }
             if (manager->kek_name_cache != NULL) {
+                clear_hash_table_data_pointers(manager->kek_name_cache);
                 destroy_hash_table(manager->kek_name_cache);
                 manager->kek_name_cache = create_kek_name_hash_table();
                 if (manager->kek_name_cache == NULL) {
@@ -903,6 +947,7 @@ tecc_cache_clear_specific(TeccCacheManager *manager, TeccCacheRefreshType cache_
 
             /* 清理DEK缓存 */
             if (manager->dek_cache != NULL) {
+                destroy_all_dek_items(manager->dek_cache);
                 destroy_hash_table(manager->dek_cache);
                 manager->dek_cache = create_dek_hash_table();
                 if (manager->dek_cache == NULL) {
@@ -911,6 +956,7 @@ tecc_cache_clear_specific(TeccCacheManager *manager, TeccCacheRefreshType cache_
                 }
             }
             if (manager->dek_name_cache != NULL) {
+                clear_hash_table_data_pointers(manager->dek_name_cache);
                 destroy_hash_table(manager->dek_name_cache);
                 manager->dek_name_cache = create_dek_name_hash_table();
                 if (manager->dek_name_cache == NULL) {
@@ -923,6 +969,7 @@ tecc_cache_clear_specific(TeccCacheManager *manager, TeccCacheRefreshType cache_
 
             /* 清理列缓存 */
             if (manager->column_cache != NULL) {
+                destroy_all_column_items(manager->column_cache);
                 destroy_hash_table(manager->column_cache);
                 manager->column_cache = create_column_hash_table();
                 if (manager->column_cache == NULL) {
@@ -931,9 +978,18 @@ tecc_cache_clear_specific(TeccCacheManager *manager, TeccCacheRefreshType cache_
                 }
             }
             if (manager->column_name_cache != NULL) {
+                clear_hash_table_data_pointers(manager->column_name_cache);
                 destroy_hash_table(manager->column_name_cache);
                 manager->column_name_cache = create_column_name_hash_table();
                 if (manager->column_name_cache == NULL) {
+                    CACHE_RWUNLOCK(manager);
+                    return TECC_CACHE_ERROR_MEMORY;
+                }
+            }
+            if (manager->table_schema_cache != NULL) {
+                destroy_hash_table(manager->table_schema_cache);
+                manager->table_schema_cache = create_table_schema_hash_table();
+                if (manager->table_schema_cache == NULL) {
                     CACHE_RWUNLOCK(manager);
                     return TECC_CACHE_ERROR_MEMORY;
                 }
@@ -1075,6 +1131,7 @@ create_cache_manager(PGconn *conn)
     manager->kek_name_cache = NULL;
     manager->dek_name_cache = NULL;
     manager->column_name_cache = NULL;
+    manager->table_schema_cache = NULL;
 
     return manager;
 }
@@ -1147,18 +1204,25 @@ destroy_cache_manager(TeccCacheManager *manager, bool cleanup_already_done)
         manager->column_cache = NULL;
     }
 
-    /* 释放名称查找哈希表（如果有） */
+    /* 释放名称查找哈希表（如果有）——item已由destroy_all_*_items释放，先清空悬空data指针 */
     if (manager->kek_name_cache != NULL) {
+        clear_hash_table_data_pointers(manager->kek_name_cache);
         destroy_hash_table(manager->kek_name_cache);
         manager->kek_name_cache = NULL;
     }
     if (manager->dek_name_cache != NULL) {
+        clear_hash_table_data_pointers(manager->dek_name_cache);
         destroy_hash_table(manager->dek_name_cache);
         manager->dek_name_cache = NULL;
     }
     if (manager->column_name_cache != NULL) {
+        clear_hash_table_data_pointers(manager->column_name_cache);
         destroy_hash_table(manager->column_name_cache);
         manager->column_name_cache = NULL;
+    }
+    if (manager->table_schema_cache != NULL) {
+        destroy_hash_table(manager->table_schema_cache);
+        manager->table_schema_cache = NULL;
     }
 
     /* 重置状态标志（确保清理后状态一致） */
@@ -1357,20 +1421,6 @@ tecc_cache_load_guc_params(const TeccState *state)
 }
 
 /*
- * get_live_search_path - 从libpq连接获取实时的search_path值
- *
- * libpq通过ParameterStatus机制自动接收SET后的search_path更新，
- * 不需要单独的缓存刷新。
- */
-static const char *
-get_live_search_path(const TeccState *state)
-{
-    if (state == NULL || state->conn == NULL)
-        return NULL;
-    return PQparameterStatus(state->conn, "search_path");
-}
-
-/*
  * parse_current_schema_from_search_path - 从search_path字符串解析current_schema
  *
  * 按PG规则：取search_path第一个schema，处理"$user"替换。
@@ -1511,7 +1561,16 @@ sync_guc_params_from_live_conn(const TeccState *state, TeccCacheManager *manager
 
     /* 重新解析search_path_schemas（parse函数有自己加锁，不能在持有锁时调用） */
     if (changed)
+    {
+        /* ReqID:TECC4.0 - search_path 变化：表→schema 映射缓存失效重建
+         * （同一表名在不同 search_path 下解析结果不同，必须整体失效） */
+        if (manager->table_schema_cache != NULL)
+        {
+            destroy_hash_table(manager->table_schema_cache);
+            manager->table_schema_cache = create_table_schema_hash_table();
+        }
         tecc_cache_parse_search_path(manager, state->conn);
+    }
 }
 
 /*
@@ -1569,6 +1628,13 @@ tecc_cache_update_search_path(struct TeccState *state, const char *new_search_pa
 
     CACHE_UNLOCK(manager);
 
+    /* ReqID:TECC4.0 - search_path 变化：表→schema 映射缓存失效重建 */
+    if (manager->table_schema_cache != NULL)
+    {
+        destroy_hash_table(manager->table_schema_cache);
+        manager->table_schema_cache = create_table_schema_hash_table();
+    }
+
     /* 重新解析search_path_schemas */
     tecc_cache_parse_search_path(manager, state->conn);
 }
@@ -1607,48 +1673,19 @@ tecc_cache_get_guc_param(const TeccState *state, const char *param_name)
     }
 
     /* ============================================================
-     * search_path / current_schema — 使用PQparameterStatus实时值
+     * search_path / current_schema — 先同步 ParameterStatus 权威值
+     * 到缓存，再从缓存统一读取。
+     * 原因：PQparameterStatus 返回 conn->pstatus 内部指针，下次收到
+     * 同名的 ParameterStatus 消息时会被 pqSaveParameterStatus free 掉
+     * （use-after-free）；统一先 sync 进缓存（strdup 堆内存）再返回，
+     * 指针稳定且缓存始终是最新权威值。
      * ============================================================ */
-    if (strcmp(param_name, "search_path") == 0)
+    if (strcmp(param_name, "search_path") == 0 ||
+        strcmp(param_name, "current_schema") == 0)
     {
-        const char *live_sp = get_live_search_path(state);
-        if (live_sp != NULL && live_sp[0] != '\0')
-            return live_sp;
-        /* fallback到缓存 */
-    }
-
-    if (strcmp(param_name, "current_schema") == 0)
-    {
-        const char *live_sp = get_live_search_path(state);
-        if (live_sp != NULL && live_sp[0] != '\0')
-        {
-            const char *user_name = NULL;
-            char *computed;
-
-            if (state->conn != NULL)
-            {
-                user_name = PQparameterStatus(state->conn, "session_authorization");
-                if (user_name == NULL || user_name[0] == '\0')
-                    user_name = PQuser(state->conn);
-            }
-
-            computed = parse_current_schema_from_search_path(live_sp, user_name);
-            if (computed != NULL)
-            {
-                TECC_CACHE_DEBUG("tecc_cache_get_guc_param: current_schema = %s (live)", computed);
-                /* 注意：返回的字符串是pg_malloc分配的，调用者不能直接free它
-                 * 但这里我们直接返回，调用者只读取不释放，会引起内存泄漏。
-                 * 解决方案：用线程局部静态变量暂存 */
-                {
-                    static TECC_THREAD_LOCAL char cached_result[NAMEDATALEN];
-                    strncpy(cached_result, computed, NAMEDATALEN - 1);
-                    cached_result[NAMEDATALEN - 1] = '\0';
-                    pg_free(computed);
-                    return cached_result;
-                }
-            }
-        }
-        /* fallback到缓存 */
+        manager = (TeccCacheManager *)state->metadata_cache;
+        if (manager != NULL)
+            sync_guc_params_from_live_conn(state, manager);
     }
 
     /* ============================================================
@@ -1965,39 +2002,6 @@ tecc_cache_mark_dek_refresh(const TeccState *state)
     {
         TECC_CACHE_DEBUG("公共接口：标记DEK缓存刷新失败，无法获取缓存管理器");
     }
-}
-
-/*
- * mark_column_cache_for_refresh - 标记加密列缓存需要刷新
- *
- * 参数:
- *   manager - 缓存管理器
- *
- * 返回:
- *   0表示成功，非0表示错误码
- *
- * 说明:
- *   此函数仅设置刷新标记，实际的缓存清空和重新加载将在后续查询时
- *   通过延迟刷新机制执行。
- */
-static int
-mark_column_cache_for_refresh(TeccCacheManager *manager)
-{
-    /* 加锁保护缓存刷新标记设置 */
-    CACHE_WLOCK(manager);
-
-    /* 设置加密列缓存需要刷新标记 */
-    manager->column_cache_needs_refresh = true;
-
-    /* 更新最后同步时间 */
-    manager->last_sync_time = time(NULL);
-
-    /* 解锁 */
-    CACHE_RWUNLOCK(manager);
-
-    TECC_CACHE_DEBUG("标记加密列缓存需要刷新");
-
-    return TECC_CACHE_OK;
 }
 
 /*
@@ -2322,6 +2326,65 @@ compare_column_name_keys(const void *key1, const void *key2, Size keysize)
     return 0;
 }
 
+/* ReqID:TECC4.0 - 未限定表名→schema 映射缓存值（键：TableSchemaHashKey） */
+typedef struct {
+    char schema_name[NAMEDATALEN];       /* 解析出的真实 schema */
+    bool not_found;                      /* 表不在 search_path 任何 schema */
+} TableSchemaCacheValue;
+
+/*
+ * hash_table_schema_key - 表名→schema 缓存键哈希函数
+ *
+ * ReqID:TECC4.0 - 组合 database_name + table_name（djb2 风格，同列名缓存）
+ */
+static uint32
+hash_table_schema_key(const void *key, Size keysize)
+{
+    const TableSchemaHashKey *ts_key = (const TableSchemaHashKey *)key;
+    uint32 hash = 0;
+    const char *p;
+
+    for (p = ts_key->database_name; *p; p++) {
+        hash = hash * 31 + *p;
+    }
+    for (p = ts_key->table_name; *p; p++) {
+        hash = hash * 31 + *p;
+    }
+    return hash;
+}
+
+/*
+ * compare_table_schema_keys - 表名→schema 缓存键比较函数
+ *
+ * ReqID:TECC4.0 - 0表示相等，非0表示不相等
+ */
+static int
+compare_table_schema_keys(const void *key1, const void *key2, Size keysize)
+{
+    const TableSchemaHashKey *k1 = (const TableSchemaHashKey *)key1;
+    const TableSchemaHashKey *k2 = (const TableSchemaHashKey *)key2;
+
+    if (strcmp(k1->database_name, k2->database_name) != 0) return 1;
+    if (strcmp(k1->table_name, k2->table_name) != 0) return 1;
+    return 0;
+}
+
+/*
+ * create_table_schema_hash_table - 创建表名→schema 映射哈希表
+ *
+ * ReqID:TECC4.0 - 返回创建的哈希表指针，失败返回NULL
+ */
+static FeHashTable *
+create_table_schema_hash_table(void)
+{
+    return fe_hash_create("TECC Table Schema Cache",  /* 表名 */
+                          sizeof(TableSchemaHashKey), /* 键大小 */
+                          sizeof(TableSchemaHashKey) + sizeof(TableSchemaCacheValue), /* 条目大小 */
+                          hash_table_schema_key,     /* 哈希函数 */
+                          compare_table_schema_keys, /* 比较函数 */
+                          64);                       /* 初始大小 */
+}
+
 /*
  * create_kek_hash_table - 创建KEK哈希表
  *
@@ -2445,7 +2508,30 @@ destroy_hash_table(FeHashTable *hash_table)
 }
 
 /*
+ * clear_hash_table_data_pointers - 清空哈希表所有条目的data指针（置NULL）
+ *
+ * 用于名称缓存哈希表（dek_name_cache/kek_name_cache/column_name_cache），
+ * 在主缓存已通过 destroy_all_*_items 释放了共享的 item 后，
+ * 将名称缓存中悬空的 data 指针置 NULL，防止 fe_hash_destroy 双重释放。
+ */
+static void
+clear_hash_table_data_pointers(FeHashTable *htab)
+{
+    FeHashSeqStatus status;
+    void *entry;
+    if (htab == NULL)
+        return;
+    fe_hash_seq_init(&status, htab);
+    while ((entry = fe_hash_seq_search(&status)) != NULL)
+    {
+        *(void **)entry = NULL;
+    }
+}
+
+/*
  * destroy_all_kek_items - 遍历KEK哈希表，释放所有KEK缓存项
+ *
+ * 释放后将哈希条目的data指针置NULL，防止后续fe_hash_destroy双重释放。
  */
 static void
 destroy_all_kek_items(FeHashTable *htab)
@@ -2459,12 +2545,17 @@ destroy_all_kek_items(FeHashTable *htab)
     {
         TeccKekCacheItem *item = *(TeccKekCacheItem **)entry;
         if (item != NULL)
+        {
             destroy_kek_cache_item(item);
+            *(void **)entry = NULL;
+        }
     }
 }
 
 /*
  * destroy_all_dek_items - 遍历DEK哈希表，释放所有DEK缓存项
+ *
+ * 释放后将哈希条目的data指针置NULL，防止后续fe_hash_destroy双重释放。
  */
 static void
 destroy_all_dek_items(FeHashTable *htab)
@@ -2478,12 +2569,17 @@ destroy_all_dek_items(FeHashTable *htab)
     {
         TeccDekCacheItem *item = *(TeccDekCacheItem **)entry;
         if (item != NULL)
+        {
             destroy_dek_cache_item(item);
+            *(void **)entry = NULL;
+        }
     }
 }
 
 /*
  * destroy_all_column_items - 遍历Column哈希表，释放所有Column缓存项
+ *
+ * 释放后将哈希条目的data指针置NULL，防止后续fe_hash_destroy双重释放。
  */
 static void
 destroy_all_column_items(FeHashTable *htab)
@@ -2497,7 +2593,10 @@ destroy_all_column_items(FeHashTable *htab)
     {
         TeccColumnCacheItem *item = *(TeccColumnCacheItem **)entry;
         if (item != NULL)
+        {
             destroy_column_cache_item(item);
+            *(void **)entry = NULL;
+        }
     }
 }
 
@@ -2536,10 +2635,21 @@ get_cache_manager(const TeccState *state)
     /* 从TeccState获取缓存管理器 */
     if (state->metadata_cache != NULL) {
         TeccCacheManager *manager = (TeccCacheManager *)state->metadata_cache;
-        /* 验证连接匹配 */
-        if (manager->conn == state->conn) {
+        /* ReqID:TECC4.0 - 增强验证：检查连接匹配、初始化状态和锁有效性 */
+        if (manager->conn == state->conn &&
+            manager->initialized &&
+            manager->lock != NULL) {
             return manager;
         }
+        /* ReqID:TECC4.0 - 缓存管理器状态异常告警，便于跟踪潜在的内存损坏问题 */
+        TECC_CACHE_WARN("get_cache_manager: manager=%p INVALID "
+            "(conn_match=%d, initialized=%d, lock=%p, load_count=%d) "
+            "— possible memory corruption or stale cache manager",
+            manager,
+            (manager->conn == state->conn) ? 1 : 0,
+            manager->initialized,
+            manager->lock,
+            manager->load_count);
     }
 
     return NULL;
@@ -3068,16 +3178,19 @@ recover_cache_manager_state(TeccCacheManager *manager)
     if (manager->kek_cache == NULL || manager->dek_cache == NULL || manager->column_cache == NULL) {
         TECC_CACHE_WARN("缓存哈希表异常，尝试重新创建");
 
-        /* 清理现有哈希表 */
+        /* 清理现有哈希表 — 先安全释放item并清空data指针 */
         if (manager->kek_cache != NULL) {
+            destroy_all_kek_items(manager->kek_cache);
             destroy_hash_table(manager->kek_cache);
             manager->kek_cache = NULL;
         }
         if (manager->dek_cache != NULL) {
+            destroy_all_dek_items(manager->dek_cache);
             destroy_hash_table(manager->dek_cache);
             manager->dek_cache = NULL;
         }
         if (manager->column_cache != NULL) {
+            destroy_all_column_items(manager->column_cache);
             destroy_hash_table(manager->column_cache);
             manager->column_cache = NULL;
         }
@@ -3100,16 +3213,19 @@ recover_cache_manager_state(TeccCacheManager *manager)
     if (manager->kek_name_cache == NULL || manager->dek_name_cache == NULL || manager->column_name_cache == NULL) {
         TECC_CACHE_WARN("名称查找哈希表异常，尝试重新创建");
 
-        /* 清理现有哈希表 */
+        /* 清理现有哈希表 — 先清空悬空data指针防止双重释放 */
         if (manager->kek_name_cache != NULL) {
+            clear_hash_table_data_pointers(manager->kek_name_cache);
             destroy_hash_table(manager->kek_name_cache);
             manager->kek_name_cache = NULL;
         }
         if (manager->dek_name_cache != NULL) {
+            clear_hash_table_data_pointers(manager->dek_name_cache);
             destroy_hash_table(manager->dek_name_cache);
             manager->dek_name_cache = NULL;
         }
         if (manager->column_name_cache != NULL) {
+            clear_hash_table_data_pointers(manager->column_name_cache);
             destroy_hash_table(manager->column_name_cache);
             manager->column_name_cache = NULL;
         }
@@ -3854,9 +3970,11 @@ tecc_clear_marks_via_fastpath(PGconn *conn, int mask)
 /*
  * check_metadata_update_mark_sql - 降级到SQL查询的标记检查
  * 保持原有逻辑，用于快速路径失败时的降级
+ *
+ * qconn: 执行查询的连接。非管道模式为主连接，管道模式为临时连接。
  */
 static int
-check_metadata_update_mark_sql(const TeccState *state)
+check_metadata_update_mark_sql(const TeccState *state, PGconn *qconn)
 {
     PGresult *res = NULL;
     int result = TECC_CACHE_OK;
@@ -3865,7 +3983,7 @@ check_metadata_update_mark_sql(const TeccState *state)
     bool column_updated = false;
     bool any_updated = false;
 
-    if (state == NULL || state->conn == NULL) {
+    if (state == NULL || qconn == NULL) {
         TECC_CACHE_ERROR("检查元数据更新标记失败：状态或连接为NULL");
         return TECC_CACHE_ERROR_INVALID_PARAM;
     }
@@ -3873,12 +3991,12 @@ check_metadata_update_mark_sql(const TeccState *state)
     TECC_CACHE_DEBUG("使用SQL查询检查TECC元数据更新标记");
 
     /* 一次查询获取三个类型标记状态 */
-    res = PQexec(state->conn,
+    res = PQexec(qconn,
                  "SELECT hg_is_kek_updated(), hg_is_dek_updated(), hg_is_column_updated()");
 
-    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-        TECC_CACHE_ERROR("检查元数据更新标记失败：%s", PQerrorMessage(state->conn));
-        PQclear(res);
+    if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK) {
+        TECC_CACHE_ERROR("检查元数据更新标记失败：%s", res ? PQerrorMessage(qconn) : "(PQexec NULL)");
+        if (res) PQclear(res);
         return TECC_CACHE_ERROR_QUERY;
     }
 
@@ -3919,12 +4037,12 @@ check_metadata_update_mark_sql(const TeccState *state)
         }
 
         /* 清除所有标记 */
-        res = PQexec(state->conn,
+        res = PQexec(qconn,
                      "SELECT hg_clear_kek_mark(), hg_clear_dek_mark(), hg_clear_column_mark()");
-        if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-            TECC_CACHE_DEBUG("清除元数据更新标记失败：%s", PQerrorMessage(state->conn));
+        if (res == NULL || PQresultStatus(res) != PGRES_TUPLES_OK) {
+            TECC_CACHE_DEBUG("清除元数据更新标记失败：%s", res ? PQerrorMessage(qconn) : "(PQexec NULL)");
         }
-        PQclear(res);
+        if (res) PQclear(res);
         res = NULL;
 
         result = TECC_CACHE_OK;
@@ -3958,6 +4076,8 @@ check_metadata_update_mark(const TeccState *state)
     bool any_updated = false;
     int result = TECC_CACHE_OK;
     TeccCacheManager *cache_mgr = NULL;
+    PGconn *qconn = NULL;       /* ReqID:TECC4.0 - 管道模式下用独立连接 */
+    bool use_temp_conn = false; /* ReqID:TECC4.0 */
 
     if (state == NULL || state->conn == NULL) {
         TECC_CACHE_ERROR("检查元数据更新标记失败：状态或连接为NULL");
@@ -3973,10 +4093,27 @@ check_metadata_update_mark(const TeccState *state)
     }
     /* 不需要设置check_in_progress，由调用方（PQsendQueryStart）负责 */
 
+    /* ReqID:TECC4.0 - 连接选择：非管道模式用主连接（行为不变），
+     * 管道模式主连接禁止同步 PQexec/PQfn，改用 data_fetcher 独立连接。 */
+    if (state->conn->pipelineStatus != PQ_PIPELINE_OFF)
+    {
+        qconn = tecc_data_fetcher_get_connection(state);
+        if (qconn == NULL)
+        {
+            TECC_CACHE_ERROR("检查元数据更新标记失败：管道模式下获取临时连接失败");
+            return TECC_CACHE_ERROR_CONNECTION;
+        }
+        use_temp_conn = true;
+    }
+    else
+    {
+        qconn = state->conn;
+    }
+
     TECC_CACHE_DEBUG("开始检查TECC元数据更新标记（优先使用快速路径）");
 
     /* 第一步：尝试快速路径 */
-    if (tecc_check_marks_via_fastpath(state->conn, &marks) == 0) {
+    if (tecc_check_marks_via_fastpath(qconn, &marks) == 0) {
         /* 解析位掩码 */
         kek_updated = (marks & TECC_MARK_KEK) != 0;
         dek_updated = (marks & TECC_MARK_DEK) != 0;
@@ -4009,13 +4146,13 @@ check_metadata_update_mark(const TeccState *state)
                 				/* PENDING sentinels cleaned up with cache */            }
 
             /* 批量清除标记 */
-            if (tecc_clear_marks_via_fastpath(state->conn, marks) != 0) {
+            if (tecc_clear_marks_via_fastpath(qconn, marks) != 0) {
                 /* 清除失败，降级到SQL清除 */
-                PGresult *res = PQexec(state->conn,
+                PGresult *res = PQexec(qconn,
                     "SELECT hg_clear_kek_mark(), hg_clear_dek_mark(), hg_clear_column_mark()");
                 if (res != NULL) {
                     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-                        TECC_CACHE_DEBUG("清除元数据更新标记失败：%s", PQerrorMessage(state->conn));
+                        TECC_CACHE_DEBUG("清除元数据更新标记失败：%s", PQerrorMessage(qconn));
                     }
                     PQclear(res);
                 }
@@ -4029,9 +4166,12 @@ check_metadata_update_mark(const TeccState *state)
 
     /* 第二步：快速路径失败，降级到SQL查询 */
     TECC_CACHE_DEBUG("快速路径失败，降级到SQL查询");
-    result = check_metadata_update_mark_sql(state);
+    result = check_metadata_update_mark_sql(state, qconn);
 
 done:
+    /* ReqID:TECC4.0 - 管道模式下释放临时连接 */
+    if (use_temp_conn)
+        tecc_data_fetcher_release_connection(state, qconn);
     TECC_CACHE_DEBUG("【DEBUG】check_metadata_update_mark: completed, result=%d, kek_updated=%d, dek_updated=%d, column_updated=%d",
                      result, kek_updated, dek_updated, column_updated);
     return result;
@@ -4253,6 +4393,100 @@ tecc_cache_get_search_path_schemas(const TeccState *state, int *count)
     CACHE_RWUNLOCK(manager);
 
     return (const char **)manager->guc_params.search_path_schemas;
+}
+
+/*
+ * tecc_cache_get_table_schema - 解析未限定表名在 search_path 下的真实 schema
+ *
+ * 优先查缓存（table→schema 映射），未命中时经数据获取器独立连接查 pg_class，
+ * 结果回填缓存。search_path 变化时映射缓存整体重建（sync/update 中处理）。
+ *
+ * 返回:
+ *   找到：缓存内 schema 名指针（语句处理期间有效，search_path 变更会失效重建）；
+ *   表不在 search_path 任何 schema 或查询失败：NULL（查询失败不写负缓存）。
+ */
+const char *
+tecc_cache_get_table_schema(const TeccState *state,
+                            const char *database_name,
+                            const char *table_name)
+{
+    TeccCacheManager *manager;
+    TableSchemaHashKey nk;
+    TableSchemaCacheValue *val;
+    const char **schemas;
+    int nschemas;
+    char *resolved = NULL;
+
+    /* 参数检查 */
+    if (state == NULL || database_name == NULL || table_name == NULL)
+        return NULL;
+
+    manager = (TeccCacheManager *)state->metadata_cache;
+    if (manager == NULL)
+        return NULL;
+
+    /* 1. 命中缓存直接返回 */
+    memset(&nk, 0, sizeof(nk));
+    strncpy(nk.database_name, database_name, NAMEDATALEN - 1);
+    strncpy(nk.table_name, table_name, NAMEDATALEN - 1);
+
+    CACHE_RLOCK(manager);
+    if (manager->table_schema_cache != NULL)
+    {
+        val = (TableSchemaCacheValue *)fe_hash_search(manager->table_schema_cache,
+                                                      &nk, HASH_FIND, NULL);
+        if (val != NULL)
+        {
+            const char *result = val->not_found ? NULL : val->schema_name;
+            CACHE_RWUNLOCK(manager);
+            return result;
+        }
+    }
+    CACHE_RWUNLOCK(manager);
+
+    /* 2. 未命中：取 search_path 解析列表（内部同步最新值） */
+    schemas = tecc_cache_get_search_path_schemas(state, &nschemas);
+    if (schemas == NULL || nschemas <= 0)
+        return NULL;
+
+    /* 3. 服务器解析（池连接，按 search_path 顺序） */
+    if (tecc_fetch_resolve_table_schema(state, database_name, table_name,
+                                        schemas, nschemas, &resolved) != TECC_FETCHER_OK)
+    {
+        /* 查询失败：不写负缓存，返回 NULL 由调用方 fallback */
+        return NULL;
+    }
+
+    /* 4. 回填缓存（找到写 schema，未找到写 not_found 哨兵） */
+    CACHE_LOCK(manager);
+    if (manager->table_schema_cache != NULL)
+    {
+        val = (TableSchemaCacheValue *)fe_hash_search(manager->table_schema_cache,
+                                                      &nk, HASH_ENTER, NULL);
+        if (val != NULL)
+        {
+            if (resolved != NULL)
+            {
+                strncpy(val->schema_name, resolved, NAMEDATALEN - 1);
+                val->schema_name[NAMEDATALEN - 1] = '\0';
+                val->not_found = false;
+            }
+            else
+            {
+                val->schema_name[0] = '\0';
+                val->not_found = true;
+            }
+        }
+    }
+    CACHE_UNLOCK(manager);
+
+    if (resolved != NULL)
+        pg_free(resolved);
+
+    /* 返回刚回填的缓存值（语句处理期间有效，search_path 变更会整体重建失效） */
+    if (val != NULL && !val->not_found)
+        return val->schema_name;
+    return NULL;
 }
 
 /*

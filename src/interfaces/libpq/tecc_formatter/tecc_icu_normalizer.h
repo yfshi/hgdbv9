@@ -27,11 +27,6 @@
 extern TeccFormatterErrorCode tecc_icu_normalizer_init(void);
 
 /*
- * Cleanup ICU normalizer
- */
-extern void tecc_icu_normalizer_cleanup(void);
-
-/*
  * Generate ICU sort key
  */
 extern TeccFormatterErrorCode tecc_icu_normalizer_generate_sortkey(

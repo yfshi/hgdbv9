@@ -1,0 +1,22 @@
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+ERROR: ERROR: TECC does not support temporary encrypted tables
+  Hint: Use a regular table for encrypted columns
+CREATE TEMP
+1
+2
+DROP VIEW
+CREATE VIEW
+DROP VIEW
+ERROR: ERROR: TECC does not support temporary encrypted tables
+  Hint: Use a regular table for encrypted columns
+CREATE VIEW
+1|Alice
+DROP VIEW
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK

@@ -1,0 +1,145 @@
+NOTICE: table "he_acl_owner" does not exist, skipping
+DROP TABLE
+NOTICE: table "he_acl_u1" does not exist, skipping
+DROP TABLE
+NOTICE: table "he_acl_u1b" does not exist, skipping
+DROP TABLE
+NOTICE: table "he_acl_u1c" does not exist, skipping
+DROP TABLE
+NOTICE: key encryption key "kek_acl" does not exist, skipping
+DROP KEK
+DO $$
+NOTICE: role "u1" does not exist, skipping
+NOTICE: role "u2" does not exist, skipping
+NOTICE: role "r1" does not exist, skipping
+DROP ROLE
+CREATE USER
+CREATE USER
+CREATE ROLE
+CREATE KEK
+CREATE DEK
+CREATE DEK
+GRANT USAGE
+GRANT CREATE
+=== 1 KEK USAGE -> CREATE DEK ===
+SET ROLE
+ERROR: ERROR: permission denied for key encryption key kek_acl
+RESET ROLE
+GRANT USAGE
+SET ROLE
+CREATE DEK
+RESET ROLE
+SET ROLE
+CREATE DEK
+RESET ROLE
+SET ROLE
+CREATE DEK
+RESET ROLE
+REVOKE USAGE
+SET ROLE
+ERROR: ERROR: permission denied for key encryption key kek_acl
+RESET ROLE
+=== 2 DEK USAGE -> CREATE TABLE ===
+SET ROLE
+ERROR: ERROR: permission denied for DEK "dek_acl_add"
+  Detail: You do not have USAGE privilege on DEK "dek_acl_add".
+  Hint: Grant USAGE on the DEK to proceed.
+RESET ROLE
+GRANT USAGE
+SET ROLE
+CREATE TABLE
+RESET ROLE
+SET ROLE
+ERROR: TECC: literal encrypt failed for public.he_acl_u1.c: HE-ADD public key not loaded for column public.he_acl_u1.c
+RESET ROLE
+REVOKE USAGE
+SET ROLE
+ERROR: ERROR: permission denied for DEK "dek_acl_add"
+  Detail: You do not have USAGE privilege on DEK "dek_acl_add".
+  Hint: Grant USAGE on the DEK to proceed.
+RESET ROLE
+=== 3 role inheritance ===
+GRANT USAGE
+GRANT R1
+SET ROLE
+CREATE DEK
+RESET ROLE
+REVOKE R1
+SET ROLE
+ERROR: ERROR: permission denied for key encryption key kek_acl
+RESET ROLE
+=== 4 owner self ===
+CREATE TABLE
+ERROR: TECC: literal encrypt failed for public.he_acl_owner.c: HE-ADD public key not loaded for column public.he_acl_owner.c
+=== 5 error combos ===
+GRANT USAGE
+SET ROLE
+ERROR: ERROR: permission denied for DEK "dek_acl_add"
+  Detail: You do not have USAGE privilege on DEK "dek_acl_add".
+  Hint: Grant USAGE on the DEK to proceed.
+RESET ROLE
+REVOKE CREATE
+SET ROLE
+ERROR: ERROR: permission denied for schema public
+RESET ROLE
+GRANT CREATE
+DROP TABLE
+DROP TABLE
+NOTICE: table "he_acl_u1b" does not exist, skipping
+DROP TABLE
+NOTICE: table "he_acl_u1c" does not exist, skipping
+DROP TABLE
+NOTICE: drop cascades to 6 other objects
+DROP KEK
+DO $$
+DROP ROLE
+CREATE USER
+CREATE USER
+CREATE USER
+CREATE KEK
+CREATE DEK
+true
+true
+false
+false
+GRANT USAGE
+GRANT USAGE
+true
+true
+true
+true
+true
+true
+true
+true
+SET SESSION
+true
+true
+RESET SESSION
+SET SESSION
+true
+true
+RESET SESSION
+GRANT USAGE
+GRANT USAGE
+SET SESSION
+GRANT USAGE
+GRANT USAGE
+RESET SESSION
+true
+true
+REVOKE USAGE
+REVOKE USAGE
+false
+false
+ERROR: ERROR: unrecognized privilege type: "INVALID"
+ERROR: ERROR: unrecognized privilege type: "INVALID"
+ERROR: ERROR: dependent privileges exist
+  Hint: Use CASCADE to revoke them too.
+ERROR: ERROR: dependent privileges exist
+  Hint: Use CASCADE to revoke them too.
+DROP DEK
+DROP KEK
+DROP USER
+DROP USER
+DROP USER

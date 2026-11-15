@@ -532,6 +532,12 @@ make_const(ParseState *pstate, Value *value, int location)
 			break;
 		/* End - SRS-MYSQL-HEX-LITERAL */
 
+		/* Begin: Req:SRS-MYSQL-SQL-Select */
+		case T_IntroducerConst:
+			con = make_introducer_const(pstate, value, (Datum) 0, location, true);
+			return con;
+		/* End: Req:SRS-MYSQL-SQL-Select */
+
 		/* Begin - BUG:Z093 */
 		case T_BFloat:
 			{

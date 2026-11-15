@@ -47,6 +47,7 @@
 #include "access/xact.h"
 #include "catalog/catalog.h"
 #include "catalog/storage_gtt.h"
+#include "commands/encrypted_column.h"
 #include "commands/trigger.h"
 #include "executor/execPartition.h"
 #include "executor/executor.h"
@@ -1314,6 +1315,16 @@ ExecInsert(ModifyTableContext *context,
 			ExecConstraints(resultRelInfo, slot, estate);
 
 		/*
+		 * ReqID:TECC4.0 - Validate encrypted column slots (HE slot completeness
+		 * + cross-DEK assignment guard).  Must run unconditionally: for tables
+		 * with no constraints at all, rd_att->constr is NULL and
+		 * ExecConstraints() is skipped entirely, which used to leave TECC
+		 * columns completely unvalidated.  Self-gates on whether the tuple
+		 * descriptor has any encrypted-type column.
+		 */
+		tecc_validate_encrypted_slots(resultRelInfo, slot);
+
+		/*
 		 * Also check the tuple against the partition constraint, if there is
 		 * one; except that if we got here via tuple-routing, we don't need to
 		 * if there's no BR trigger defined on the partition.
@@ -2401,6 +2412,9 @@ lreplace:
 	 */
 	if (resultRelationDesc->rd_att->constr)
 		ExecConstraints(resultRelInfo, slot, estate);
+
+	/* ReqID:TECC4.0 - Validate encrypted column slots; see ExecInsert() */
+	tecc_validate_encrypted_slots(resultRelInfo, slot);
 
 	/*
 	 * replace the heap tuple

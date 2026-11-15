@@ -3022,6 +3022,15 @@ _outCreateDekStmt(StringInfo str, const CreateDekStmt *node)
 	WRITE_BOOL_FIELD(if_not_exists);
 	WRITE_NODE_FIELD(options);
 }
+
+static void
+_outAlterKekStmt(StringInfo str, const AlterKekStmt *node)
+{
+	WRITE_NODE_TYPE("ALTERKEKSTMT");
+
+	WRITE_NODE_FIELD(names);
+	WRITE_NODE_FIELD(options);
+}
 /* End - ReqID:TECC4.0 */
 
 static void
@@ -5028,6 +5037,9 @@ outNode(StringInfo str, const void *obj)
 				break;
 			case T_CreateDekStmt:
 				_outCreateDekStmt(str, obj);
+				break;
+			case T_AlterKekStmt:
+				_outAlterKekStmt(str, obj);
 				break;
 			/* End - ReqID:TECC4.0 */
 			case T_IndexStmt:

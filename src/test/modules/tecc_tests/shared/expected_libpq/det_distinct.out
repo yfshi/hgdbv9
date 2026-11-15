@@ -1,0 +1,240 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+           ?column?            
+-------------------------------
+ === 1 COUNT(DISTINCT det) ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 6
+        ?column?        | count 
+------------------------+-------
+ 1a_count_distinct_text |     4
+(1 row)
+
+       ?column?        | count 
+-----------------------+-------
+ 1b_count_distinct_int |     3
+(1 row)
+
+         ?column?          | count 
+---------------------------+-------
+ 1c_count_distinct_varchar |     3
+(1 row)
+
+         ?column?          | count 
+---------------------------+-------
+ 1d_count_distinct_numeric |     3
+(1 row)
+
+       ?column?        | count 
+-----------------------+-------
+ 1e_count_distinct_ope |     6
+(1 row)
+
+     ?column?     
+------------------
+ === 2 FILTER ===
+(1 row)
+
+ ?column?  | count 
+-----------+-------
+ 2a_filter |     4
+(1 row)
+
+   ?column?    | count 
+---------------+-------
+ 2b_filter_all |     4
+(1 row)
+
+    ?column?    | count 
+----------------+-------
+ 2c_filter_none |     0
+(1 row)
+
+           ?column?            
+-------------------------------
+ === 3 DISTINCT / GROUP BY ===
+(1 row)
+
+      ?column?      |  name   
+--------------------+---------
+ 3a_select_distinct | Alice
+ 3a_select_distinct | Bob
+ 3a_select_distinct | Alice
+ 3a_select_distinct | Charlie
+ 3a_select_distinct | Bob
+ 3a_select_distinct | Dave
+(6 rows)
+
+  ?column?   |  name   | count 
+-------------+---------+-------
+ 3b_group_by | Alice   |     2
+ 3b_group_by | Bob     |     2
+ 3b_group_by | Charlie |     1
+ 3b_group_by | Dave    |     1
+(4 rows)
+
+               ?column?               
+--------------------------------------
+ === 4 GROUP BY + COUNT(DISTINCT) ===
+(1 row)
+
+     ?column?      | g | count 
+-------------------+---+-------
+ 4a_group_distinct | 0 |     3
+ 4a_group_distinct | 1 |     2
+(2 rows)
+
+   ?column?   | tag | count 
+--------------+-----+-------
+ 4b_group_det | a   |     2
+ 4b_group_det | b   |     2
+ 4b_group_det | c   |     1
+ 4b_group_det |     |     1
+(4 rows)
+
+          ?column?          |  name   | count 
+----------------------------+---------+-------
+ 4c_group_det_distinct_same | Alice   |     1
+ 4c_group_det_distinct_same | Bob     |     1
+ 4c_group_det_distinct_same | Charlie |     1
+ 4c_group_det_distinct_same | Dave    |     1
+(4 rows)
+
+          ?column?           | tag | count 
+-----------------------------+-----+-------
+ 4d_group_det_distinct_other | a   |     1
+ 4d_group_det_distinct_other | b   |     1
+ 4d_group_det_distinct_other | c   |     1
+ 4d_group_det_distinct_other |     |     1
+(4 rows)
+
+      ?column?      |  name   | g | count 
+--------------------+---------+---+-------
+ 4e_group_det_plain | Alice   | 1 |     1
+ 4e_group_det_plain | Bob     | 0 |     1
+ 4e_group_det_plain | Charlie | 0 |     1
+ 4e_group_det_plain | Bob     | 1 |     1
+ 4e_group_det_plain | Dave    | 0 |     0
+(5 rows)
+
+   ?column?    | tag | count 
+---------------+-----+-------
+ 4f_rollup_det |     |     4
+ 4f_rollup_det | a   |     1
+ 4f_rollup_det | b   |     1
+ 4f_rollup_det | c   |     1
+ 4f_rollup_det |     |     1
+(5 rows)
+
+SET
+SET
+SET
+         ?column?         | count 
+--------------------------+-------
+ 4g_spill_hashed_distinct |  1200
+(1 row)
+
+RESET
+RESET
+RESET
+SET
+       ?column?        | g | count 
+-----------------------+---+-------
+ 4h_ope_group_distinct | f |     5
+ 4h_ope_group_distinct | t |     1
+(2 rows)
+
+RESET
+     ?column?     
+------------------
+ === 5 rescan ===
+(1 row)
+
+ ?column? | id | count 
+----------+----+-------
+ 5a_corr  |  1 |     1
+ 5a_corr  |  2 |     2
+ 5a_corr  |  3 |     2
+ 5a_corr  |  4 |     3
+ 5a_corr  |  5 |     3
+ 5a_corr  |  6 |     4
+(6 rows)
+
+             ?column?             
+----------------------------------
+ === 6 multiple DISTINCT aggs ===
+(1 row)
+
+ ?column? | count | count | count 
+----------+-------+-------+-------
+ 6a_multi |     4 |     3 |     6
+(1 row)
+
+       ?column?        
+-----------------------
+ === 7 plain types ===
+(1 row)
+
+CREATE TABLE
+INSERT 0 5
+   ?column?    | count 
+---------------+-------
+ 7a_plain_text |     3
+(1 row)
+
+   ?column?   | count 
+--------------+-------
+ 7b_plain_int |     4
+(1 row)
+
+SET
+        ?column?         | g | count 
+-------------------------+---+-------
+ 7c_plain_group_distinct | 0 |     2
+ 7c_plain_group_distinct | 1 |     1
+(2 rows)
+
+RESET
+                ?column?                
+----------------------------------------
+ === 8 ordering semantics preserved ===
+(1 row)
+
+             ?column?             
+----------------------------------
+ === 8d group by + having det ===
+(1 row)
+
+     ?column?     | name  | count 
+------------------+-------+-------
+ 8d_having_det_on | Alice |     2
+(1 row)
+
+SET
+     ?column?      | name  | count 
+-------------------+-------+-------
+ 8e_having_det_off | Alice |     2
+(1 row)
+
+RESET
+      ?column?      | name  | count 
+--------------------+-------+-------
+ 8f_where_group_det | Alice |     2
+(1 row)
+
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../det_distinct.sql:28: NOTICE:  key encryption key "kek_det_dist" does not exist, skipping
+psql:/.../det_distinct.sql:41: NOTICE:  table "test_dd_t1" does not exist, skipping
+psql:/.../det_distinct.sql:172: ERROR:  cannot compare encrypted values for ordering: no OPE ciphertext available
+psql:/.../det_distinct.sql:173: ERROR:  cannot compare encrypted values for ordering: no OPE ciphertext available
+psql:/.../det_distinct.sql:175: ERROR:  cannot compare encrypted values for ordering: no OPE ciphertext available
+psql:/.../det_distinct.sql:186: ERROR:  cannot compare encrypted values for ordering: no OPE ciphertext available
+psql:/.../det_distinct.sql:187: ERROR:  cannot compare encrypted values for ordering: no OPE ciphertext available
+psql:/.../det_distinct.sql:189: ERROR:  cannot compare encrypted values for ordering: no OPE ciphertext available

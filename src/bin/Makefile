@@ -33,7 +33,8 @@ SUBDIRS = \
 	pgbench \
 	psql \
 	wrap \
-	scripts
+	scripts \
+        tecc_ktool
 
 # Begin - ReqID:SRS-SECURITY-IDENTITYAUTH
 SUBDIRS += pg_pgpass

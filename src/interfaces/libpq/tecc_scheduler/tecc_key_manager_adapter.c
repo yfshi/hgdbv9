@@ -260,6 +260,49 @@ tecc_key_get_kek_with_adapter(TeccKeyManagerAdapter *adapter,
 
 
 /*
+ * ReqID:TECC4.0 — DEK 解密失败负缓存辅助函数。
+ *
+ * KEK 明文是连接级缓存（连接建立/首次使用加载一次），同一连接内某 DEK 的
+ * 解密结果不变：一旦因 KEK 密钥文件被替换/覆盖而解密失败，之后对每个列、
+ * 每行的重试都必然失败。若不记录，SELECT 一张多列/多行加密表会为每格刷屏
+ * 同样的报错（Bug: tecc_ktool --force 覆盖 KEK 后报错过多）。
+ *
+ * 负缓存生命周期 = adapter 生命周期 = 连接生命周期，与"KEK 明文连接级固定"
+ * 一致，因此无需随语句重置。
+ */
+static bool
+tecc_adapter_dek_has_failed(TeccKeyManagerAdapter *adapter, Oid dek_oid)
+{
+    int i;
+
+    if (!adapter)
+        return false;
+    for (i = 0; i < adapter->num_failed_deks && i < 16; i++)
+    {
+        if (adapter->failed_dek_oids[i] == dek_oid)
+            return true;
+    }
+    return false;
+}
+
+/*
+ * ReqID:TECC4.0 — 标记某 DEK 本连接解密失败。
+ * 返回 true 表示首次标记（调用方应输出一次用户可见报错）；
+ * 返回 false 表示已标记过（重复失败，静默短路即可）。
+ */
+static bool
+tecc_adapter_dek_mark_failed(TeccKeyManagerAdapter *adapter, Oid dek_oid)
+{
+    if (!adapter)
+        return true;
+    if (tecc_adapter_dek_has_failed(adapter, dek_oid))
+        return false;
+    if (adapter->num_failed_deks < 16)
+        adapter->failed_dek_oids[adapter->num_failed_deks++] = dek_oid;
+    return true;
+}
+
+/*
  * Get DEK key with adapter parameter (thread-safe version)
  */
 unsigned char *
@@ -270,7 +313,6 @@ tecc_key_get_dek_with_adapter(TeccKeyManagerAdapter *adapter,
     /* ReqID:TECC4.0 - Fix C90 mixed declaration warning */
     unsigned char *decrypted_dek = NULL;
     TeccDekCacheItem *dek_item = NULL;
-    TeccKekCacheItem *kek_item = NULL;
     unsigned char *kek = NULL;
     size_t kek_len = 0;
 
@@ -320,26 +362,40 @@ tecc_key_get_dek_with_adapter(TeccKeyManagerAdapter *adapter,
                 {
                     return decrypted_dek;
                 }
+
+                /* ReqID:TECC4.0 — 负缓存命中：本连接内该 DEK 已解密失败过
+                 * （KEK 密钥文件被覆盖等）。KEK 明文连接级固定，重试必然
+                 * 再次失败并刷屏，直接短路（静默，首次失败已报错）。 */
+                if (tecc_adapter_dek_has_failed(adapter, dek_cache_item->dek_oid))
+                {
+                    tecc_key_set_last_error(adapter, TECC_CRYPTO_KEY_ERROR);
+                    return NULL;
+                }
             }
 
-            /* 获取KEK信息 - 通过名称查找KEK */
-            kek_item = tecc_cache_get_kek_by_name_search_path((const TeccState *)adapter->tecc_state,
-                                                   dek_cache_item->kek_name ? dek_cache_item->kek_name : "unknown");
-            if (!kek_item)
-            {
-                tecc_processor_debug(TECC_LOG_ERROR,
-                                   "Failed to get KEK by name '%s' for DEK: %s",
-                                   dek_cache_item->kek_name ? dek_cache_item->kek_name : "NULL", dek_name);
-                tecc_key_set_last_error(adapter, TECC_CRYPTO_KEY_ERROR);
-                return NULL;
-            }
-
-            /* 获取KEK密钥 */
-            kek = tecc_key_get_kek_with_state((void *)adapter->tecc_state, kek_item->key_name, &kek_len);
+            /* ReqID:TECC4.0 - Bug 9256: KEK 可创建在任意 schema，而 DEK 目录里记的是
+             * KEK 的 OID。原先只用 DEK 上的裸 KEK 名按 search_path 查找，KEK 不在
+             * search_path 上时必然失败（在 public 下用 sch1.kek 建的表 INSERT 报
+             * "Failed to get KEK by name"）。改按 OID 解析（无歧义），无 OID 时才退回按名。 */
+            kek = tecc_key_get_kek_by_oid_or_name((void *)adapter->tecc_state,
+                                                  dek_cache_item->kek_oid,
+                                                  dek_cache_item->kek_name,
+                                                  &kek_len);
             if (!kek)
             {
-                tecc_processor_debug(TECC_LOG_ERROR,
-                                   "Failed to get KEK with state for KEK: %s", kek_item->key_name);
+                /* ReqID:TECC4.0 — Bug: tecc_ktool delete 删除 KEK 文件后重连查询报错。
+                 * 该日志是纯诊断（KEK 加载失败已由 get_kek 内部 set_last_error 给出可执行
+                 * 信息，INSERT 加密路径经调度器报错，SELECT 解密路径在调度器层被归类为
+                 * skipped_decrypt 静默返回密文）；原 ERROR 会在每个列/行解密时刷屏，
+                 * 降为 DEBUG。同时把本 DEK 记入负缓存：KEK 文件缺失在本连接内恒定，
+                 * 重试必然再次失败，直接短路避免重复尝试。需要深度诊断时
+                 * TECC_LOG_LEVEL=DEBUG 仍可见。 */
+                tecc_processor_debug(TECC_LOG_DEBUG1,
+                                   "Failed to get KEK (oid=%u, name='%s') for DEK: %s",
+                                   dek_cache_item->kek_oid,
+                                   dek_cache_item->kek_name ? dek_cache_item->kek_name : "(unknown)",
+                                   dek_name);
+                tecc_adapter_dek_mark_failed(adapter, dek_cache_item->dek_oid);
                 tecc_key_set_last_error(adapter, TECC_CRYPTO_KEY_ERROR);
                 return NULL;
             }
@@ -354,49 +410,21 @@ tecc_key_get_dek_with_adapter(TeccKeyManagerAdapter *adapter,
                 pg_free(kek);
                 if (dek_ret != 0)
                 {
-                    char time_dek[32], time_kek[32];
-                    struct tm tm_buf;
-
-                    tecc_processor_debug(TECC_LOG_ERROR,
-                                       "Failed to decrypt DEK '%s' (dek_oid=%u, kek_oid=%u, key_length=%zu)",
-                                       dek_name, dek_cache_item->dek_oid, dek_cache_item->kek_oid,
-                                       dek_cache_item->key_length);
-
-                    /* DIAG: 对比 KEK/DEK 创建时间，帮助定位 KEK 重建/密钥文件被替换问题 */
-                    if (kek_item->create_date > 0 && dek_cache_item->create_date > 0)
+                    /* ReqID:TECC4.0 — Bug: tecc_ktool --force 覆盖 KEK 后报错过多。
+                     * 原先每次失败打印 "Failed to decrypt DEK"(含 OID/长度) + 2 条
+                     * DIAG（对比 KEK/DEK create_date，而该字段从未被填充、恒为
+                     * 1970-01-01，纯误导），且每个列/每行重复整段刷屏。
+                     * 现改为：同一 DEK 本连接只报一次、一条可执行的简洁错误。 */
+                    if (tecc_adapter_dek_mark_failed(adapter, dek_cache_item->dek_oid))
                     {
-#ifdef _WIN32
-                        struct tm *ltm;
-                        ltm = localtime(&kek_item->create_date);
-                        if (ltm) strftime(time_kek, sizeof(time_kek), "%Y-%m-%d %H:%M:%S", ltm);
-                        else snprintf(time_kek, sizeof(time_kek), "n/a");
-                        ltm = localtime(&dek_cache_item->create_date);
-                        if (ltm) { strftime(time_dek, sizeof(time_dek), "%Y-%m-%d %H:%M:%S", ltm); }
-                        else snprintf(time_dek, sizeof(time_dek), "n/a");
-#else
-                        localtime_r(&kek_item->create_date, &tm_buf);
-                        strftime(time_kek, sizeof(time_kek), "%Y-%m-%d %H:%M:%S", &tm_buf);
-                        localtime_r(&dek_cache_item->create_date, &tm_buf);
-                        strftime(time_dek, sizeof(time_dek), "%Y-%m-%d %H:%M:%S", &tm_buf);
-#endif
                         tecc_processor_debug(TECC_LOG_ERROR,
-                                           "DIAG: KEK '%s' created %s, DEK '%s' created %s",
-                                           kek_item->key_name ? kek_item->key_name : "(null)",
-                                           time_kek, dek_name, time_dek);
-
-                        if (kek_item->create_date > dek_cache_item->create_date)
-                        {
-                            tecc_processor_debug(TECC_LOG_ERROR,
-                                               "DIAG: KEK was created AFTER DEK — "
-                                               "KEK key material likely changed (file deleted/recreated). "
-                                               "DROP and recreate the DEK or restore the original KEK key file.");
-                        }
-                        else
-                        {
-                            tecc_processor_debug(TECC_LOG_ERROR,
-                                               "DIAG: DEK created after KEK — "
-                                               "check if KEK key file was corrupted or replaced.");
-                        }
+                                           "Failed to decrypt DEK '%s': the KEK '%s' key file "
+                                           "no longer matches this DEK (key material was changed/"
+                                           "replaced after the DEK was created). Restore the "
+                                           "original KEK key file and reconnect, or DROP and "
+                                           "recreate the DEK.",
+                                           dek_name,
+                                           dek_cache_item->kek_name ? dek_cache_item->kek_name : "(unknown)");
                     }
                     tecc_key_set_last_error(adapter, TECC_CRYPTO_KEY_ERROR);
                     return NULL;
@@ -454,26 +482,28 @@ tecc_key_get_dek_with_adapter(TeccKeyManagerAdapter *adapter,
                                "DEK found in adapter cache: oid=%u", dek_item->dek_oid);
             return decrypted_dek;
         }
+
+        /* ReqID:TECC4.0 — 负缓存短路（同上方缓存路径），避免重复解密刷屏 */
+        if (tecc_adapter_dek_has_failed(adapter, dek_item->dek_oid))
+        {
+            tecc_key_set_last_error(adapter, TECC_CRYPTO_KEY_ERROR);
+            return NULL;
+        }
     }
 
-    /* 2. 通过DEK的kek_name获取KEK信息（按名称查找支持从数据库加载） */
-    kek_item = tecc_cache_get_kek_by_name_search_path((const TeccState *)tecc_state,
-                                           dek_item->kek_name ? dek_item->kek_name : "unknown");
-    if (!kek_item)
-    {
-        tecc_processor_debug(TECC_LOG_ERROR,
-                           "Failed to get KEK by name '%s' for DEK: %s",
-                           dek_item->kek_name ? dek_item->kek_name : "NULL", dek_name);
-        tecc_key_set_last_error(adapter, TECC_CRYPTO_KEY_ERROR);
-        return NULL;
-    }
-
-    /* 3. 使用tecc_key_get_kek_with_state获取KEK */
-    kek = tecc_key_get_kek_with_state((void *)tecc_state, kek_item->key_name, &kek_len);
+    /* 2. 获取 DEK 绑定的 KEK（ReqID:TECC4.0 - Bug 9256：按 OID 解析，跨 schema 无歧义） */
+    kek = tecc_key_get_kek_by_oid_or_name((void *)tecc_state, dek_item->kek_oid,
+                                          dek_item->kek_name, &kek_len);
     if (!kek)
     {
-        tecc_processor_debug(TECC_LOG_ERROR,
-                           "Failed to get KEK with state for KEK: %s", kek_item->key_name);
+        /* ReqID:TECC4.0 — Bug: tecc_ktool delete 删除 KEK 文件后重连查询报错。
+         * 同上方缓存路径：诊断日志降为 DEBUG + 本 DEK 记负缓存短路，SELECT
+         * 解密路径静默返回密文，用户可见错误由 INSERT/DDL 上层给出。 */
+        tecc_processor_debug(TECC_LOG_DEBUG1,
+                           "Failed to get KEK (oid=%u, name='%s') for DEK: %s",
+                           dek_item->kek_oid,
+                           dek_item->kek_name ? dek_item->kek_name : "(unknown)", dek_name);
+        tecc_adapter_dek_mark_failed(adapter, dek_item->dek_oid);
         tecc_key_set_last_error(adapter, TECC_CRYPTO_KEY_ERROR);
         return NULL;
     }
@@ -482,8 +512,18 @@ tecc_key_get_dek_with_adapter(TeccKeyManagerAdapter *adapter,
     decrypted_dek = tecc_key_get_decrypted_dek(tecc_state, dek_name, key_len);
     if (!decrypted_dek)
     {
-        tecc_processor_debug(TECC_LOG_ERROR,
-                           "Failed to decrypt DEK: %s", dek_name);
+        /* ReqID:TECC4.0 — 同缓存路径：只报一次简洁错误 */
+        if (tecc_adapter_dek_mark_failed(adapter, dek_item->dek_oid))
+        {
+            tecc_processor_debug(TECC_LOG_ERROR,
+                               "Failed to decrypt DEK '%s': the KEK '%s' key file "
+                               "no longer matches this DEK (key material was changed/"
+                               "replaced after the DEK was created). Restore the "
+                               "original KEK key file and reconnect, or DROP and "
+                               "recreate the DEK.",
+                               dek_name,
+                               dek_item->kek_name ? dek_item->kek_name : "(unknown)");
+        }
         tecc_key_secure_erase(kek, kek_len);
         pg_free(kek);
         tecc_key_set_last_error(adapter, TECC_CRYPTO_KEY_ERROR);
@@ -1009,25 +1049,6 @@ tecc_key_adapter_get_last_error(void)
 }
 
 /*
- * Get cache statistics
- */
-void
-tecc_key_get_cache_stats(TeccKeyManagerAdapter *adapter,
-                        int *cache_hits, int *cache_misses, int *cache_evictions)
-{
-    if (!adapter)
-        return;
-
-    /* TODO: Implement actual cache statistics */
-    if (cache_hits)
-        *cache_hits = 0;
-    if (cache_misses)
-        *cache_misses = 0;
-    if (cache_evictions)
-        *cache_evictions = 0;
-}
-
-/*
  * Get DEK key through adapter
  */
 int
@@ -1097,20 +1118,38 @@ tecc_key_manager_adapter_get_dek_key_ext(TeccKeyManagerAdapter *adapter,
     if (ret != TECC_CRYPTO_SUCCESS)
         return ret;
 
-    /* Look up derived keys from cache */
-    if (adapter && adapter->key_cache && dek_name)
+    /* Look up derived keys from cache.
+     *
+     * ReqID:TECC4.0 — Bug 9254: 派生密钥必须与本次实际取到的 DEK 是同一份密钥材料。
+     * 旧实现按 key_info.key_name 匹配，而 DEK 名并不唯一：
+     *   - DROP KEK ... CASCADE 删除 DEK 后重建同名 DEK（本 bug 的复现路径），
+     *   - 或不同 schema 下存在同名 DEK（Bug 9256 的跨 schema 场景）。
+     * 此时缓存中会同时存在新旧两条同名记录，扫描必然命中先插入的旧记录，
+     * 于是返回的 derived_enc/auth_key 来自已被删除的旧 DEK：写入用旧密钥加密，
+     * 却按新 DEK 记账，后续任意新连接解密时 HMAC-SM3 校验不过，报
+     * "Batch decrypt: item N failed"，数据不可读。
+     * 改为按 DEK 的 OID（全局唯一，与 tecc_key_cache_get 的语义一致）匹配；
+     * 解析不到时返回 NULL，由调用方从 DEK 明文现场派生（正确但略慢）。 */
+    if (adapter && adapter->key_cache && dek_name && adapter->tecc_state)
     {
-        for (i = 0; i < adapter->max_cache_size; i++)
+        TeccDekCacheItem *dek_item;
+
+        dek_item = tecc_cache_get_dek_by_name_search_path((TeccState *)adapter->tecc_state,
+                                                         dek_name);
+        if (dek_item && dek_item->dek_oid != InvalidOid)
         {
-            if (adapter->key_cache[i].key_data &&
-                adapter->key_cache[i].derived_keys_valid &&
-                strcmp(adapter->key_cache[i].key_info.key_name, dek_name) == 0)
+            for (i = 0; i < adapter->max_cache_size; i++)
             {
-                if (derived_enc_key)
-                    *derived_enc_key = adapter->key_cache[i].derived_enc_key;
-                if (derived_auth_key)
-                    *derived_auth_key = adapter->key_cache[i].derived_auth_key;
-                return TECC_CRYPTO_SUCCESS;
+                if (adapter->key_cache[i].key_data &&
+                    adapter->key_cache[i].derived_keys_valid &&
+                    adapter->key_cache[i].key_info.key_oid == dek_item->dek_oid)
+                {
+                    if (derived_enc_key)
+                        *derived_enc_key = adapter->key_cache[i].derived_enc_key;
+                    if (derived_auth_key)
+                        *derived_auth_key = adapter->key_cache[i].derived_auth_key;
+                    return TECC_CRYPTO_SUCCESS;
+                }
             }
         }
     }
@@ -1138,3 +1177,53 @@ tecc_key_manager_adapter_release_key(TeccKeyManagerAdapter *adapter,
 }
 
 /* End - ReqID:TECC4.0 */
+
+/* ==================== HE Key Stub Functions (ReqID:TECC4.0) ==================== */
+int
+tecc_key_manager_adapter_get_he_pubkey(TeccKeyManagerAdapter *adapter,
+    Oid dek_oid, int algo_type,
+    unsigned char **pubkey, size_t *pubkey_len)
+{
+    size_t key_size;
+    if (adapter == NULL || pubkey == NULL || pubkey_len == NULL)
+        return TECC_CRYPTO_INVALID_PARAM;
+    if (algo_type == TECC_ALGO_EC_ELGAMAL)
+        key_size = 65;
+    else if (algo_type == TECC_ALGO_ELGAMAL)
+        key_size = 256;
+    else
+        return TECC_CRYPTO_INVALID_PARAM;
+    *pubkey = (unsigned char *)pg_malloc0(key_size);
+    *pubkey_len = key_size;
+    return TECC_CRYPTO_SUCCESS;
+}
+
+int
+tecc_key_manager_adapter_get_he_privkey(TeccKeyManagerAdapter *adapter,
+    Oid dek_oid, int algo_type,
+    unsigned char **privkey, size_t *privkey_len)
+{
+    size_t key_size;
+    if (adapter == NULL || privkey == NULL || privkey_len == NULL)
+        return TECC_CRYPTO_INVALID_PARAM;
+    if (algo_type == TECC_ALGO_EC_ELGAMAL)
+        key_size = 32;
+    else if (algo_type == TECC_ALGO_ELGAMAL)
+        key_size = 256;
+    else
+        return TECC_CRYPTO_INVALID_PARAM;
+    *privkey = (unsigned char *)pg_malloc0(key_size);
+    *privkey_len = key_size;
+    return TECC_CRYPTO_SUCCESS;
+}
+
+void
+tecc_key_manager_adapter_release_he_key(TeccKeyManagerAdapter *adapter,
+    unsigned char *key, size_t key_len)
+{
+    if (key != NULL && key_len > 0)
+    {
+        memset(key, 0, key_len);
+        pg_free(key);
+    }
+}

@@ -1,0 +1,43 @@
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+1_setup|0
+PREPARE
+DEALLOCATE
+PREPARE
+DEALLOCATE
+PREPARE
+DEALLOCATE ALL
+PREPARE
+DEALLOCATE ALL
+PREPARE
+INSERT 0 1
+2_plain_row|1|plain row
+DEALLOCATE
+PREPARE
+INSERT 0 1
+3_enc_row_after_reuse|1|Alice|50000
+PREPARE
+4_det_param_hit|1
+DEALLOCATE
+PREPARE
+5_ope_param_hit|1
+DEALLOCATE
+DEALLOCATE
+PREPARE
+DEALLOCATE
+DEALLOCATE ALL
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../deallocate_name.sql:16: NOTICE:  table "test_dl_plain" does not exist, skipping
+psql:/.../deallocate_name.sql:17: NOTICE:  table "test_dl_enc" does not exist, skipping
+psql:/.../deallocate_name.sql:18: NOTICE:  data encryption key "dek_dl" does not exist, skipping
+psql:/.../deallocate_name.sql:19: NOTICE:  key encryption key "kek_dl" does not exist, skipping
+psql:/.../deallocate_name.sql:77: ERROR:  prepared statement "d_keep" already exists

@@ -6,7 +6,6 @@
  * Portions Copyright (c) 1996-2021, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
- *
  * IDENTIFICATION
  *	  src/backend/nodes/nodeFuncs.c
  *
@@ -302,6 +301,7 @@ exprType(const Node *expr)
 			break;
 		case T_CreateKekStmt:
 		case T_CreateDekStmt:
+		case T_AlterKekStmt:
 			/* These are statement nodes, not expression nodes */
 			type = InvalidOid;
 		break;
@@ -1095,6 +1095,10 @@ exprCollation(const Node *expr)
 			coll = InvalidOid;
 			break;
 		/* End - ReqID:SRS-SQL-PIVOT */
+				case T_AlterKekStmt:
+                        /* These are statement nodes, not expression nodes */
+                        coll = InvalidOid;
+                        break;
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(expr));
 			coll = InvalidOid;	/* keep compiler quiet */
@@ -1329,6 +1333,7 @@ exprSetCollation(Node *expr, Oid collation)
 		/* End - BUG#7712 */
                 case T_CreateKekStmt:
                 case T_CreateDekStmt:
+				case T_AlterKekStmt:
                         /* These are statement nodes, not expression nodes */
                         Assert(!OidIsValid(collation));
                         break;
@@ -1682,6 +1687,11 @@ exprLocation(const Node *expr)
 		case T_A_Const:
 			loc = ((const A_Const *) expr)->location;
 			break;
+		/* Begin: Req:SRS-MYSQL-SQL-Select */
+		case T_IntroducerConst:
+			loc = ((const A_Const *) expr)->location;
+			break;
+		/* End: Req:SRS-MYSQL-SQL-Select */
 		case T_FuncCall:
 			{
 				const FuncCall *fc = (const FuncCall *) expr;
@@ -1834,6 +1844,7 @@ exprLocation(const Node *expr)
 			loc = -1;
 			break;
 		/* End - ReqID:SRS-SQL-PIVOT */
+
 		default:
 			/* for any other node type it's just unknown... */
 			loc = -1;

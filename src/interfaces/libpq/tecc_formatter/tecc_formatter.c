@@ -42,9 +42,6 @@ typedef int32_t pg_int32;
 typedef int16_t pg_int16;
 typedef uint16_t pg_uint16;
 
-/* Include cipherdata header for tecc_cipherdata_calculate_size */
-#include "tecc_cipherdata.h"
-
 /* TECC logging system */
 #include "../tecc_common/tecc_logging.h"
 
@@ -72,45 +69,6 @@ static TeccFormatterErrorCode tecc_apply_guc_to_numeric(TeccCryptoContextCore *c
 /* Text parsing helper functions for numeric normalization */
 static TeccFormatterErrorCode parse_int_from_text(const char *text, size_t text_len, Oid data_type, int64_t *int_value);
 static TeccFormatterErrorCode parse_float_from_text(const char *text, size_t text_len, Oid data_type, double *float_value);
-#if 0
-static TeccFormatterErrorCode add_length_prefix(const unsigned char *input_data,
-                                               size_t input_len,
-                                               unsigned char **output_data,
-                                               size_t *output_len)
-{
-    /* ReqID:TECC4.0 - Fix C90 mixed declaration warning */
-    size_t required_size;
-    unsigned char *buf;
-
-    /* Parameter validation */
-    if (!input_data || !output_data || !output_len)
-        return TECC_FORMATTER_ERROR_INVALID_PARAM;
-
-    if (input_len == 0 )
-        return TECC_FORMATTER_ERROR_DATA_TOO_LARGE;
-
-    /* Calculate required size: 4-byte length prefix + input data */
-    required_size = TECC_TEXT_LENGTH_PREFIX_SIZE + input_len;
-
-    /* Allocate output buffer */
-    *output_data = (unsigned char *)pg_malloc(required_size);
-    if (!*output_data)
-        return TECC_FORMATTER_ERROR_MEMORY_ALLOC;
-
-    /* Store length in network byte order (big-endian) */
-    buf = *output_data;
-    buf[0] = (input_len >> 24) & 0xFF;
-    buf[1] = (input_len >> 16) & 0xFF;
-    buf[2] = (input_len >> 8) & 0xFF;
-    buf[3] = input_len & 0xFF;
-
-    /* Copy input data */
-    memcpy(buf + TECC_TEXT_LENGTH_PREFIX_SIZE, input_data, input_len);
-
-    *output_len = required_size;
-    return TECC_FORMATTER_SUCCESS;
-}
-#endif
 /* ReqID:TECC4.0 - 256-byte hex lookup table, zero branches per nibble */
 static const signed char hex_lut[256] = {
 	-1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
@@ -152,11 +110,6 @@ static TeccFormatterErrorCode normalize_numeric_text(TeccCryptoContextCore *cont
                                                     const char *numeric_text,
                                                     size_t text_len,
                                                     TeccNumericNormalized *norm_num);
-#if 0
-static TeccFormatterErrorCode encode_normalized_format(TeccNumericNormalized *norm_num,
-                                                      unsigned char **output_data,
-                                                      size_t *output_len);
-#endif
 static TeccFormatterErrorCode encode_normalized_format_to_buffer(TeccNumericNormalized *norm_num,
                                                                 unsigned char *buffer,
                                                                 size_t buffer_size,
@@ -167,12 +120,6 @@ static TeccFormatterErrorCode tecc_icu_generate_sortkey(const char *collation_lo
                                                        size_t input_len,
                                                        unsigned char **sortkey,
                                                        size_t *sortkey_len);
-static TeccFormatterErrorCode tecc_icu_generate_sortkey_to_buffer(const char *collation_locale,
-                                                                 const unsigned char *input_text,
-                                                                 size_t input_len,
-                                                                 unsigned char *buffer,
-                                                                 size_t buffer_size,
-                                                                 size_t *sortkey_len);
 
 /*
  * tecc_formatter_normalize_data - Data normalization processing (pre-encryption)
@@ -445,25 +392,30 @@ tecc_formatter_parse_cipherdata(const CipherDataType *cipherdata,
     if (!cipherdata || !parsed_data)
         return TECC_FORMATTER_ERROR_INVALID_PARAM;
 
-    /* 2. Verify minimum size */
-    if (cipherdata_len < sizeof(CipherDataType))
+    /* 2. Verify minimum size — use v1.0 minimum (28) for upgrade compat */
+    /* ReqID:TECC4.0 - 最小长度按 v2.0 空 mask（仅 base 头）计算，
+     * v1.0 的固定 28B 头更大，会在下方长度校验中被精确核对。 */
+    if (cipherdata_len < CIPHERDATA_MIN_SIZE)
         return TECC_FORMATTER_ERROR_INVALID_HEADER;
 
     /* Note: VARSIZE check skipped here because frontend VARSIZE macro
      * is incompatible with backend SET_VARSIZE encoding.  Length validation
      * is done below via sum of header + algorithm lengths. */
 
-    /* 3. Verify version */
+    /* 3. Verify version (major only; low 16 bits carry the segment mask) */
     if (!CIPHERDATA_VERSION_VALID(CIPHERDATA_VERSION(cipherdata)))
         return TECC_FORMATTER_ERROR_VERSION_MISMATCH;
 
-    /* 4. Extract algorithm ciphertexts */
+    /* 4. Extract algorithm ciphertexts (mask-aware: absent segments read 0) */
     parsed_data->version = CIPHERDATA_VERSION(cipherdata);
     parsed_data->rnd_data_len = CIPHERDATA_RND_LENGTH(cipherdata);
     parsed_data->det_data_len = CIPHERDATA_DET_LENGTH(cipherdata);
     parsed_data->ope_data_len = CIPHERDATA_OPE_LENGTH(cipherdata);
     parsed_data->search_data_len = CIPHERDATA_SEARCH_LENGTH(cipherdata);
 
+    /* ReqID:TECC4.0 - Extract HE ciphertext lengths (absent for v1.0) */
+    parsed_data->eg_add_data_len = CIPHERDATA_EG_ADD_LENGTH(cipherdata);
+    parsed_data->eg_mul_data_len = CIPHERDATA_EG_MUL_LENGTH(cipherdata);
 
     /* 5. Set pointers to algorithm data */
     parsed_data->rnd_data = (const unsigned char *)CIPHERDATA_RND_PTR(cipherdata);
@@ -471,13 +423,49 @@ tecc_formatter_parse_cipherdata(const CipherDataType *cipherdata,
     parsed_data->ope_data = (const unsigned char *)CIPHERDATA_OPE_PTR(cipherdata);
     parsed_data->search_data = (const unsigned char *)CIPHERDATA_SEARCH_PTR(cipherdata);
 
-    /* 6. Verify data boundaries */
+    /* ReqID:TECC4.0 - Set HE data pointers (NULL when the segment is absent) */
+    {
+        if (parsed_data->eg_add_data_len > 0)
+        {
+            parsed_data->eg_add_data = (const unsigned char *)CIPHERDATA_EG_ADD_PTR(cipherdata);
+            /* Per-segment DEK distributed ID from the 4-byte prefix */
+            if (parsed_data->eg_add_data_len >= CIPHERDATA_HE_DEK_ID_SIZE)
+                parsed_data->eg_add_dek_id = *(Oid *)parsed_data->eg_add_data;
+            else
+                parsed_data->eg_add_dek_id = InvalidOid;
+        }
+        else
+        {
+            parsed_data->eg_add_data = NULL;
+            parsed_data->eg_add_dek_id = InvalidOid;
+        }
 
-    total_cipher_len = sizeof(CipherDataType) +
-                             parsed_data->rnd_data_len +
-                             parsed_data->det_data_len +
-                             parsed_data->ope_data_len +
-                             parsed_data->search_data_len;
+        if (parsed_data->eg_mul_data_len > 0)
+        {
+            parsed_data->eg_mul_data = (const unsigned char *)CIPHERDATA_EG_MUL_PTR(cipherdata);
+            if (parsed_data->eg_mul_data_len >= CIPHERDATA_HE_DEK_ID_SIZE)
+                parsed_data->eg_mul_dek_id = *(Oid *)parsed_data->eg_mul_data;
+            else
+                parsed_data->eg_mul_dek_id = InvalidOid;
+        }
+        else
+        {
+            parsed_data->eg_mul_data = NULL;
+            parsed_data->eg_mul_dek_id = InvalidOid;
+        }
+    }
+
+    /* 6. Verify data boundaries — mask-aware header size (includes vl_len_) */
+    {
+        size_t hdr_sz = CIPHERDATA_HEADER_SIZE(CIPHERDATA_RAW_VERSION(cipherdata));
+        total_cipher_len = hdr_sz +
+                       parsed_data->rnd_data_len +
+                       parsed_data->det_data_len +
+                       parsed_data->ope_data_len +
+                       parsed_data->search_data_len +
+                       parsed_data->eg_add_data_len +
+                       parsed_data->eg_mul_data_len;
+    }
 
     if (total_cipher_len != cipherdata_len)
         return TECC_FORMATTER_ERROR_DATA_FORMAT;
@@ -975,82 +963,6 @@ tecc_formatter_calculate_normalized_size(
 }
 
 /*
- * tecc_formatter_calculate_cipherdata_size - Calculate CipherDataType size
- *
- * Calculates the size needed for CipherDataType structure.
- * Used for pre-allocating buffers.
- *
- * @param context Encryption context
- * @param encrypted_len Length of encrypted data
- * @return Required buffer size for CipherDataType
- */
-size_t
-tecc_formatter_calculate_cipherdata_size(
-    TeccCryptoContextCore *context,
-    size_t encrypted_len)
-{
-    /* For now, assume all encrypted data goes into RND field */
-    /* In actual implementation, this should consider algorithm support */
-    return tecc_cipherdata_calculate_size(encrypted_len, 0, 0, 0);
-}
-
-/*
- * tecc_formatter_build_cipherdata_zero_copy - Build CipherDataType in-place (zero-copy)
- *
- * Builds CipherDataType structure using the provided buffer.
- *
- * @param context Encryption context
- * @param encrypted_data Encrypted data from algorithm module
- * @param encrypted_len Length of encrypted data
- * @param buffer Buffer for output CipherDataType
- * @return Error code
- */
-TeccFormatterErrorCode
-tecc_formatter_build_cipherdata_zero_copy(
-    TeccCryptoContextCore *context,
-    const unsigned char *encrypted_data,
-    size_t encrypted_len,
-    TeccCryptoBuffer *buffer)
-{
-    CipherDataType *cd;
-    char *dest_ptr;
-    size_t total_len;
-
-    if (!context || !encrypted_data || encrypted_len == 0 || !buffer)
-        return TECC_FORMATTER_ERROR_INVALID_PARAM;
-
-    /* Calculate required size */
-    total_len = tecc_cipherdata_calculate_size(encrypted_len, 0, 0, 0);
-
-    /* Check if buffer is large enough */
-    if (buffer->size < total_len)
-        return TECC_FORMATTER_ERROR_BUFFER_TOO_SMALL;
-
-    /* Get pointer to buffer data */
-    cd = (CipherDataType *)buffer->data;
-
-    /* Set varlena header */
-    SET_VARSIZE(cd, total_len);
-
-    /* Set CipherDataType header */
-    cd->version = CIPHERDATA_VERSION_1_0;  /* Current version number */
-    cd->dek_dist_oid = InvalidOid;         /* DEK identity (caller must set if known) */
-    cd->rnd_length = encrypted_len;  /* Assume all data is RND ciphertext */
-    cd->det_length = 0;
-    cd->ope_length = 0;
-    cd->search_length = 0;
-
-    /* Copy encrypted data to RND field */
-    dest_ptr = CIPHERDATA_RND_PTR(cd);
-    memcpy(dest_ptr, encrypted_data, encrypted_len);
-
-    /* Update buffer used size */
-    buffer->used = total_len;
-
-    return TECC_FORMATTER_SUCCESS;
-}
-
-/*
  * tecc_formatter_initialize - Initialize formatter module
  *
  * Optional initialization function for formatter module.
@@ -1095,89 +1007,6 @@ tecc_formatter_cleanup(void)
  * @param output_data Output normalized data
  * @param output_len Output length
  */
-#if 0
-static TeccFormatterErrorCode
-tecc_normalize_number(TeccCryptoContextCore *context,
-                     const unsigned char *input_data,
-                     size_t input_len,
-                     unsigned char **output_data,
-                     size_t *output_len)
-{
-    TeccFormatterErrorCode ret = TECC_FORMATTER_SUCCESS;
-    TeccNumericNormalized norm_num;
-    Oid data_type = context->data_type;
-
-    /* Validate parameters */
-    if (!context || !input_data || !output_data || !output_len)
-        return TECC_FORMATTER_ERROR_INVALID_PARAM;
-
-    if (input_len == 0)
-        return TECC_FORMATTER_ERROR_INVALID_INPUT;
-
-    /* Initialize normalized structure */
-    memset(&norm_num, 0, sizeof(TeccNumericNormalized));
-
-    /* Convert input data based on data type */
-    /* All numeric types are processed as text strings from SQL layer */
-    switch (data_type)
-    {
-        case INT2OID:
-        case INT4OID:
-        case INT8OID:
-            /* Integer types - parse from text string */
-            {
-                int64_t int_value = 0;
-                ret = parse_int_from_text((const char *)input_data, input_len, data_type, &int_value);
-                if (ret == TECC_FORMATTER_SUCCESS)
-                {
-                    ret = normalize_int_value(context, int_value, &norm_num);
-                }
-            }
-            break;
-
-        case FLOAT4OID:
-        case FLOAT8OID:
-            /* Floating-point types - parse from text string */
-            {
-                double float_value = 0.0;
-                ret = parse_float_from_text((const char *)input_data, input_len, data_type, &float_value);
-                if (ret == TECC_FORMATTER_SUCCESS)
-                {
-                    ret = normalize_float_value(context, float_value, &norm_num);
-                }
-            }
-            break;
-
-        case NUMERICOID:
-            /* Numeric type - parse numeric text string */
-            {
-                /* Input is numeric text string */
-                ret = normalize_numeric_text(context, (const char *)input_data, input_len, &norm_num);
-            }
-            break;
-
-        default:
-            /* Unsupported numeric type */
-            return TECC_FORMATTER_ERROR_UNSUPPORTED_TYPE;
-    }
-
-    if (ret != TECC_FORMATTER_SUCCESS)
-        return ret;
-
-    /* Encode normalized structure to byte stream */
-    ret = encode_normalized_format(&norm_num, output_data, output_len);
-    if (ret != TECC_FORMATTER_SUCCESS)
-    {
-        pg_free(*output_data);
-        *output_data = NULL;
-        *output_len = 0;
-    }
-
-    return ret;
-}
-#endif
-/* End - ReqID:TECC4.0 */
-
 /*
  * tecc_normalize_number_to_buffer - Numeric type normalization with buffer
  *
@@ -1291,62 +1120,6 @@ tecc_normalize_number_to_buffer(TeccCryptoContextCore *context,
  * @param output_data Output normalized data
  * @param output_len Output length
  */
-#if 0
-static TeccFormatterErrorCode
-tecc_normalize_text(TeccCryptoContextCore *context,
-                   const unsigned char *input_data,
-                   size_t input_len,
-                   unsigned char **output_data,
-                   size_t *output_len)
-{
-    TECC_RETURN_IF_NULL(context, TECC_FORMATTER_ERROR_INVALID_PARAM);
-    TECC_RETURN_IF_NULL(input_data, TECC_FORMATTER_ERROR_INVALID_PARAM);
-    TECC_RETURN_IF_NULL(output_data, TECC_FORMATTER_ERROR_INVALID_PARAM);
-    TECC_RETURN_IF_NULL(output_len, TECC_FORMATTER_ERROR_INVALID_PARAM);
-
-    /* Check input length */
-    if (input_len == 0)
-        return TECC_FORMATTER_ERROR_INVALID_INPUT;
-
-    /* Implement full logic based on algorithm type and collation */
-    if (context->algo_type == TECC_ALGO_RND) {
-        /* RND: Add 4-byte network byte order length prefix */
-        size_t total_size = TECC_TEXT_LENGTH_PREFIX_SIZE + input_len;
-        unsigned char *buffer = pg_malloc(total_size);
-        if (!buffer)
-            return TECC_FORMATTER_ERROR_MEMORY_ALLOC;
-
-        /* Store length in network byte order (big-endian) */
-        buffer[0] = (input_len >> 24) & 0xFF;
-        buffer[1] = (input_len >> 16) & 0xFF;
-        buffer[2] = (input_len >> 8) & 0xFF;
-        buffer[3] = input_len & 0xFF;
-
-        /* Copy input data */
-        memcpy(buffer + TECC_TEXT_LENGTH_PREFIX_SIZE, input_data, input_len);
-
-        *output_data = buffer;
-        *output_len = total_size;
-        return TECC_FORMATTER_SUCCESS;
-    } else if (context->algo_type == TECC_ALGO_OPE && context->collation_oid != InvalidOid
-               && !tecc_is_raw_byte_collation(context->collation_locale)) {
-        /* OPE with collation (non-C): Generate ICU sort key */
-        return tecc_icu_generate_sortkey(context->collation_locale, input_data, input_len,
-                                        output_data, output_len);
-    } else {
-        /* DET, SEARCH, or OPE without collation: Keep original format */
-        unsigned char *buffer = pg_malloc(input_len);
-        if (!buffer)
-            return TECC_FORMATTER_ERROR_MEMORY_ALLOC;
-
-        memcpy(buffer, input_data, input_len);
-        *output_data = buffer;
-        *output_len = input_len;
-        return TECC_FORMATTER_SUCCESS;
-    }
-}
-#endif
-
 /*
  * hex_char_to_int - Convert hex character to integer value
  */
@@ -1528,87 +1301,6 @@ normalize_float_value(TeccCryptoContextCore *context,
         return ret;
     }
 }
-
-#if 0
-/*
- * encode_normalized_format - Encode normalized numeric structure to byte stream
- *
- * Converts normalized numeric structure to binary format for encryption.
- * Format: sign(1) + weight(2) + ndigits(2) + reserved(3) + digits(variable)
- *
- * @param norm_num Normalized numeric structure
- * @param output_data Output encoded data
- * @param output_len Output length
- */
-static TeccFormatterErrorCode
-encode_normalized_format(TeccNumericNormalized *norm_num,
-                        unsigned char **output_data,
-                        size_t *output_len)
-{
-    /* ReqID:TECC4.0 - Fix C90 mixed declaration warning */
-    size_t header_size;
-    size_t digits_size;
-    size_t total_size;
-    unsigned char *buffer;
-
-    /* Validate parameters */
-    if (!norm_num || !output_data || !output_len)
-        return TECC_FORMATTER_ERROR_INVALID_PARAM;
-
-    /* Calculate output size */
-    header_size = TECC_NUMERIC_HEADER_SIZE;
-    digits_size = norm_num->ndigits * sizeof(uint16_t);
-    total_size = header_size + digits_size;
-
-    /* Allocate output buffer */
-    buffer = pg_malloc(total_size);
-    if (!buffer)
-        return TECC_FORMATTER_ERROR_MEMORY_ALLOC;
-
-    /* Encode header */
-    buffer[0] = norm_num->sign;  /* sign */
-
-    /* ReqID:TECC4.0 - Weight is stored with a bias of 16384 so that
-     * memcmp on network-byte-order uint16 gives correct ordering for
-     * both negative and positive weights.  Without the bias, a negative
-     * weight (e.g. -4 = 0xFFFC) would appear larger than a positive one
-     * (e.g. 4 = 0x0004) under raw byte comparison. */
-    {
-        uint16_t biased_weight = (uint16_t)((int32_t)norm_num->weight + 16384);
-        buffer[1] = (biased_weight >> 8) & 0xFF;
-        buffer[2] = biased_weight & 0xFF;
-    }
-
-    /* ndigits in network byte order */
-    buffer[3] = (norm_num->ndigits >> 8) & 0xFF;
-    buffer[4] = norm_num->ndigits & 0xFF;
-
-    /* reserved bytes (5-7) */
-    buffer[5] = 0;
-    buffer[6] = 0;
-    buffer[7] = 0;
-
-    /* Encode digits.
-     * ReqID:TECC4.0 - For negative numbers, store 9's complement of
-     * each digit so that memcmp order matches mathematical order:
-     * e.g. -80000 (digit 8→1) < -50000 (digit 5→4) in encoded bytes. */
-    if (norm_num->ndigits > 0) {
-        uint16_t *digits_ptr = (uint16_t *)(buffer + header_size);
-        int i;
-        for (i = 0; i < norm_num->ndigits; i++) {
-            if (norm_num->sign == TECC_NUMERIC_SIGN_NEGATIVE)
-                digits_ptr[i] = (uint16_t)(9 - norm_num->digits[i]);
-            else
-                digits_ptr[i] = norm_num->digits[i];
-        }
-    }
-
-    *output_data = buffer;
-    *output_len = total_size;
-
-    return TECC_FORMATTER_SUCCESS;
-}
-#endif
 
 /*
  * normalize_numeric_text - Normalize numeric text string for OPE algorithm
@@ -2367,74 +2059,6 @@ static TeccFormatterErrorCode tecc_icu_generate_sortkey(const char *collation_lo
     return tecc_icu_normalizer_generate_sortkey(collation_locale, input_text, input_len, sortkey, sortkey_len);
 }
 
-/*
- * tecc_icu_generate_sortkey_to_buffer - Generate ICU sort key to existing buffer
- *
- * Generates a binary sort key using ICU collation and stores it in the provided buffer.
- * This is the buffer version of tecc_icu_generate_sortkey.
- *
- * @param collation_locale Collation locale string (e.g. "en_US.UTF-8")
- * @param input_text Input text data
- * @param input_len Input text length
- * @param buffer Output buffer
- * @param buffer_size Buffer size
- * @param sortkey_len Pointer to receive sort key length
- * @return Error code
- */
-static TeccFormatterErrorCode tecc_icu_generate_sortkey_to_buffer(const char *collation_locale,
-                                                                 const unsigned char *input_text,
-                                                                 size_t input_len,
-                                                                 unsigned char *buffer,
-                                                                 size_t buffer_size,
-                                                                 size_t *sortkey_len)
-{
-    unsigned char *sortkey;
-    size_t generated_len;
-    TeccFormatterErrorCode result;
-
-    /* Parameter validation */
-    if (!collation_locale || !input_text || !buffer || !sortkey_len)
-        return TECC_FORMATTER_ERROR_INVALID_PARAM;
-
-    if (input_len == 0 )
-        return TECC_FORMATTER_ERROR_DATA_TOO_LARGE;
-
-    if (buffer_size == 0)
-        return TECC_FORMATTER_ERROR_BUFFER_TOO_SMALL;
-
-    /* Check if ICU is available */
-    if (!tecc_icu_normalizer_is_available())
-        return TECC_FORMATTER_ERROR_ICU_NOT_AVAILABLE;
-
-    /* For now, implement a simplified version */
-    /* In a full implementation, we would use ICU to generate sort key directly to buffer */
-
-    sortkey = NULL;
-    generated_len = 0;
-
-    /* Simplified implementation: generate sort key first, then copy to buffer if fits */
-    result = tecc_icu_generate_sortkey(
-        collation_locale, input_text, input_len, &sortkey, &generated_len);
-
-    if (result != TECC_FORMATTER_SUCCESS)
-        return result;
-
-    /* Check if buffer is large enough */
-    if (buffer_size < generated_len) {
-        pg_free(sortkey);
-        return TECC_FORMATTER_ERROR_BUFFER_TOO_SMALL;
-    }
-
-    /* Copy sort key to buffer */
-    memcpy(buffer, sortkey, generated_len);
-    *sortkey_len = generated_len;
-
-    /* Clean up */
-    pg_free(sortkey);
-
-    return TECC_FORMATTER_SUCCESS;
-}
-
 /* ==================== GUC Integration Helper Functions ==================== */
 
 /*
@@ -2443,34 +2067,6 @@ static TeccFormatterErrorCode tecc_icu_generate_sortkey_to_buffer(const char *co
  * @param context Encryption context
  * @return Pointer to GUC parameters, or NULL if not available
  */
-#if 0
-static const TeccGucParams *tecc_formatter_get_guc_params(TeccCryptoContextCore *context)
-{
-    if (!context)
-        return NULL;
-
-    /* Check if this is an extended context */
-    if (TECC_IS_EXTENDED_CONTEXT(context))
-    {
-        TeccCryptoContextExtended *ext_context = TECC_CONTEXT_EXTENDED(context);
-
-        /* Check if GUC processing is enabled and parameters are available */
-        if (ext_context->guc_processing_enabled && ext_context->guc_params)
-        {
-            return ext_context->guc_params;
-        }
-        else
-        {
-            /* GUC processing disabled or no parameters available */
-            return NULL;
-        }
-    }
-
-    /* Core context doesn't have GUC parameters */
-    return NULL;
-}
-#endif
-
 /*
  * tecc_apply_guc_to_text - Apply GUC parameters to text data
  *
@@ -2545,16 +2141,37 @@ tecc_formatter_format_cipherdata(TeccCryptoContextExtended *context,
     size_t total_len;
     CipherDataType *cd;
     char *dest_ptr;
+    int32 rnd_len, det_len, ope_len, search_len, eg_add_len, eg_mul_len;
+    uint16 mask;
+    char *hdr_ptr;
 
     if (!context || !cipherdata || !cipherdata_len)
         return TECC_FORMATTER_ERROR_INVALID_PARAM;
 
-    /* Calculate total length */
-    total_len = sizeof(CipherDataType) +
-                context->rnd_cipher_len +
-                context->det_cipher_len +
-                context->ope_cipher_len +
-                context->search_cipher_len;
+    /* Compute individual segment lengths (HE lengths include 4B DEK ID prefix) */
+    rnd_len = context->rnd_cipher_len;
+    det_len = context->det_cipher_len;
+    ope_len = context->ope_cipher_len;
+    search_len = context->search_cipher_len;
+    eg_add_len = context->he_add_cipher_len +
+        (context->he_add_cipher_len > 0 ? CIPHERDATA_HE_DEK_ID_SIZE : 0);
+    eg_mul_len = context->he_mul_cipher_len +
+        (context->he_mul_cipher_len > 0 ? CIPHERDATA_HE_DEK_ID_SIZE : 0);
+
+    /* Compute segment mask */
+    mask = 0;
+    if (rnd_len > 0)        mask |= CIPHERDATA_SEG_RND;
+    if (det_len > 0)        mask |= CIPHERDATA_SEG_DET;
+    if (ope_len > 0)        mask |= CIPHERDATA_SEG_OPE;
+    if (search_len > 0)     mask |= CIPHERDATA_SEG_SEARCH;
+    if (eg_add_len > 0)     mask |= CIPHERDATA_SEG_EG_ADD;
+    if (eg_mul_len > 0)     mask |= CIPHERDATA_SEG_EG_MUL;
+
+    /* Calculate total length with compact header */
+    total_len = sizeof(int32) + CIPHERDATA_FIELDS_BASE_SIZE +
+                CIPHERDATA_POPCOUNT16(mask) * sizeof(int32) +
+                rnd_len + det_len + ope_len + search_len +
+                eg_add_len + eg_mul_len;
 
     /* Allocate memory */
     cd = (CipherDataType *)pg_malloc0(total_len);
@@ -2564,43 +2181,74 @@ tecc_formatter_format_cipherdata(TeccCryptoContextExtended *context,
     /* Set varlena header */
     SET_VARSIZE(cd, total_len);
 
-    /* Set version */
-    cd->version = CIPHERDATA_VERSION_1_0;
+    /* Set version with mask in low 16 bits */
+    cd->version = CIPHERDATA_VERSION_2_0 | (int32)mask;
 
-    /* Set DEK identity (not known at formatter level, set by caller if available) */
+    /* Set DEK identity */
     cd->dek_dist_oid = InvalidOid;
 
-    /* Set lengths */
-    cd->rnd_length = context->rnd_cipher_len;
-    cd->det_length = context->det_cipher_len;
-    cd->ope_length = context->ope_cipher_len;
-    cd->search_length = context->search_cipher_len;
+    /* Write length fields at mask-computed offsets.
+     * cd is allocated with a 4-byte varlena header, so the field area begins
+     * at cd->data; length fields precede the ciphertext data. */
+    hdr_ptr = cd->data;
+    if (mask & CIPHERDATA_SEG_RND)      { *(int32 *)hdr_ptr = rnd_len;     hdr_ptr += sizeof(int32); }
+    if (mask & CIPHERDATA_SEG_DET)      { *(int32 *)hdr_ptr = det_len;     hdr_ptr += sizeof(int32); }
+    if (mask & CIPHERDATA_SEG_OPE)      { *(int32 *)hdr_ptr = ope_len;     hdr_ptr += sizeof(int32); }
+    if (mask & CIPHERDATA_SEG_SEARCH)   { *(int32 *)hdr_ptr = search_len;  hdr_ptr += sizeof(int32); }
+    if (mask & CIPHERDATA_SEG_EG_ADD)   { *(int32 *)hdr_ptr = eg_add_len;  hdr_ptr += sizeof(int32); }
+    if (mask & CIPHERDATA_SEG_EG_MUL)   { *(int32 *)hdr_ptr = eg_mul_len;  hdr_ptr += sizeof(int32); }
 
     /* Copy ciphertexts */
-    dest_ptr = cd->data;
+    dest_ptr = hdr_ptr;
 
-    if (context->rnd_cipher_len > 0 && context->rnd_ciphertext)
+    if (rnd_len > 0 && context->rnd_ciphertext)
     {
-        memcpy(dest_ptr, context->rnd_ciphertext, context->rnd_cipher_len);
-        dest_ptr += context->rnd_cipher_len;
+        memcpy(dest_ptr, context->rnd_ciphertext, rnd_len);
+        dest_ptr += rnd_len;
     }
 
-    if (context->det_cipher_len > 0 && context->det_ciphertext)
+    if (det_len > 0 && context->det_ciphertext)
     {
-        memcpy(dest_ptr, context->det_ciphertext, context->det_cipher_len);
-        dest_ptr += context->det_cipher_len;
+        memcpy(dest_ptr, context->det_ciphertext, det_len);
+        dest_ptr += det_len;
     }
 
-    if (context->ope_cipher_len > 0 && context->ope_ciphertext)
+    if (ope_len > 0 && context->ope_ciphertext)
     {
-        memcpy(dest_ptr, context->ope_ciphertext, context->ope_cipher_len);
-        dest_ptr += context->ope_cipher_len;
+        memcpy(dest_ptr, context->ope_ciphertext, ope_len);
+        dest_ptr += ope_len;
     }
 
     if (context->search_cipher_len > 0 && context->search_ciphertext)
     {
         memcpy(dest_ptr, context->search_ciphertext, context->search_cipher_len);
         dest_ptr += context->search_cipher_len;
+    }
+
+    /* ReqID:TECC4.0 - Copy HE ciphertexts after SEARCH slot.
+     * Each HE segment carries a 4-byte DEK distributed ID prefix. */
+    if (context->he_add_cipher_len > 0 && context->he_add_ciphertext)
+    {
+        Oid add_dek_id = context->he_add_dek_id;
+
+        if (!OidIsValid(add_dek_id))
+            add_dek_id = cd->dek_dist_oid;
+        memcpy(dest_ptr, &add_dek_id, CIPHERDATA_HE_DEK_ID_SIZE);
+        dest_ptr += CIPHERDATA_HE_DEK_ID_SIZE;
+        memcpy(dest_ptr, context->he_add_ciphertext, context->he_add_cipher_len);
+        dest_ptr += context->he_add_cipher_len;
+    }
+
+    if (context->he_mul_cipher_len > 0 && context->he_mul_ciphertext)
+    {
+        Oid mul_dek_id = context->he_mul_dek_id;
+
+        if (!OidIsValid(mul_dek_id))
+            mul_dek_id = cd->dek_dist_oid;
+        memcpy(dest_ptr, &mul_dek_id, CIPHERDATA_HE_DEK_ID_SIZE);
+        dest_ptr += CIPHERDATA_HE_DEK_ID_SIZE;
+        memcpy(dest_ptr, context->he_mul_ciphertext, context->he_mul_cipher_len);
+        dest_ptr += context->he_mul_cipher_len;
     }
 
     *cipherdata = cd;
@@ -2871,7 +2519,6 @@ tecc_formatter_ope_text_pad(const unsigned char *input_data,
                            unsigned char **output_data,
                            size_t *output_len)
 {
-    size_t rem;
     unsigned char *padded;
 
     if (!input_data || !output_data || !output_len)

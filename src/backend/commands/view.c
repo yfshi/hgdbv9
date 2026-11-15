@@ -23,6 +23,7 @@
 #include "catalog/pg_force_view.h"	/* ReqID:SRS-SQL-FORCEVIEW */
 #include "catalog/pg_rewrite.h"		/* ReqID:SRS-SQL-FORCEVIEW */
 #include "commands/defrem.h"
+#include "commands/encrypted_column.h"
 #include "commands/event_trigger.h"	/* BUG#5707 */
 #include "commands/tablecmds.h"
 #include "commands/view.h"
@@ -853,6 +854,16 @@ DefineView(ViewStmt *stmt, const char *queryString,
 	 */
 	address = DefineVirtualRelation(view, viewParse->targetList,
 									stmt->replace, stmt->options, viewParse);
+									
+	/* ReqID:TECC4.0 - Register encrypted column metadata for VIEW columns
+	 * that reference encrypted base table columns.  This enables the TECC
+	 * client-side cache to recognize VIEW columns as encrypted. */
+	if (OidIsValid(address.objectId) && viewParse->targetList != NIL)
+	{
+		populate_view_encryption_metadata(address.objectId,
+										  viewParse->targetList,
+										  viewParse->rtable);
+	}
 
 	/* Begin - Bug#M459 */
 	if (switch_role)

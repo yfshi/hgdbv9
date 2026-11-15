@@ -18,12 +18,26 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* 错误上下文 */
-static char *error_context = NULL;
-static char *detailed_error = NULL;
+/* ReqID:TECC4.0 - 线程局部存储宏：MSVC 用 __declspec(thread)，GCC/Clang 用 __thread，
+ * 与 tecc_parser.c / tecc_metadata_cache.h 的 TECC_THREAD_LOCAL 保持一致。 */
+#ifndef TECC_THREAD_LOCAL
+#if defined(__GNUC__) || defined(__clang__)
+#define TECC_THREAD_LOCAL __thread
+#elif defined(_WIN32) && defined(_MSC_VER)
+#define TECC_THREAD_LOCAL __declspec(thread)
+#elif defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L && !defined(__STDC_NO_THREADS__)
+#define TECC_THREAD_LOCAL _Thread_local
+#else
+#error "Thread-local storage is required for TECC error handler."
+#endif
+#endif
 
-/* 错误统计 */
-static int error_counts[TECC_FETCHER_ERROR_INVALID_PARAM + 1] = {0};
+/* 错误上下文（线程局部，多线程隔离） */
+static TECC_THREAD_LOCAL char *error_context = NULL;
+static TECC_THREAD_LOCAL char *detailed_error = NULL;
+
+/* 错误统计（线程局部，多线程隔离） */
+static TECC_THREAD_LOCAL int error_counts[TECC_FETCHER_ERROR_INVALID_PARAM + 1];
 
 /*
  * tecc_set_error_context - 设置错误上下文
@@ -177,68 +191,5 @@ tecc_reset_error_stats(void)
     {
         error_counts[i] = 0;
     }
-}
-
-/* 以下函数是存根实现，供未来扩展 */
-
-void
-tecc_push_error_stack(const char *function_name, TeccFetcherErrorCode error_code)
-{
-    (void)function_name;
-    (void)error_code;
-    /* TODO: 实现错误堆栈 */
-}
-
-void
-tecc_pop_error_stack(void)
-{
-    /* TODO: 实现错误堆栈 */
-}
-
-void
-tecc_clear_error_stack(void)
-{
-    /* TODO: 实现错误堆栈 */
-}
-
-void
-tecc_print_error_stack(void)
-{
-    /* TODO: 实现错误堆栈 */
-}
-
-bool
-tecc_can_recover_error(TeccFetcherErrorCode error_code)
-{
-    /* 某些错误可以恢复，如连接错误 */
-    switch (error_code)
-    {
-        case TECC_FETCHER_ERROR_CONNECTION:
-        case TECC_FETCHER_ERROR_TIMEOUT:
-            return true;
-        default:
-            return false;
-    }
-}
-
-TeccFetcherErrorCode
-tecc_try_recover(TeccFetcherErrorCode error_code)
-{
-    /* TODO: 实现错误恢复逻辑 */
-    return error_code;
-}
-
-void
-tecc_set_error_log_level(int level)
-{
-    (void)level;
-    /* TODO: 实现日志级别设置 */
-}
-
-void
-tecc_enable_error_logging(bool enable)
-{
-    (void)enable;
-    /* TODO: 实现日志启用/禁用 */
 }
 /* End - ReqID:TECC4.0 */

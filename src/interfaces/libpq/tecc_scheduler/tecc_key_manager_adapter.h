@@ -60,6 +60,12 @@ typedef struct TeccKeyManagerAdapter
     int max_cache_size;             /* Maximum cache size */
     bool cache_enabled;             /* Whether caching is enabled */
     int last_error;                 /* Last error code (thread-safe per adapter) */
+    /* ReqID:TECC4.0 — 负缓存：本连接内已解密失败的 DEK OID 集合。
+     * KEK 明文按连接固定（仅连接建立时加载一次），某 DEK 一旦解密失败
+     * （如 KEK 密钥文件被 tecc_ktool --force 覆盖），重试必然再次失败，
+     * 且会对每个列/每行重复报错。记录后短路重试并只报一次错。 */
+    Oid        failed_dek_oids[16];
+    int        num_failed_deks;
 } TeccKeyManagerAdapter;
 
 /* Function prototypes */
@@ -139,9 +145,43 @@ extern const char *tecc_key_adapter_get_last_error(void);
 extern const char *tecc_key_get_last_error_with_adapter(TeccKeyManagerAdapter *adapter);
 extern void tecc_key_set_last_error(TeccKeyManagerAdapter *adapter, int error_code);
 
-/* Statistics */
-extern void tecc_key_get_cache_stats(TeccKeyManagerAdapter *adapter,
-                                    int *cache_hits, int *cache_misses, int *cache_evictions);
+
+/* ==================== HE Key Stub Functions (ReqID:TECC4.0) ==================== */
+
+/*
+ * Get HE public key for encryption.
+ * Stub implementation returns pre-generated test keys.
+ * Real implementation will retrieve from hg_dek_args when key management is ready.
+ *
+ * @param adapter Key manager adapter
+ * @param dek_oid DEK OID (used to locate public key metadata)
+ * @param algo_type TECC_ALGO_EC_ELGAMAL or TECC_ALGO_ELGAMAL
+ * @param pubkey Output: allocated public key bytes
+ * @param pubkey_len Output: public key length in bytes
+ * @return TECC_CRYPTO_SUCCESS on success
+ */
+int tecc_key_manager_adapter_get_he_pubkey(TeccKeyManagerAdapter *adapter,
+    Oid dek_oid, int algo_type,
+    unsigned char **pubkey, size_t *pubkey_len);
+
+/*
+ * Get HE private key for decryption.
+ * Stub implementation returns pre-generated test keys.
+ *
+ * @param adapter Key manager adapter
+ * @param dek_oid DEK OID
+ * @param algo_type TECC_ALGO_EC_ELGAMAL or TECC_ALGO_ELGAMAL
+ * @param privkey Output: allocated private key bytes
+ * @param privkey_len Output: private key length in bytes
+ * @return TECC_CRYPTO_SUCCESS on success
+ */
+int tecc_key_manager_adapter_get_he_privkey(TeccKeyManagerAdapter *adapter,
+    Oid dek_oid, int algo_type,
+    unsigned char **privkey, size_t *privkey_len);
+
+/* Release HE key buffer allocated by get_he_pubkey/get_he_privkey */
+void tecc_key_manager_adapter_release_he_key(TeccKeyManagerAdapter *adapter,
+    unsigned char *key, size_t key_len);
 
 #endif /* TECC_KEY_MANAGER_ADAPTER_H */
 /* End - ReqID:TECC4.0 */

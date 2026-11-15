@@ -82,15 +82,15 @@ idx_hash_name|CREATE INDEX idx_hash_name ON public.test_index_plan USING hash (n
 3f_range_between|70|700|Name_70
 (5 rows)
 Seq Scan on test_index_plan
-Filter: (id = '\xE'\\x被隐藏的HEX输出'::int4_enc)
+Filter: (id = '\x被隐藏的HEX输出'::int4_enc)
 (2 rows)
 Sort
 Sort Key: val
 ->  Seq Scan on test_index_plan
-Filter: (val > '\xE'\\x被隐藏的HEX输出'::int4_enc)
+Filter: (val > '\x被隐藏的HEX输出'::int4_enc)
 (4 rows)
 Seq Scan on test_index_plan
-Filter: (name = '\xE'\\x被隐藏的HEX输出'::text_enc)
+Filter: (name = '\x被隐藏的HEX输出'::text_enc)
 (2 rows)
 3g_ctrl_select|50|500|Name_50
 (1 row)

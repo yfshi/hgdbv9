@@ -1,0 +1,41 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 2
+========== 1. coalesce + 裸浮点常量 ==========
+1|1000.50|6.25|1.5
+2|1.5|0.5|12345.6789
+========== 2. nullif + 裸浮点常量 ==========
+1||1000.50
+2||
+========== 3. cast 常量与裸常量混用 ==========
+1|50.5
+2|50.5
+========== 4. decode + 浮点结果常量（崩溃回归：应报错不崩溃） ==========
+========== 5. 引用不存在的列（应报列不存在） ==========
+========== 6. 真实普通列（应报混用） ==========
+========== 7. 清理 ==========
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../scalar_func_bare_const2.sql:20: NOTICE:  table "enc_pgfunc_bc2" does not exist, skipping
+psql:/.../scalar_func_bare_const2.sql:21: NOTICE:  data encryption key "enc_pgfunc_bc2_dek" does not exist, skipping
+psql:/.../scalar_func_bare_const2.sql:22: NOTICE:  key encryption key "enc_pgfunc_bc2_kek" does not exist, skipping
+psql:/.../scalar_func_bare_const2.sql:59: ERROR:  function decode(int4_enc, int2_enc, numeric, numeric) does not exist
+LINE 1: SELECT id, DECODE(c_i4, 'HEX_STR...
+                   ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+psql:/.../scalar_func_bare_const2.sql:63: ERROR:  column "no_such_col" does not exist
+LINE 1: SELECT id, COALESCE(c_i4, no_such_col) FROM enc_pgfunc_bc2 O...
+                                  ^
+psql:/.../scalar_func_bare_const2.sql:64: ERROR:  column "no_such_col" does not exist
+LINE 1: SELECT id, NULLIF(c_i4, no_such_col) FROM enc_pgfunc_bc2 ORD...
+                                ^
+psql:/.../scalar_func_bare_const2.sql:65: ERROR:  column "no_such_col" does not exist
+LINE 1: SELECT id, DECODE(c_i4, no_such_col, 'HEX_STR...
+                                ^
+psql:/.../scalar_func_bare_const2.sql:69: TECC query preprocessing failed: COALESCE does not support this argument combination: encrypted columns and plain columns cannot be mixed
+psql:/.../scalar_func_bare_const2.sql:70: TECC query preprocessing failed: NULLIF does not support this argument combination: encrypted columns and plain columns cannot be mixed

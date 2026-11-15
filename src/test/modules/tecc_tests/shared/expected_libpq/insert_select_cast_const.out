@@ -1,0 +1,217 @@
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+CREATE KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+========== 1. INSERT ... SELECT 显式 cast 常量（缺陷原形） ==========
+INSERT 0 1
+  ?column?  | id | a  
+------------+----+----
+ ISC-1-int4 |  8 | 80
+(1 row)
+
+INSERT 0 1
+   ?column?    | id |   s   
+---------------+----+-------
+ ISC-1-varchar |  9 | hello
+(1 row)
+
+INSERT 0 1
+   ?column?   | id | b  
+--------------+----+----
+ ISC-1-bpchar | 10 | xy
+(1 row)
+
+INSERT 0 1
+    ?column?    | id |  a  
+----------------+----+-----
+ ISC-1-neg-cast | 11 | -40
+(1 row)
+
+INSERT 0 1
+    ?column?    | id | a  
+----------------+----+----
+ ISC-1-neg-bare | 12 | -7
+(1 row)
+
+INSERT 0 1
+    ?column?     | id | a  
+-----------------+----+----
+ ISC-1-plus-cast | 13 | 50
+(1 row)
+
+========== 2. he-add 列上的 cast 常量与带符号常量 ==========
+INSERT 0 1
+  ?column?  | id | h  
+------------+----+----
+ ISC-2-read | 11 | 11
+(1 row)
+
+ ?column?  | sum 
+-----------+-----
+ ISC-2-sum | 11
+(1 row)
+
+INSERT 0 1
+    ?column?    | id |  h  
+----------------+----+-----
+ ISC-2-neg-cast | 12 | -60
+(1 row)
+
+INSERT 0 1
+    ?column?    | id | h  
+----------------+----+----
+ ISC-2-neg-bare | 13 | -5
+(1 row)
+
+INSERT 0 1
+    ?column?     | id | h 
+-----------------+----+---
+ ISC-2-plus-cast | 14 | 7
+(1 row)
+
+     ?column?     | sum 
+------------------+-----
+ ISC-2-sum-signed | -47
+(1 row)
+
+========== 3. 与裸常量 / VALUES 路径互操作 ==========
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+ ?column?  | count 
+-----------+-------
+ ISC-3-hit |     3
+(1 row)
+
+   ?column?    | count 
+---------------+-------
+ ISC-3-neg-hit |     1
+(1 row)
+
+========== 4. 既有路径不受影响 ==========
+INSERT 0 1
+    ?column?    | id | a  
+----------------+----+----
+ ISC-4-dek-cast | 30 | 30
+(1 row)
+
+INSERT 0 1
+   ?column?   | id | b  
+--------------+----+----
+ ISC-4-values | 31 | ab
+(1 row)
+
+========== 5. 不支持形态仍明确报错 ==========
+  ?column?  | count 
+------------+-------
+ ISC-5-none |     0
+(1 row)
+
+ ?column?  | coalesce 
+-----------+----------
+ ISC-5-ids | (none)
+(1 row)
+
+ ?column? | id | a 
+----------+----+---
+(0 rows)
+
+========== 6. cast 与普通常量同句（两条写入路径都要加密） ==========
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+       ?column?        | id |   a   |   b   | a_ok | b_ok 
+-----------------------+----+-------+-------+------+------
+ ISC-6-vals-cast-first |  1 | abcde | vwxyz | t    | t
+(1 row)
+
+INSERT 0 1
+        ?column?        | id |   a   |   b   | a_ok | b_ok 
+------------------------+----+-------+-------+------+------
+ ISC-6-vals-const-first |  2 | abfgh | abcde | t    | t
+(1 row)
+
+INSERT 0 2
+      ?column?      |   a   |   b   | a_ok | b_ok 
+--------------------+-------+-------+------+------
+ ISC-6-vals-multi-1 | abijk | ablmn | t    | t
+(1 row)
+
+      ?column?      |   a   |   b   | a_ok | b_ok 
+--------------------+-------+-------+------+------
+ ISC-6-vals-multi-2 | abopq | abrst | t    | t
+(1 row)
+
+INSERT 0 1
+    ?column?     |   a   | a_ok 
+-----------------+-------+------
+ ISC-6-cast-only | abuvw | t
+(1 row)
+
+INSERT 0 1
+     ?column?     |   b   | b_ok 
+------------------+-------+------
+ ISC-6-const-only | abxyz | t
+(1 row)
+
+     ?column?     | count 
+------------------+-------
+ ISC-6-null-count |     2
+(1 row)
+
+CREATE TABLE
+INSERT 0 1
+       ?column?       |   a   |   b   | a_ok | b_ok 
+----------------------+-------+-------+------+------
+ ISC-6-sel-cast-first | abcde | vwxyz | t    | t
+(1 row)
+
+INSERT 0 1
+       ?column?        |   a   |   b   | a_ok | b_ok 
+-----------------------+-------+-------+------+------
+ ISC-6-sel-const-first | abfgh | abcde | t    | t
+(1 row)
+
+========== 7. 清理 ==========
+ ?column? 
+----------
+ ISC-END
+(1 row)
+
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+DROP KEK
+psql:/.../insert_select_cast_const.sql:35: NOTICE:  table "isc_test" does not exist, skipping
+psql:/.../insert_select_cast_const.sql:36: NOTICE:  table "isc_bp" does not exist, skipping
+psql:/.../insert_select_cast_const.sql:37: NOTICE:  table "isc_he" does not exist, skipping
+psql:/.../insert_select_cast_const.sql:38: NOTICE:  table "isc_plain" does not exist, skipping
+psql:/.../insert_select_cast_const.sql:39: NOTICE:  data encryption key "isc_dek_sym" does not exist, skipping
+psql:/.../insert_select_cast_const.sql:40: NOTICE:  data encryption key "isc_dek_add" does not exist, skipping
+psql:/.../insert_select_cast_const.sql:41: NOTICE:  key encryption key "isc_kek_sym" does not exist, skipping
+psql:/.../insert_select_cast_const.sql:42: NOTICE:  key encryption key "isc_kek_asym" does not exist, skipping
+psql:/.../insert_select_cast_const.sql:138: TECC query preprocessing failed: INSERT ... SELECT into encrypted column "a" (position 2) requires a literal constant (optionally signed, optionally a cast with ENCRYPTED WITH (DEK = ...)); pre-compute the value and insert it as a literal
+psql:/.../insert_select_cast_const.sql:142: TECC query preprocessing failed: INSERT ... SELECT into encrypted column "a" (position 2) requires a literal constant (optionally signed, optionally a cast with ENCRYPTED WITH (DEK = ...)); pre-compute the value and insert it as a literal
+psql:/.../insert_select_cast_const.sql:144: TECC query preprocessing failed: INSERT ... SELECT into encrypted column "a" (position 2) requires a literal constant (optionally signed, optionally a cast with ENCRYPTED WITH (DEK = ...)); pre-compute the value and insert it as a literal
+psql:/.../insert_select_cast_const.sql:163: NOTICE:  table "isc_mix" does not exist, skipping
+psql:/.../insert_select_cast_const.sql:164: NOTICE:  table "isc_mixs" does not exist, skipping
