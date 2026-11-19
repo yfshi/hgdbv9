@@ -13731,13 +13731,8 @@ static void audit_drop_table_or_del_tuple(TimestampTz time_cur)
 
 static void audit_drop_table_partition(TimestampTz time_cur)
 {
-	char tablename[1024] = {'\0'};
 	StringInfoData buf;
 	char *date_str = NULL;
-	Oid save_userid;
-	Oid syssao_oid;
-	int save_sec_context;
-	int32 cur_date = 0;
 	int32 datenum = 0;
 	char del_tablename[1024];
 
@@ -13749,18 +13744,11 @@ static void audit_drop_table_partition(TimestampTz time_cur)
 	bool del_continue = false;
 	uint64 table_size = 0;
 	int i = 0;
+	bool is_vacuum = false; // BUG#Z9328
 
 	date_str = text_to_cstring(DatumGetTextP(DirectFunctionCall2(timestamptz_to_char,
 												TimestampTzGetDatum(time_cur),
 												PointerGetDatum(cstring_to_text("YYYYMMDD")))));
-
-	if (se_feature_mode)
-	{
-		syssao_oid = get_role_oid(SYSSAO_USER, false);
-		GetUserIdAndSecContext(&save_userid, &save_sec_context);
-		SetUserIdAndSecContext(syssao_oid,
-							save_sec_context | SECURITY_RESTRICTED_OPERATION);
-	}
 
 	/* Begin - BUG#Z8408 */
 	(void) set_config_option("search_path", "\"$user\", public, hg_security",
@@ -13853,6 +13841,7 @@ static void audit_drop_table_partition(TimestampTz time_cur)
 
 					PopActiveSnapshot();
 					CommitTransactionCommand();
+					is_vacuum = true; // BUG#Z9328
 					break;
 				}
 			}
@@ -13863,6 +13852,7 @@ static void audit_drop_table_partition(TimestampTz time_cur)
 
 				PopActiveSnapshot();
 				CommitTransactionCommand();
+				is_vacuum = true; // BUG#Z9328
 				break;
 			}
 		}
@@ -13875,6 +13865,7 @@ static void audit_drop_table_partition(TimestampTz time_cur)
 
 			PopActiveSnapshot();
 			CommitTransactionCommand();
+			is_vacuum = true; // BUG#Z9328
 			break;
 		}
 
@@ -13901,14 +13892,12 @@ static void audit_drop_table_partition(TimestampTz time_cur)
 
 	pfree(buf.data);
 
-	if (audit_GUC.audit_retentionpolicy_switch != RETEN_TIME && datenum == cur_date && tablename != NULL)
+	/*Begin - BUG#Z9328 */
+	if (audit_GUC.audit_retentionpolicy_switch != RETEN_TIME && is_vacuum)  //BUG - Z9328
 	{
-		pg_vacuum_audit_log(tablename);
+		pg_vacuum_audit_log(del_tablename);
 	}
-
-	/* Restore userid and security context */
-	if (se_feature_mode)
-		SetUserIdAndSecContext(save_userid, save_sec_context);
+	/*End - BUG#Z9328 */
 
 	return;
 }
@@ -15488,7 +15477,7 @@ static void pg_vacuum_audit_log(char	   *table)
 
 	PG_TRY();
 	{
-		ereport(WARNING,(errmsg("vacuum table: %s",table)));
+		ereport(DEBUG1,(errmsg("vacuum table: %s",table)));
 		pg_bg_vacuum_run_cycle(table);
 		MemoryContextSwitchTo(oldcontext);
 	}
