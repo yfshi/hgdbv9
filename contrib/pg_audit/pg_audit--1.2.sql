@@ -584,6 +584,13 @@ CREATE FUNCTION hg_security.pg_audit_file_archive( )
 		AS 'MODULE_PATHNAME', 'pg_audit_file_archive'
 LANGUAGE C STRICT;
 
+--/*Begin BUG#Z9340 */
+CREATE FUNCTION hg_security.pg_audit_file_archive_auto(text)
+		RETURNS  bool
+		AS 'MODULE_PATHNAME', 'pg_audit_file_archive_auto'
+LANGUAGE C STRICT;
+--/*End BUG#Z9340 */
+
 CREATE OR REPLACE FUNCTION hg_security.copy_file_to_remote_srv(text, text)
 RETURNS void
 AS 'MODULE_PATHNAME','copy_file_to_remote_srv'
@@ -881,6 +888,11 @@ GRANT ALL ON FUNCTION hg_security.pg_clean_secmon_history TO syssao_role;
 
 ALTER FUNCTION hg_security.pg_audit_file_archive OWNER TO syssao;
 GRANT ALL ON FUNCTION hg_security.pg_audit_file_archive TO syssao_role;
+
+--/*Begin BUG#Z9340 */
+ALTER FUNCTION hg_security.pg_audit_file_archive_auto OWNER TO syssao;
+GRANT ALL ON FUNCTION hg_security.pg_audit_file_archive_auto TO syssao_role;
+--/*End BUG#Z9340 */
 
 ALTER FUNCTION hg_security.pg_audit_privilege(statement_opts text) OWNER TO syssao;
 GRANT ALL ON FUNCTION hg_security.pg_audit_privilege(statement_opts text) TO syssao_role;

@@ -115,7 +115,7 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 			 * execute COPY commands. Reject these users explicitly before checking
 			 * role membership.
 			 */
-			if (IS_SYSSSO(GetUserId()) || IS_SYSSAO(GetUserId()))
+			if ((IS_SYSSSO(GetUserId()) || IS_SYSSAO(GetUserId())) && !audit_copy_log)  /* Bug#z9340 */
 				ereport(ERROR,
 						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
 						 errmsg("permission denied")));
